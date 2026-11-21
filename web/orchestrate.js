@@ -161,10 +161,11 @@ function parseStreamingOperations(buffer) {
 // ---- 面板：嵌入对话，转发画布上下文 ----
 
 function shellForAIWorkflow(raw) {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   const existing = (state.data?.workflows || []).find(item => item.id && item.id === raw.id);
   const shell = existing ? clone(existing) : {
     id: raw.id || uid('sop'),
-    name: raw.name || 'AI 编排 SOP',
+    name: raw.name || _t('AI 编排 SOP', 'AI Orchestrated SOP'),
     version: 1,
     revision: 0,
     status: 'draft',
@@ -262,18 +263,19 @@ function syncCanvasAIEntry() {
 // The chat asks before every turn: the canvas prepares the build and hands
 // over the graph it shows, so the server edits exactly what the user sees.
 async function beginAIOrchestratorTurn(requestId) {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   const reply = (payload) => postToAIOrchestrator(AI_MESSAGES.begun, {requestId, ...payload});
-  if (!state.projectFilter) return reply({ok: false, error: '先在顶栏选择项目'});
-  if (aiBuild) return reply({ok: false, error: '画布还在生成上一轮的流程，请稍候'});
+  if (!state.projectFilter) return reply({ok: false, error: _t('先在顶栏选择项目', 'Select a project from the top bar first')});
+  if (aiBuild) return reply({ok: false, error: _t('画布还在生成上一轮的流程，请稍候', 'Canvas is still generating the previous workflow; please wait')});
   const context = aiOrchestratorContext();
   await refreshWorkflowAgents().catch(() => {});
   const current = aiOrchestratorContext();
   if (aiBuild || context.projectId !== current.projectId || context.workflowId !== current.workflowId) {
-    return reply({ok: false, error: '画布已切换，请重试'});
+    return reply({ok: false, error: _t('画布已切换，请重试', 'Canvas changed; please try again')});
   }
   const canvas = state.workflow ? aiClone(state.workflow) : null;
   const build = await beginAIOrchestration();
-  if (!build) return reply({ok: false, error: '画布暂时不能编排'});
+  if (!build) return reply({ok: false, error: _t('画布暂时不能编排', 'Canvas is temporarily unavailable for orchestration')});
   reply({ok: true, projectId: state.projectFilter, workflowId: canvas?.id || state.workflow?.id || '', canvas});
 }
 
@@ -374,7 +376,8 @@ function placeAIGhost() {
   ghost.className = 'ai-ghost-node';
   ghost.style.left = pos.x + 'px';
   ghost.style.top = pos.y + 'px';
-  ghost.innerHTML = `<i></i><i></i><span>${escapeHTML(aiBuild.ghostText || 'AI 正在构思…')}</span>`;
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
+  ghost.innerHTML = `<i></i><i></i><span>${escapeHTML(aiBuild.ghostText || _t('AI 正在构思…', 'AI is thinking…'))}</span>`;
   host.append(ghost);
 }
 
@@ -384,12 +387,13 @@ function isCurrentAIBuild(build) {
 }
 
 async function startAIBuild(raw, opts = {}) {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   const occupied = !!state.workflow && ((state.workflow.nodes || []).length > 0 || state.workflowDirty);
   if (occupied && !opts.confirmed) {
     const ok = await afConfirm({
-      title: '换成一条新流程',
-      message: '当前画布会被整条替换。只想改其中几步时，直接说改哪里，不用清空。',
-      confirmText: '替换当前画布',
+      title: _t('换成一条新流程', 'Replace with a new SOP'),
+      message: _t('当前画布会被整条替换。只想改其中几步时，直接说改哪里，不用清空。', 'The entire current canvas will be replaced. To adjust only specific steps, just describe what to change without clearing.'),
+      confirmText: _t('替换当前画布', 'Replace canvas'),
       danger: !!state.workflowDirty
     });
     if (!ok) return null;
@@ -402,7 +406,7 @@ async function startAIBuild(raw, opts = {}) {
   aiBuild = {
     token, projectId: state.projectFilter, workflowId: state.workflow.id, selectedNode,
     buffer: '', thought: '', placed: new Map(), wired: new Set(), pendingEdges: [], queue: [], draining: null,
-    ghostText: opts.ghost || 'AI 正在理解你的需求…', ghostHidden: false, freePositions: true,
+    ghostText: opts.ghost || _t('AI 正在理解你的需求…', 'AI is analyzing your requirements…'), ghostHidden: false, freePositions: true,
     mode: 'create', previous
   };
   state.selectedNode = null;
@@ -471,9 +475,10 @@ async function aiPlaceNode(build, node) {
   renderCanvas();
   const el = document.querySelector('.flow-node[data-id="' + (CSS.escape ? CSS.escape(node.id) : node.id) + '"]');
   el?.classList.add('ai-just-built');
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   aiCanvasFollow(node.position.x, node.position.y);
-  setAIBuildStatus('已建 ' + build.placed.size + ' 个节点：' + node.name);
-  setAIGhostText('AI 正在写下一个节点…');
+  setAIBuildStatus(_t(`已建 ${build.placed.size} 个节点：${node.name}`, `Added node #${build.placed.size}: ${node.name}`));
+  setAIGhostText(_t('AI 正在写下一个节点…', 'AI is authoring the next node…'));
   await aiSleep(420);
 }
 
@@ -587,16 +592,18 @@ async function validateAIBuildRoles(build) {
   if (!isCurrentAIBuild(build)) return false;
   const missing = unavailable();
   if (!missing.length) return true;
-  const names = missing.map(node => node.name + '（' + (node.agentId || '未绑定') + '）');
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
+  const names = missing.map(node => node.name + _t('（', ' (') + (node.agentId || _t('未绑定', 'unbound')) + _t('）', ')'));
   abortAIBuild();
-  setAIBuildStatus('草稿引用了当前流程不可用的角色：' + names.join('、') + '。请先创建角色，或选择已有角色。');
+  setAIBuildStatus(_t('草稿引用了当前流程不可用的角色：', 'Draft references unavailable Roles: ') + names.join(_t('、', ', ')) + _t('。请先创建角色，或选择已有角色。', '. Please create these Roles or pick existing ones first.'));
   return false;
 }
 
 function configureAIRoleDraft(role) {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   if (!role?.name || catalogGeneric(state.workflow)) return;
   const {id, name, description, prompt, executorId, model} = role;
-  if (id && agentIdTaken(id)) return toast('这个角色标识已存在，请使用已保存的角色继续编排');
+  if (id && agentIdTaken(id)) return toast(_t('这个角色标识已存在，请使用已保存的角色继续编排', 'This Role ID already exists; continue orchestrating with the saved Role'));
   openAgentWizard({id: '', name, description, prompt, executorId, model, projectId: state.projectFilter});
   if (id) {
     state.agentIdAuto = false;
@@ -633,6 +640,7 @@ function mergeAIEdit(base, incoming) {
 
 // A canvas with steps is edited in place; an empty one gets a new graph.
 async function beginAIOrchestration() {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   const hasGraph = !!state.workflow && (state.workflow.nodes || []).length > 0;
   if (hasGraph) {
     const token = ++aiBuildToken;
@@ -649,13 +657,13 @@ async function beginAIOrchestration() {
     if ((state.currentView || activeViewName()) !== 'flow') switchView('flow');
     openAIOrchestrator();
     $('#canvas')?.classList.add('ai-building');
-    setAIBuildStatus('正在按当前流程修改，画布先保持原样');
+    setAIBuildStatus(_t('正在按当前流程修改，画布先保持原样', 'Editing based on current SOP; canvas preserved while generating'));
     return aiBuild;
   }
   const current = state.workflow;
   const build = await startAIBuild({
     id: current?.id,
-    name: current?.name || 'AI 编排中…',
+    name: current?.name || _t('AI 编排中…', 'AI orchestrating…'),
     projectId: current?.projectId,
     sandboxProfileId: current?.sandboxProfileId,
     revision: current?.revision,
@@ -664,8 +672,8 @@ async function beginAIOrchestration() {
     tags: current?.tags,
     description: current?.description,
     preview: current?.preview
-  }, {confirmed: true, ghost: 'AI 正在理解你的需求…'});
-  setAIBuildStatus('正在连接 AI…');
+  }, {confirmed: true, ghost: _t('AI 正在理解你的需求…', 'AI is analyzing your requirements…')});
+  setAIBuildStatus(_t('正在连接 AI…', 'Connecting to AI…'));
   placeAIGhost();
   return build;
 }
@@ -763,15 +771,16 @@ async function playAIDraft(raw) {
 
 // Replays a finished draft (e.g. from the side assistant) with the same builder.
 async function playWorkflowOnCanvas(raw, opts = {}) {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   const graph = normalizeAIWorkflow(raw || {});
   if (!graph.nodes.length) {
-    toast('AI 没有给出可放置的节点');
+    toast(_t('AI 没有给出可放置的节点', 'AI produced no nodes to place'));
     return false;
   }
-  const build = await startAIBuild(raw || {}, {confirmed: opts.confirmed, ghost: 'AI 正在放置节点…'});
+  const build = await startAIBuild(raw || {}, {confirmed: opts.confirmed, ghost: _t('AI 正在放置节点…', 'AI is placing nodes…')});
   if (!build) return false;
   const ok = await completeAIBuild(build, raw);
-  if (ok && opts.source === 'assistant') toast('AI 已在画布上逐个放好节点');
+  if (ok && opts.source === 'assistant') toast(_t('AI 已在画布上逐个放好节点', 'AI placed all nodes onto the canvas'));
   return ok;
 }
 

@@ -72,6 +72,7 @@
   }
 
   function enhance(input) {
+    const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
     if (!supported || !isFileInput(input)) return null;
     if (instances.has(input)) return instances.get(input);
     if (input.closest?.('[data-native]') || hiddenInput(input)) return null;
@@ -80,14 +81,14 @@
     const zone = el('div', 'hui-upload');
     zone.appendChild(icon('paperclip'));
     const line = el('div', 'hui-upload-line');
-    line.appendChild(doc.createTextNode ? doc.createTextNode(folder ? '选择要上传的文件夹 ' : '拖拽文件到此处，或 ') : el('span', null, folder ? '选择要上传的文件夹 ' : '拖拽文件到此处，或 '));
-    const pick = el('button', 'hui-upload-pick', folder ? '选择文件夹' : '选择文件');
+    line.appendChild(doc.createTextNode ? doc.createTextNode(folder ? _t('选择要上传的文件夹 ', 'Select a folder to upload ') : _t('拖拽文件到此处，或 ', 'Drop files here, or ')) : el('span', null, folder ? _t('选择要上传的文件夹 ', 'Select a folder to upload ') : _t('拖拽文件到此处，或 ', 'Drop files here, or ')));
+    const pick = el('button', 'hui-upload-pick', folder ? _t('选择文件夹', 'Choose folder') : _t('选择文件', 'Choose file'));
     pick.type = 'button';
     const own = input.getAttribute('aria-label') || ownText(input.labels?.[0]);
-    if (own) pick.setAttribute('aria-label', own + '：' + pick.textContent);
+    if (own) pick.setAttribute('aria-label', own + _t('：', ': ') + pick.textContent);
     line.appendChild(pick);
     zone.appendChild(line);
-    const hintText = [input.accept ? '支持 ' + input.accept.split(',').map(s => s.trim()).filter(Boolean).join(' / ') : '', input.multiple || folder ? '' : '单个文件'].filter(Boolean).join('，');
+    const hintText = [input.accept ? _t('支持 ', 'Supports ') + input.accept.split(',').map(s => s.trim()).filter(Boolean).join(' / ') : '', input.multiple || folder ? '' : _t('单个文件', 'single file')].filter(Boolean).join(_t('，', ', '));
     const hint = el('small', 'hui-upload-hint', hintText);
     hint.hidden = !hintText;
     const error = el('small', 'hui-upload-error');
@@ -118,7 +119,7 @@
         item.appendChild(el('small', null, size(file.size)));
         return item;
       });
-      if (files.length > LIST_LIMIT) items.push(el('li', 'hui-upload-more', '等 ' + files.length + ' 个文件'));
+      if (files.length > LIST_LIMIT) items.push(el('li', 'hui-upload-more', _t('等 ' + files.length + ' 个文件', files.length + ' files total')));
       list.replaceChildren(...items);
       list.hidden = !files.length;
       const disabled = !!input.disabled;
@@ -129,12 +130,12 @@
     }
     function take(files) {
       if (input.disabled) return false;
-      if (folder) { fail('文件夹请点击「选择文件夹」上传'); return false; }
+      if (folder) { fail(_t('文件夹请点击「选择文件夹」上传', 'Click "Choose folder" to upload a folder')); return false; }
       if (!files.length) return false;
-      if (!input.multiple && files.length > 1) { fail('只能选择一个文件'); return false; }
+      if (!input.multiple && files.length > 1) { fail(_t('只能选择一个文件', 'Only one file can be selected')); return false; }
       const rejected = files.filter(file => !accepts(input.accept, file));
-      if (rejected.length) { fail('不支持的文件类型：' + rejected.map(file => file.name).join('、')); return false; }
-      if (typeof DataTransfer !== 'function') { fail('当前浏览器不支持拖放，请点击选择'); return false; }
+      if (rejected.length) { fail(_t('不支持的文件类型：', 'Unsupported file type: ') + rejected.map(file => file.name).join(_t('、', ', '))); return false; }
+      if (typeof DataTransfer !== 'function') { fail(_t('当前浏览器不支持拖放，请点击选择', 'Drag-and-drop not supported here; click to select')); return false; }
       const transfer = new DataTransfer();
       files.forEach(file => transfer.items.add(file));
       input.files = transfer.files;

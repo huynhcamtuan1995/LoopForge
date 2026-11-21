@@ -167,8 +167,9 @@
     return value;
   }
   async function fetchCatalog() {
+    const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
     const resp = await fetch('/api/assistant/models', {headers: {Accept: 'application/json'}, credentials: 'same-origin'});
-    if (!resp.ok) throw new Error(`模型列表加载失败（${resp.status}）`);
+    if (!resp.ok) throw new Error(_t(`模型列表加载失败（${resp.status}）`, `Failed to load model list (${resp.status})`));
     return resp.json();
   }
   // Share the in-flight request and retain the last catalog on a refresh failure.

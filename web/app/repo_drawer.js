@@ -21,11 +21,12 @@ function syncRepoDrawerDetect(){
   box.hidden=false;
 }
 function openRepoDrawer(repoId=''){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const projectId=state.projectAdminDetailId;
   const project=(state.data.projects||[]).find(p=>p.id===projectId);
-  if(!project||projectId==='new')return toast('保存项目后可用','warn');
+  if(!project||projectId==='new')return toast(_t('保存项目后可用','Available after saving the project'),'warn');
   const repo=repoId?(state.data.repositories||[]).find(r=>r.id===repoId&&r.projectId===projectId):null;
-  if(repoId&&!repo)return toast('仓库不存在或已被删除','err');
+  if(repoId&&!repo)return toast(_t('仓库不存在或已被删除','Repository does not exist or was deleted'),'err');
   const f=$('#repoDrawerForm');if(!f)return;
   const hasDefault=!projectNeedsDefaultRepository(project);
   const repoAddress=repo?.provider==='ssh'?repo.cloneUrl:repo?.webUrl||repo?.cloneUrl||repo?.gongfengProjectId||'';
@@ -40,7 +41,7 @@ function openRepoDrawer(repoId=''){
   f.elements.localPath.value=repo?.localPath||'';
   $('#repoDrawerAdvanced').open=!!repo?.localPath;
   $('#repoDrawerNameField').hidden=!repoDrawerState.nameTouched;
-  $('#repoDrawerTitle').textContent=repo?'编辑代码仓库':'添加代码仓库';
+  $('#repoDrawerTitle').textContent=repo?_t('编辑代码仓库','Edit repository'):_t('添加代码仓库','Add repository');
   $('#repoDrawerSave').disabled=false;
   setRepoDrawerSwitch(repo?project.defaultRepositoryId===repo.id:!hasDefault);
   gitSSHKeyCache=null;
@@ -81,12 +82,13 @@ async function saveProjectDefaultRepository(project,repoId){
   return next;
 }
 async function saveRepoDrawer(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   e.preventDefault();
   if(repoDrawerState.saving)return;
   const f=e.currentTarget,info=parseGongfengRepoURL(f.elements.repoUrl.value);
   if(!info){repoDrawerError(true);f.elements.repoUrl.focus();return}
   const projectId=repoDrawerState.projectId,project=(state.data.projects||[]).find(p=>p.id===projectId);
-  if(!project)return toast('请先保存项目','warn');
+  if(!project)return toast(_t('请先保存项目','Save the project first'),'warn');
   const makeDefault=$('#repoDrawerDefault').classList.contains('on'),payload=repoDrawerPayload(f,info),editing=!!payload.id;
   repoDrawerState.saving=true;$('#repoDrawerSave').disabled=true;
   try{
@@ -98,12 +100,12 @@ async function saveRepoDrawer(e){
     let defaultError='';
     if(nextDefault!==(project.defaultRepositoryId||'')){
       try{await saveProjectDefaultRepository(project,nextDefault)}
-      catch(err){defaultError=`仓库已保存，${makeDefault?'设为默认':'取消默认'}失败：${err.message}`}
+      catch(err){defaultError=_t(`仓库已保存，${makeDefault?'设为默认':'取消默认'}失败：${err.message}`,`Repository saved; failed to ${makeDefault?'set as default':'unset default'}: ${err.message}`)}
     }
     closeRepoDrawer({restoreFocus:false});
     renderAll();
     refreshProjectAdminRepos(repo.id);
-    toast(defaultError||(editing?'仓库已保存':`仓库已添加${makeDefault&&!wasDefault?'，并设为默认':''}`),defaultError?'err':'ok');
+    toast(defaultError||(editing?_t('仓库已保存','Repository saved'):_t(`仓库已添加${makeDefault&&!wasDefault?'，并设为默认':''}`,`Repository added${makeDefault&&!wasDefault?' and set as default':''}`)),defaultError?'err':'ok');
   }catch(err){toast(err.message,'err')}
   finally{repoDrawerState.saving=false;const btn=$('#repoDrawerSave');if(btn)btn.disabled=false}
 }

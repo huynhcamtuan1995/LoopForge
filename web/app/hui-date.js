@@ -9,8 +9,12 @@
   const doc = typeof document !== 'undefined' ? document : null;
   const supported = !!(doc && typeof doc.createElement === 'function' && typeof MutationObserver === 'function');
   const instances = new WeakMap();
-  const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
-  const PLACEHOLDER = '选择日期';
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
+  const WEEKDAYS_ZH = ['一', '二', '三', '四', '五', '六', '日'];
+  const WEEKDAYS_EN = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const weekdays = () => (typeof lfLang === 'function' && lfLang() === 'en' ? WEEKDAYS_EN : WEEKDAYS_ZH);
+  const placeholderText = () => _t('选择日期', 'Select date');
+  const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   let serial = 0;
 
   const pad = n => String(n).padStart(2, '0');
@@ -98,14 +102,14 @@
     const panel = el('div', 'hui-date-panel');
     panel.id = id + 'Panel';
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', '选择日期');
+    panel.setAttribute('aria-label', _t('选择日期', 'Select date'));
     panel.inert = true;
     const head = el('div', 'hui-date-head');
-    const prev = button('hui-date-nav', null, '上个月');
+    const prev = button('hui-date-nav', null, _t('上个月', 'Previous month'));
     prev.appendChild(icon('chevron-left'));
     const title = el('b', 'hui-date-title');
     title.setAttribute('aria-live', 'polite');
-    const next = button('hui-date-nav', null, '下个月');
+    const next = button('hui-date-nav', null, _t('下个月', 'Next month'));
     next.appendChild(icon('chevron-right'));
     head.appendChild(prev);
     head.appendChild(title);
@@ -113,8 +117,8 @@
     const grid = el('div', 'hui-date-grid');
     grid.setAttribute('role', 'grid');
     const foot = el('div', 'hui-date-foot');
-    const clear = button('hui-date-action', '清除');
-    const todayButton = button('hui-date-action', '今天');
+    const clear = button('hui-date-action', _t('清除', 'Clear'));
+    const todayButton = button('hui-date-action', _t('今天', 'Today'));
     foot.appendChild(clear);
     foot.appendChild(todayButton);
     panel.appendChild(head);
@@ -154,15 +158,15 @@
     function label() {
       const own = input.getAttribute('aria-label');
       if (own) return own;
-      return ownText(input.labels?.[0]) || PLACEHOLDER;
+      return ownText(input.labels?.[0]) || placeholderText();
     }
     function sync() {
       const current = read();
-      value.textContent = current || PLACEHOLDER;
+      value.textContent = current || placeholderText();
       value.classList.toggle('is-placeholder', !current);
       trigger.disabled = !!input.disabled || !!input.readOnly;
       trigger.hidden = !!input.hidden || input.style?.display === 'none';
-      trigger.setAttribute('aria-label', label() + (current ? '：' + current : ''));
+      trigger.setAttribute('aria-label', label() + (current ? _t('：', ': ') + current : ''));
       if (open && trigger.disabled) close(false);
       else if (open) render();
     }
@@ -171,13 +175,13 @@
       const now = today();
       const y = view.getFullYear();
       const m = view.getMonth();
-      title.textContent = y + ' 年 ' + (m + 1) + ' 月';
+      title.textContent = (typeof lfLang === 'function' && lfLang() === 'en') ? `${EN_MONTHS[m]} ${y}` : (y + ' 年 ' + (m + 1) + ' 月');
       const { min, max } = bounds();
       prev.disabled = !!min && new Date(y, m, 0) < min;
       next.disabled = !!max && new Date(y, m + 1, 1) > max;
       const first = new Date(y, m, 1);
       const start = addDays(first, -((first.getDay() + 6) % 7));
-      const cells = WEEKDAYS.map(name => {
+      const cells = weekdays().map(name => {
         const cell = el('span', 'hui-date-weekday', name);
         cell.setAttribute('role', 'columnheader');
         return cell;

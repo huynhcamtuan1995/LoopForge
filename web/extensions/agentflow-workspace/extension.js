@@ -600,6 +600,7 @@ function configuredChanges() {
 
 // A VS Code Pseudoterminal backed by a real PTY on the workspace owner.
 function registerWorkspaceTerminal(context,runId){
+  const _t = (zh, en) => (typeof currentLang !== 'undefined' && currentLang === 'en' ? en : zh);
   context.subscriptions.push(vscode.commands.registerCommand('agentflow.newTerminal',()=>{
     let id='',closed=false,timer,inputChain=Promise.resolve(),queue=Promise.resolve(),closeRequested=false;
     const write=new vscode.EventEmitter(),exit=new vscode.EventEmitter(),decoder=new TextDecoder();

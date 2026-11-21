@@ -31,28 +31,30 @@ function issueSelectAllCheckbox(label,showLabel=false){
 }
 
 function issueSelectionCheckbox(issue){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!state.issueSelectionMode)return '';
   const allowed=issueCanDelete(issue),disabled=state.issueBulkDeleting||!allowed;
-  const hint=allowed?'选择此需求':issueDeletionBlock(issue).reason;
-  return `<label class="issue-select-label" title="${escapeHTML(hint)}" draggable="false"><input type="checkbox" class="issue-select-checkbox" data-issue-select="${escapeHTML(issue.id)}" aria-label="选择需求 ${escapeHTML(issue.title||issue.id)}${allowed?'':`：${escapeHTML(hint)}`}"${state.issueSelection?.has(issue.id)?' checked':''}${disabled?' disabled':''}></label>`;
+  const hint=allowed?_t('选择此需求','Select this requirement'):issueDeletionBlock(issue).reason;
+  return `<label class="issue-select-label" title="${escapeHTML(hint)}" draggable="false"><input type="checkbox" class="issue-select-checkbox" data-issue-select="${escapeHTML(issue.id)}" aria-label="${_t(`选择需求 ${escapeHTML(issue.title||issue.id)}${allowed?'':`：${escapeHTML(hint)}`}`,`Select requirement ${escapeHTML(issue.title||issue.id)}${allowed?'':`: ${escapeHTML(hint)}`}`)}"${state.issueSelection?.has(issue.id)?' checked':''}${disabled?' disabled':''}></label>`;
 }
 
 function renderIssueBulkActions(visibleIssues){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const entry=$('#startIssueSelection');
   if(entry){entry.hidden=!!state.issueSelectionMode;entry.onclick=()=>setIssueSelectionMode(true)}
   const host=$('#issueBulkActions');if(!host)return;
   host.hidden=!state.issueSelectionMode;
   if(!state.issueSelectionMode){host.innerHTML='';return}
   const selected=state.issueSelection.size,busy=state.issueBulkDeleting,progress=state.issueBulkDeleteProgress,result=state.issueBulkDeleteResult;
-  const scope=state.issueView==='kanban'?'全选当前可删除需求':'全选本页可删除需求';
+  const scope=state.issueView==='kanban'?_t('全选当前可删除需求','Select all deletable requirements'):_t('全选本页可删除需求','Select all deletable on page');
   const force=(state.data.issues||[]).some(i=>state.issueSelection.has(i.id)&&i.deletionRequiresForce===true);
-  const buttonText=busy?(progress?`正在删除 ${progress.completed}/${progress.total}…`:'等待确认…'):force?'强制删除所选':'删除所选';
+  const buttonText=busy?(progress?_t(`正在删除 ${progress.completed}/${progress.total}…`,`Deleting ${progress.completed}/${progress.total}…`):_t('等待确认…','Awaiting confirmation…')):force?_t('强制删除所选','Force-delete selected'):_t('删除所选','Delete selected');
   const blocked=visibleIssues.filter(i=>!issueCanDelete(i));
   const reasonsOpen=host.querySelector('.issue-bulk-blocked')?.open;
   host.innerHTML=`<div class="issue-bulk-toolbar">
-    <div class="issue-bulk-summary">${issueSelectAllCheckbox(scope,true)}<span aria-live="polite">已选择 <b>${selected}</b> 项</span><small>可跨页选择；切换筛选条件会清空选择</small></div>
-    <div class="issue-bulk-buttons"><button type="button" class="button ghost small" data-issue-cancel-selection${busy?' disabled':''}>取消</button><button type="button" class="button ghost small" data-issue-clear-selection${!selected||busy?' disabled':''}>清空选择</button><button type="button" class="button danger-outline small" data-issue-bulk-delete${!selected||busy?' disabled':''}>${buttonText}</button></div>
-  </div>${blocked.length?`<details class="issue-bulk-blocked"${reasonsOpen?' open':''}><summary>当前列表 ${blocked.length} 项不可删除，查看原因</summary><ul>${blocked.map(i=>`<li><div><b>${escapeHTML(i.title||i.id)}</b><p>${escapeHTML(issueDeletionBlock(i).reason)}</p></div>${issueDeletionContextHTML(i)}</li>`).join('')}</ul></details>`:''}${result?.failures.length?`<details class="issue-bulk-result" open><summary>已删除 ${result.deleted} 条，${result.failures.length} 条未删除</summary><ul>${result.failures.map(f=>`<li><b>${escapeHTML(f.title||f.id)}</b>：${escapeHTML(f.message)}</li>`).join('')}</ul></details>`:''}`;
+    <div class="issue-bulk-summary">${issueSelectAllCheckbox(scope,true)}<span aria-live="polite">${_t(`已选择 <b>${selected}</b> 项`,`Selected <b>${selected}</b>`)}</span><small>${_t('可跨页选择；切换筛选条件会清空选择','Selections persist across pages; changing filters clears selection')}</small></div>
+    <div class="issue-bulk-buttons"><button type="button" class="button ghost small" data-issue-cancel-selection${busy?' disabled':''}>${_t('取消','Cancel')}</button><button type="button" class="button ghost small" data-issue-clear-selection${!selected||busy?' disabled':''}>${_t('清空选择','Clear selection')}</button><button type="button" class="button danger-outline small" data-issue-bulk-delete${!selected||busy?' disabled':''}>${buttonText}</button></div>
+  </div>${blocked.length?`<details class="issue-bulk-blocked"${reasonsOpen?' open':''}><summary>${_t(`当前列表 ${blocked.length} 项不可删除，查看原因`,`${blocked.length} items cannot be deleted; view reasons`)}</summary><ul>${blocked.map(i=>`<li><div><b>${escapeHTML(i.title||i.id)}</b><p>${escapeHTML(issueDeletionBlock(i).reason)}</p></div>${issueDeletionContextHTML(i)}</li>`).join('')}</ul></details>`:''}${result?.failures.length?`<details class="issue-bulk-result" open><summary>${_t(`已删除 ${result.deleted} 条，${result.failures.length} 条未删除`,`${result.deleted} deleted, ${result.failures.length} failed`)}</summary><ul>${result.failures.map(f=>`<li><b>${escapeHTML(f.title||f.id)}</b>${_t('：',': ')}${escapeHTML(f.message)}</li>`).join('')}</ul></details>`:''}`;
   bindIssueDeletionContext(host);
   host.querySelector('[data-issue-cancel-selection]').onclick=()=>setIssueSelectionMode(false);
   host.querySelector('[data-issue-clear-selection]').onclick=()=>{state.issueSelection.clear();renderIssueBulkActions(visibleIssues);bindIssueSelection(visibleIssues)};
@@ -95,21 +97,22 @@ function bindIssueSelection(visibleIssues){
 }
 
 async function deleteSelectedIssues(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!state.issueSelectionMode||state.issueBulkDeleting)return;
   const filtered=filteredIssues();
   syncIssueSelection(filtered);
   const issues=filtered.filter(i=>state.issueSelection.has(i.id));
-  if(!issues.length)return toast('请先选择可删除的需求');
+  if(!issues.length)return toast(_t('请先选择可删除的需求','Select at least one deletable requirement'));
   const scope=issueSelectionFilterKey(),external=issues.some(i=>i.source==='tapd'||i.source==='gongfeng');
   const forceIDs=new Set(issues.filter(i=>i.deletionRequiresForce===true).map(i=>i.id));
-  const names=issues.slice(0,5).map(i=>`「${i.title||i.id}」`).join('、')+(issues.length>5?'等':'');
-  const forceNotice=forceIDs.size?`其中 ${forceIDs.size} 条已有执行记录或已完成，将强制删除。`:'';
+  const names=issues.slice(0,5).map(i=>_t(`「${i.title||i.id}」`,`"${i.title||i.id}"`)).join(_t('、',', '))+(issues.length>5?_t('等',' etc.'):'');
+  const forceNotice=forceIDs.size?_t(`其中 ${forceIDs.size} 条已有执行记录或已完成，将强制删除。`,`${forceIDs.size} of them have execution history or are completed and will be force-deleted.`):'';
   state.issueBulkDeleting=true;
   renderIssues();
   try{
-    const action=forceIDs.size?'确认强制删除':'确认删除';
-    if(!await afConfirm({title:'批量删除需求',message:`确定删除选中的 ${issues.length} 条需求（${names}）？${forceNotice}${issueDeletionWarning(forceIDs.size>0,external)}`,danger:true,confirmText:`${action} ${issues.length} 条需求`}))return;
-    if(scope!==issueSelectionFilterKey())return toast('筛选条件已变化，请重新选择需求','info');
+    const action=forceIDs.size?_t('确认强制删除','Force delete'):_t('确认删除','Delete');
+    if(!await afConfirm({title:_t('批量删除需求','Bulk delete requirements'),message:_t(`确定删除选中的 ${issues.length} 条需求（${names}）？${forceNotice}${issueDeletionWarning(forceIDs.size>0,external)}`,`Delete the ${issues.length} selected requirement(s) (${names})? ${forceNotice}${issueDeletionWarning(forceIDs.size>0,external)}`),danger:true,confirmText:_t(`${action} ${issues.length} 条需求`,`${action} ${issues.length} requirement(s)`)}))return;
+    if(scope!==issueSelectionFilterKey())return toast(_t('筛选条件已变化，请重新选择需求','Filters changed; please select requirements again'),'info');
     const result={deleted:0,failures:[]};
     state.issueBulkDeleteResult=result;
     state.issueBulkDeleteProgress={completed:0,total:issues.length};
@@ -130,7 +133,7 @@ async function deleteSelectedIssues(){
     }
     await refreshRuns();
     if(!result.failures.length)state.issueSelectionMode=false;
-    toast(result.failures.length?`已删除 ${result.deleted} 条需求，${result.failures.length} 条未删除，请查看失败原因`:`已删除 ${result.deleted} 条需求`,result.failures.length?'warn':'ok');
+    toast(result.failures.length?_t(`已删除 ${result.deleted} 条需求，${result.failures.length} 条未删除，请查看失败原因`,`Deleted ${result.deleted} requirement(s), ${result.failures.length} failed; check failure reasons`):_t(`已删除 ${result.deleted} 条需求`,`Deleted ${result.deleted} requirement(s)`),result.failures.length?'warn':'ok');
   }catch(err){toast(err.message,'err')}
   finally{
     state.issueBulkDeleting=false;

@@ -114,6 +114,7 @@ function obsTrendPrevValues(points,prev,mode){
   return values.some(v=>v!=null)?values:null;
 }
 function obsTrendOption(points,mode,sel,prev,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const o=obsChartOpts(opts),t=o.theme;
   points=Array.isArray(points)?points:[];
   mode=OBS_TREND_MODES.includes(mode)?mode:'tokens';
@@ -127,23 +128,23 @@ function obsTrendOption(points,mode,sel,prev,opts){
     const p=points[idx];
     if(!p)return '';
     const rate=obsTrendModeValue(p,'rate'),hit=obsTrendCacheHit(p);
-    const rows=[['Token',o.fmtTokens(p.tokens)],['成本',o.fmtCost(p.costCny)],['运行',String(p.runs||0)],['需求',String(p.issues||0)],['成功率',rate==null?'—':rate.toFixed(0)+'%'],['缓存命中',hit==null?'—':hit.toFixed(0)+'%']];
-    if(mode==='comp')rows.splice(1,0,['输入',o.fmtTokens(p.inputTokens)],['输出',o.fmtTokens(p.outputTokens)],['缓存读',o.fmtTokens(p.cacheReadTokens)],['缓存写',o.fmtTokens(p.cacheWriteTokens)]);
+    const rows=[['Token',o.fmtTokens(p.tokens)],[_t('成本','Cost'),o.fmtCost(p.costCny)],[_t('运行','Runs'),String(p.runs||0)],[_t('需求','Issues'),String(p.issues||0)],[_t('成功率','Success rate'),rate==null?'—':rate.toFixed(0)+'%'],[_t('缓存命中','Cache hit'),hit==null?'—':hit.toFixed(0)+'%']];
+    if(mode==='comp')rows.splice(1,0,[_t('输入','Input'),o.fmtTokens(p.inputTokens)],[_t('输出','Output'),o.fmtTokens(p.outputTokens)],[_t('缓存读','Cache read'),o.fmtTokens(p.cacheReadTokens)],[_t('缓存写','Cache write'),o.fmtTokens(p.cacheWriteTokens)]);
     const pp=mode!=='comp'&&prevValues?prev[idx]:null;
     const pv=pp?obsTrendModeValue(pp,mode):null;
-    if(pv!=null)rows.push([`上一周期 ${o.label(pp)}`,fmt(pv)]);
-    return obsTooltipRows(labels[idx],rows,'点击查看该时段');
+    if(pv!=null)rows.push([_t(`上一周期 ${o.label(pp)}`,`Prior period ${o.label(pp)}`),fmt(pv)]);
+    return obsTooltipRows(labels[idx],rows,_t('点击查看该时段','Click to inspect period'));
   }};
   const selArea=selIdx>=0?{silent:true,itemStyle:{color:t.text,opacity:.05},data:[[{xAxis:labels[selIdx]},{xAxis:labels[selIdx]}]]}:undefined;
   let series;
   if(mode==='comp'){
-    const parts=[['输入','inputTokens',t.c1],['输出','outputTokens',t.c2],['缓存读','cacheReadTokens',t.c3],['缓存写','cacheWriteTokens',t.c4]];
+    const parts=[[_t('输入','Input'),'inputTokens',t.c1],[_t('输出','Output'),'outputTokens',t.c2],[_t('缓存读','Cache read'),'cacheReadTokens',t.c3],[_t('缓存写','Cache write'),'cacheWriteTokens',t.c4]];
     series=parts.map(([name,field,color],i)=>({name,type:'line',stack:'tokens',symbol:'none',smooth:false,lineStyle:{width:0},areaStyle:{color,opacity:1},itemStyle:{color},data:points.map(p=>Number(p?.[field]||0)),animationDelay:o.reduced?0:i*90,markArea:i===0?selArea:undefined}));
   }else{
     const values=points.map(p=>obsTrendModeValue(p,mode));
     series=[
-      ...(prevValues?[{name:'上一周期',type:'line',symbol:'none',silent:true,z:1,lineStyle:{color:t.muted2,width:1.5,type:'dashed'},itemStyle:{color:t.muted2},data:prevValues,connectNulls:false,animationDelay:o.reduced?0:300}]:[]),
-      {name:'本期',type:'line',symbol:'circle',symbolSize:points.length>16?0:5,showSymbol:points.length<=16,z:2,lineStyle:{color:t.c1,width:1.8},itemStyle:{color:t.c1,borderColor:t.panel,borderWidth:1.5},areaStyle:{color:t.c1,opacity:.08},data:values,connectNulls:true,animationDuration:o.reduced?0:900,
+      ...(prevValues?[{name:_t('上一周期','Prior period'),type:'line',symbol:'none',silent:true,z:1,lineStyle:{color:t.muted2,width:1.5,type:'dashed'},itemStyle:{color:t.muted2},data:prevValues,connectNulls:false,animationDelay:o.reduced?0:300}]:[]),
+      {name:_t('本期','Current'),type:'line',symbol:'circle',symbolSize:points.length>16?0:5,showSymbol:points.length<=16,z:2,lineStyle:{color:t.c1,width:1.8},itemStyle:{color:t.c1,borderColor:t.panel,borderWidth:1.5},areaStyle:{color:t.c1,opacity:.08},data:values,connectNulls:true,animationDuration:o.reduced?0:900,
         markArea:selArea,
         markPoint:selIdx>=0&&values[selIdx]!=null?{symbol:'circle',symbolSize:10,silent:true,label:{show:false},itemStyle:{color:t.c1,borderColor:t.panel,borderWidth:2},data:[{coord:[selIdx,values[selIdx]]}],animation:!o.reduced}:undefined},
     ];
@@ -164,13 +165,14 @@ function obsBreakdownTotal(rows,metric){return (rows||[]).reduce((n,r)=>n+obsBre
 // Conversation code changes stand apart from SOPs, and are often a sliver.
 const OBS_CONVERSATION_COLOR='#f59e0b';
 function obsBreakdownOption(rows,metric,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const o=obsChartOpts(opts),t=o.theme,pal=obsBreakdownPalette(t);
   rows=Array.isArray(rows)?rows:[];
   metric=metric==='cost'?'cost':'tokens';
   const total=obsBreakdownTotal(rows,metric);
   const fmt=metric==='cost'?o.fmtCost:o.fmtTokens;
   return obsChartBase(o,{
-    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>obsTooltipRows(p.name,[[metric==='cost'?'成本':'Token',fmt(p.value)],['占比',total?(p.value*100/total).toFixed(1)+'%':'—']],'点击查看明细')},
+    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>obsTooltipRows(p.name,[[metric==='cost'?_t('成本','Cost'):'Token',fmt(p.value)],[_t('占比','Share'),total?(p.value*100/total).toFixed(1)+'%':'—']],_t('点击查看明细','Click for details'))},
     series:[{type:'pie',radius:['66%','80%'],center:['50%','50%'],avoidLabelOverlap:true,minAngle:2,padAngle:1,label:{show:false},labelLine:{show:false},itemStyle:{borderColor:t.panel,borderWidth:2},emphasis:{scale:true,scaleSize:4,label:{show:false}},
       animationType:'expansion',animationDuration:o.reduced?0:700,
       data:rows.map((r,i)=>({name:String(r.name||r.key||'—'),value:obsBreakdownValue(r,metric),itemStyle:{color:r.conversation?OBS_CONVERSATION_COLOR:pal[Math.min(i,pal.length-1)]}}))}],
@@ -195,6 +197,8 @@ function obsHeatPeak(cells,metric){
   return best;
 }
 function obsHeatOption(cells,metric,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  const weekdays=OBS_WEEKDAYS.map((zh,i)=>_t(zh,['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]));
   const o=obsChartOpts(opts),t=o.theme;
   metric=metric==='runs'?'runs':'tokens';
   const grid=obsHeatMatrix(cells);
@@ -204,9 +208,9 @@ function obsHeatOption(cells,metric,opts){
   const hours=Array.from({length:24},(_,h)=>String(h));
   return obsChartBase(o,{
     grid:{left:6,right:6,top:4,bottom:4,containLabel:true},
-    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>{const [h,d]=p.value;return obsTooltipRows(`${OBS_WEEKDAYS[d]} ${String(h).padStart(2,'0')}:00`,[['运行',String(p.data.runs)+' 次'],['Token',o.fmtTokens(p.data.tokens)]])}},
+    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>{const [h,d]=p.value;return obsTooltipRows(`${weekdays[d]} ${String(h).padStart(2,'0')}:00`,[[_t('运行','Runs'),String(p.data.runs)+_t(' 次','')],[_t('Token','Tokens'),o.fmtTokens(p.data.tokens)]])}},
     xAxis:{type:'category',data:hours,splitArea:{show:false},axisLine:{show:false},axisTick:{show:false},axisLabel:{color:t.muted2,fontSize:10,interval:5}},
-    yAxis:{type:'category',data:OBS_WEEKDAYS,inverse:true,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:t.muted2,fontSize:10}},
+    yAxis:{type:'category',data:weekdays,inverse:true,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:t.muted2,fontSize:10}},
     visualMap:{show:false,min:0,max:Math.max(1,max),inRange:{color:[t.panel2,t.c1]}},
     series:[{type:'heatmap',data,itemStyle:{borderColor:t.panel,borderWidth:2,borderRadius:3},emphasis:{itemStyle:{borderColor:t.text,borderWidth:1}},
       animationDuration:o.reduced?0:500,animationDelay:o.reduced?0:(idx=>(idx%24)*8+Math.floor(idx/24)*24)}],
@@ -227,6 +231,7 @@ function obsFunnelStats(stages){
   return {stages:list,worst};
 }
 function obsFunnelOption(stages,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const o=obsChartOpts(opts),t=o.theme;
   const stats=obsFunnelStats(stages);
   const list=stats.stages;
@@ -234,23 +239,24 @@ function obsFunnelOption(stages,opts){
   const max=Math.max(1,...list.map(s=>s.value));
   return obsChartBase(o,{
     grid:{left:6,right:118,top:4,bottom:4,containLabel:true},
-    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>{const s=list[p.dataIndex];return obsTooltipRows(s.name,[['数量',String(s.value)],['转化率',s.conv==null?'—':Math.round(s.conv)+'%']],s.worst?'最大流失':'点击筛选明细')}},
+    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>{const s=list[p.dataIndex];return obsTooltipRows(s.name,[[_t('数量','Count'),String(s.value)],[_t('转化率','Conversion'),s.conv==null?'—':Math.round(s.conv)+'%']],s.worst?_t('最大流失','Largest drop'):_t('点击筛选明细','Click to filter'))}},
     xAxis:{type:'value',max,show:false},
     yAxis:{type:'category',inverse:true,data:list.map(s=>s.name),axisLine:{show:false},axisTick:{show:false},axisLabel:{color:t.muted,fontSize:12,formatter:(v,i)=>i===active?`{a|${v}}`:v,rich:{a:{color:t.text,fontWeight:600,fontSize:12}}}},
     series:[{type:'bar',barWidth:18,showBackground:true,backgroundStyle:{color:t.panel2,borderRadius:4},itemStyle:{borderRadius:4},
-      label:{show:true,position:'right',distance:8,formatter:p=>{const s=list[p.dataIndex];const conv=s.conv==null?'':`  {${s.worst?'w':'c'}|↓ ${Math.round(s.conv)}%${s.worst?' · 最大流失':''}}`;return `{v|${s.value}}${conv}`},rich:{v:{color:t.text,fontWeight:600,fontSize:14},c:{color:t.muted2,fontSize:10.5},w:{color:t.red,fontSize:10.5,fontWeight:500}}},
+      label:{show:true,position:'right',distance:8,formatter:p=>{const s=list[p.dataIndex];const conv=s.conv==null?'':`  {${s.worst?'w':'c'}|↓ ${Math.round(s.conv)}%${s.worst?_t(' · 最大流失',' · Max drop'):''}}`;return `{v|${s.value}}${conv}`},rich:{v:{color:t.text,fontWeight:600,fontSize:14},c:{color:t.muted2,fontSize:10.5},w:{color:t.red,fontSize:10.5,fontWeight:500}}},
       data:list.map((s,i)=>({value:s.value,itemStyle:{color:i===list.length-1||i===active?t.c1:t.c2}})),
       animationDelay:obsBarDelay(o,90)}],
   });
 }
 function obsOwnersOption(rows,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const o=obsChartOpts(opts),t=o.theme;
   rows=Array.isArray(rows)?rows:[];
   const names=rows.map(r=>String(r.name||'—'));
-  const parts=[['已交付','delivered',t.c1],['进行中','active',t.c3],['未交付','undelivered',t.c4]];
+  const parts=[[_t('已交付','Delivered'),'delivered',t.c1],[_t('进行中','In progress'),'active',t.c3],[_t('未交付','Undelivered'),'undelivered',t.c4]];
   return obsChartBase(o,{
     grid:{left:6,right:12,top:4,bottom:4,containLabel:true},
-    tooltip:{...obsTooltipBase(t),trigger:'axis',axisPointer:{type:'shadow',shadowStyle:{color:t.text,opacity:.04}},formatter:params=>{const r=rows[params[0]?.dataIndex];if(!r)return '';return obsTooltipRows(r.name,[['已交付',String(r.delivered||0)],['进行中',String(r.active||0)],['未交付',String(r.undelivered||0)],['端到端',String(r.durationLabel||'—')],['Tokens',o.fmtTokens(r.tokens)]])}},
+    tooltip:{...obsTooltipBase(t),trigger:'axis',axisPointer:{type:'shadow',shadowStyle:{color:t.text,opacity:.04}},formatter:params=>{const r=rows[params[0]?.dataIndex];if(!r)return '';return obsTooltipRows(r.name,[[_t('已交付','Delivered'),String(r.delivered||0)],[_t('进行中','In progress'),String(r.active||0)],[_t('未交付','Undelivered'),String(r.undelivered||0)],[_t('端到端','End-to-end'),String(r.durationLabel||'—')],['Tokens',o.fmtTokens(r.tokens)]])}},
     xAxis:{type:'value',show:false},
     yAxis:{type:'category',inverse:true,data:names,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:t.muted,fontSize:12,width:72,overflow:'truncate'}},
     series:parts.map(([name,field,color])=>({name,type:'bar',stack:'owners',barWidth:10,itemStyle:{color},data:rows.map(r=>Number(r[field]||0)),animationDelay:obsBarDelay(o,60)})),
@@ -271,28 +277,31 @@ function obsDurationAxis(max){
   return {interval:step,max:Math.ceil(max/step)*step};
 }
 function obsPhaseStackOption(points,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  const phaseEn={clarification:'Clarification',development:'Development',testing:'Testing'};
+  const phases=OBS_PHASES.map(([k,zh,c])=>[k,_t(zh,phaseEn[k]||zh),c]);
   const o=obsChartOpts(opts),t=o.theme;
   points=Array.isArray(points)?points:[];
   const labels=points.map(p=>o.label(p));
   const sums=obsPhaseSums(points);
   const fd=v=>o.fmtDuration(v);
   const delay=obsBarDelay(o,points.length>60?4:30);
-  const series=OBS_PHASES.map(([key,name,color],i)=>({name,type:'bar',stack:'phase',barMaxWidth:36,itemStyle:{color:t[color],borderRadius:i===OBS_PHASES.length-1?[2,2,0,0]:0},
+  const series=phases.map(([key,name,color],i)=>({name,type:'bar',stack:'phase',barMaxWidth:36,itemStyle:{color:t[color],borderRadius:i===phases.length-1?[2,2,0,0]:0},
     data:points.map((p,j)=>sums[j]==null?null:(p[key]==null?0:Number(p[key]))),animationDelay:delay}));
-  series.push({name:'合计',type:'bar',stack:'phase',silent:true,barMaxWidth:36,itemStyle:{color:'transparent'},data:sums.map(v=>v==null?null:0),animationDelay:delay,
+  series.push({name:_t('合计','Total'),type:'bar',stack:'phase',silent:true,barMaxWidth:36,itemStyle:{color:'transparent'},data:sums.map(v=>v==null?null:0),animationDelay:delay,
     label:{show:points.length<=OBS_PHASE_TOP_LABEL_MAX,position:'top',color:t.text,fontWeight:600,fontSize:11,formatter:p=>sums[p.dataIndex]==null?'':fd(sums[p.dataIndex])}});
   return obsChartBase(o,{
     grid:{left:6,right:8,top:34,bottom:4,containLabel:true},
-    legend:{data:OBS_PHASES.map(([,name])=>name),top:0,right:0,icon:'roundRect',itemWidth:9,itemHeight:9,itemGap:14,textStyle:{color:t.muted2,fontSize:11},inactiveColor:t.lineStrong},
+    legend:{data:phases.map(([,name])=>name),top:0,right:0,icon:'roundRect',itemWidth:9,itemHeight:9,itemGap:14,textStyle:{color:t.muted2,fontSize:11},inactiveColor:t.lineStrong},
     tooltip:{...obsTooltipBase(t),trigger:'axis',axisPointer:{type:'shadow',shadowStyle:{color:t.text,opacity:.04}},formatter:params=>{
       const list=Array.isArray(params)?params:[params];
       const idx=list[0]?list[0].dataIndex:-1;
       const p=points[idx];
       if(!p)return '';
-      if(sums[idx]==null)return obsTooltipRows(labels[idx],[],'当日没有完成项样本');
+      if(sums[idx]==null)return obsTooltipRows(labels[idx],[],_t('当日没有完成项样本','No completed samples on this day'));
       const samples=p.samples||{};
-      const rows=OBS_PHASES.map(([key,name])=>[name,p[key]==null?'待采集':fd(p[key])+(samples[key]!=null?`（${samples[key]} 条）`:'')]);
-      rows.push(['三阶段均值之和',fd(sums[idx])],['已采集耗时（按条平均）',p.total==null?'待采集':fd(p.total)],['完成项样本',`${Number(p.deliveries)||0} 条`]);
+      const rows=phases.map(([key,name])=>[name,p[key]==null?_t('待采集','Pending'):fd(p[key])+(samples[key]!=null?_t(`（${samples[key]} 条）`,` (${samples[key]})`):'')]);
+      rows.push([_t('三阶段均值之和','Sum of phase averages'),fd(sums[idx])],[_t('已采集耗时（按条平均）','Measured duration (per-item avg)'),p.total==null?_t('待采集','Pending'):fd(p.total)],[_t('完成项样本','Completed samples'),_t(`${Number(p.deliveries)||0} 条`,`${Number(p.deliveries)||0}`)]);
       return obsTooltipRows(labels[idx],rows);
     }},
     xAxis:obsCategoryAxis(t,labels),
@@ -335,12 +344,13 @@ function obsMetricTrendOption(points,spec,opts){
 }
 // slices: [{label,value}]；opts.center = {value, unit} 显示在环心。颜色按原始下标取，0 值分片不画但保留图例对应关系。
 function obsSliceDonutOption(slices,opts){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const o=obsChartOpts(opts),t=o.theme,pal=obsBreakdownPalette(t);
   const list=(Array.isArray(slices)?slices:[]).map((s,i)=>({name:String(s?.label??s?.name??'—'),value:Math.max(0,Number(s?.value)||0),itemStyle:{color:pal[Math.min(i,pal.length-1)]}}));
   const total=list.reduce((n,s)=>n+s.value,0);
   const center=opts&&opts.center;
   const extra={
-    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>obsTooltipRows(p.name,[['数量',String(p.value)],['占比',total?(p.value*100/total).toFixed(1)+'%':'—']])},
+    tooltip:{...obsTooltipBase(t),trigger:'item',formatter:p=>obsTooltipRows(p.name,[[_t('数量','Count'),String(p.value)],[_t('占比','Share'),total?(p.value*100/total).toFixed(1)+'%':'—']])},
     series:[{type:'pie',radius:['68%','82%'],center:['50%','50%'],avoidLabelOverlap:true,minAngle:2,padAngle:1,label:{show:false},labelLine:{show:false},itemStyle:{borderColor:t.panel,borderWidth:2},emphasis:{scale:true,scaleSize:4,label:{show:false}},
       animationType:'expansion',animationDuration:o.reduced?0:700,data:list.filter(s=>s.value>0)}],
   };
@@ -351,9 +361,10 @@ function obsSliceDonutOption(slices,opts){
 // ---------- 挂载、释放与重播 ----------
 // spec: {option(theme,reduced), fallback()->html, empty, on:{event:fn}, axisClick(idx), mounted(entry)}
 function obsChartSlot(key,spec,height){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   obsChartSpecs[key]=spec||{};
   const empty=!spec||spec.empty;
-  return `<div class="obs-chart" data-obs-chart="${obsEsc(key)}" style="height:${Number(height)||240}px"${empty?' data-empty="1"':''}>${empty?`<div class="obs-chart-empty">${obsEsc(spec?.emptyText||'暂无数据')}</div>`:'<div class="obs-chart-skeleton" aria-hidden="true"></div>'}</div>`;
+  return `<div class="obs-chart" data-obs-chart="${obsEsc(key)}" style="height:${Number(height)||240}px"${empty?' data-empty="1"':''}>${empty?`<div class="obs-chart-empty">${obsEsc(spec?.emptyText||_t('暂无数据','No data'))}</div>`:'<div class="obs-chart-skeleton" aria-hidden="true"></div>'}</div>`;
 }
 function obsChartEntry(key){return obsCharts.get(key)||null}
 function obsChartCount(){return obsCharts.size}
@@ -444,13 +455,14 @@ function obsBindChartEvents(entry){
   }
 }
 function obsChartFallback(el,spec){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   let html='';
   try{html=typeof spec.fallback==='function'?spec.fallback():''}catch(e){html=''}
-  el.innerHTML=html||'<div class="obs-chart-empty">图表暂不可用</div>';
+  el.innerHTML=html||`<div class="obs-chart-empty">${_t('图表暂不可用','Chart temporarily unavailable')}</div>`;
   el.classList.add('is-fallback');
   el.style.height='auto';
   const head=el.closest('[data-obs-card]')?.querySelector('.obs-card-head');
-  if(head&&!head.querySelector('.obs-fallback-badge'))head.querySelector('.obs-card-tools')?.insertAdjacentHTML('afterbegin','<span class="obs-fallback-badge" title="图表库未加载，显示简版图表">简版图表</span>');
+  if(head&&!head.querySelector('.obs-fallback-badge'))head.querySelector('.obs-card-tools')?.insertAdjacentHTML('afterbegin',`<span class="obs-fallback-badge" title="${_t('图表库未加载，显示简版图表','Chart library unavailable; showing simplified chart')}">${_t('简版图表','Simplified chart')}</span>`);
 }
 function obsDisposeChart(key){
   const entry=obsCharts.get(key);

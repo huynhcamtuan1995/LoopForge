@@ -50,13 +50,14 @@ function selectedReqRepositoryId(){
   return selectedReqRepositoryIds()[0]||'';
 }
 function fillReqWorkflow(preferred){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const select=$('#reqWorkflow');
   if(!select)return;
   const opts=runnableWorkflowOptions();
   const preferredId=String(preferred||select.value||'').trim();
   const fallback=defaultSOPForIssue({projectId:state.projectFilter,kind:'requirement'});
   const selected=opts.some(w=>w.id===preferredId)?preferredId:(opts.some(w=>w.id===fallback)?fallback:(opts[0]?.id||''));
-  select.innerHTML=opts.map(w=>`<option value="${escapeHTML(w.id)}" ${w.id===selected?'selected':''}>${escapeHTML(w.name)}</option>`).join('')||'<option value="">暂无可选 SOP</option>';
+  select.innerHTML=opts.map(w=>`<option value="${escapeHTML(w.id)}" ${w.id===selected?'selected':''}>${escapeHTML(w.name)}</option>`).join('')||`<option value="">${_t('暂无可选 SOP','No available SOPs')}</option>`;
   if(selected)select.value=selected;
   window.enhanceSelect?.(select)?.refresh?.();
 }
@@ -64,6 +65,7 @@ function reqUsesSOP(){
   return state.reqDelivery!=='none'&&runnableWorkflowOptions().length>0;
 }
 function renderReqDelivery(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const hasSOP=runnableWorkflowOptions().length>0;
   const delivery=reqUsesSOP()?'sop':'none';
   $$('#reqDelivery [data-req-delivery]').forEach(btn=>{
@@ -78,7 +80,7 @@ function renderReqDelivery(){
     }
   });
   const hint=$('#reqDeliverySOPHint');
-  if(hint)hint.textContent=hasSOP?'按选定的 SOP 流程跑，可手动或定时触发':'当前项目还没有可运行的 SOP';
+  if(hint)hint.textContent=hasSOP?_t('按选定的 SOP 流程跑，可手动或定时触发','Runs using the selected SOP manually or on schedule'):_t('当前项目还没有可运行的 SOP','No runnable SOP in this project yet');
   const field=$('#reqWorkflowField');
   if(field)field.hidden=delivery!=='sop';
   hydrateReqIcons($('#reqDelivery'));
@@ -108,6 +110,7 @@ function setReqRepositoryIds(ids){
   persistRequirementComposer();
 }
 function renderReqRepositoryPicker(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const host=$('#reqRepository');
   if(!host)return;
   const project=currentProject();
@@ -119,12 +122,12 @@ function renderReqRepositoryPicker(){
   const removable=selected.length>1;
   const tags=selected.map(id=>{
     const name=escapeHTML(repos.find(item=>item.id===id)?.name||id);
-    const def=id===project?.defaultRepositoryId?'<span class="req-chip-def">默认</span>':'';
+    const def=id===project?.defaultRepositoryId?`<span class="req-chip-def">${_t('默认','Default')}</span>`:'';
     if(!removable)return `<span class="repo-picker-tag is-single">${name}${def}</span>`;
-    return `<span class="repo-picker-tag">${name}${def}<button type="button" data-remove-req-repo="${escapeHTML(id)}" aria-label="移除 ${name}">×</button></span>`;
+    return `<span class="repo-picker-tag">${name}${def}<button type="button" data-remove-req-repo="${escapeHTML(id)}" aria-label="${_t(`移除 ${name}`,`Remove ${name}`)}">×</button></span>`;
   }).join('');
-  const empty=!repos.length?'<span class="req-help">未绑定仓库</span>':(!selected.length?'<span class="req-help">未选择仓库</span>':'');
-  const add=leftover.length?`<select class="repo-picker-select" aria-label="添加仓库"><option value="">＋ 添加仓库</option>${leftover.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.name)}</option>`).join('')}</select>`:'';
+  const empty=!repos.length?`<span class="req-help">${_t('未绑定仓库','No repository bound')}</span>`:(!selected.length?`<span class="req-help">${_t('未选择仓库','No repository selected')}</span>`:'');
+  const add=leftover.length?`<select class="repo-picker-select" aria-label="${_t('添加仓库','Add repository')}"><option value="">${_t('＋ 添加仓库','+ Add repository')}</option>${leftover.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.name)}</option>`).join('')}</select>`:'';
   host.innerHTML=`<div class="repo-picker-field">${tags}${empty}${add}</div>`;
   host.querySelectorAll('[data-remove-req-repo]').forEach(b=>b.onclick=e=>{
     e.stopPropagation?.();
@@ -140,30 +143,33 @@ function renderReqRepositoryPicker(){
 }
 // 分支规则沿用 updateIssueBaseBranchInput；弹窗里把长说明收进悬浮提示，只在多仓时留一行短提示。
 function syncReqBaseBranch(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const input=$('#reqBaseBranch'),hint=$('#reqBaseBranchHint');
   updateIssueBaseBranchInput(input,hint,selectedReqRepositoryIds());
   if(!input||!hint)return;
   input.title=hint.textContent||'';
-  hint.textContent=input.disabled?'只选一个仓库时可指定分支，否则从各自主分支新建':'';
+  hint.textContent=input.disabled?_t('只选一个仓库时可指定分支，否则从各自主分支新建','Specify a branch when one repo is selected; otherwise each branches from default'):'';
   hint.hidden=!hint.textContent;
 }
 function selectedReqBaseBranch(){
   return selectedReqRepositoryIds().length===1?($('#reqBaseBranch')?.value.trim()||''):'';
 }
 function reqRepoNames(ids){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const repos=reqProjectRepositories();
   const names=(ids||[]).map(id=>repos.find(r=>r.id===id)?.name||id);
-  if(!names.length)return '未选择';
-  return names.length===1?names[0]:`${names[0]} 等 ${names.length} 个`;
+  if(!names.length)return _t('未选择','None selected');
+  return names.length===1?names[0]:_t(`${names[0]} 等 ${names.length} 个`,`${names[0]} +${names.length-1} more`);
 }
 function renderReqRepoChip(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const chip=$('#reqRepoChip');
   if(!chip)return;
   chip.hidden=!reqProjectRepositories().length;
   const label=$('#reqRepoChipLabel');
   if(!label)return;
   const branch=selectedReqBaseBranch();
-  label.innerHTML=`仓库 <b>${escapeHTML(reqRepoNames(selectedReqRepositoryIds()))}</b>${branch?` · ${escapeHTML(branch)}`:''}`;
+  label.innerHTML=_t(`仓库 <b>${escapeHTML(reqRepoNames(selectedReqRepositoryIds()))}</b>${branch?` · ${escapeHTML(branch)}`:''}`,`Repo <b>${escapeHTML(reqRepoNames(selectedReqRepositoryIds()))}</b>${branch?` · ${escapeHTML(branch)}`:''}`);
 }
 function toggleReqRepoPopover(open){
   const pop=$('#reqRepoPopover');
@@ -184,27 +190,30 @@ function renderReqContext(){
   renderReqDelivery();
 }
 function reqFooterNote(){
-  return reqUsesSOP()?'建单后可在详情里触发 SOP，也可以先去对话里把需求聊清楚':'不绑定 SOP，定时任务也不会自动认领；以后想跑 SOP 可在详情里选择';
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return reqUsesSOP()?_t('建单后可在详情里触发 SOP，也可以先去对话里把需求聊清楚','Trigger the SOP in detail view after creation, or clarify it in chat first'):_t('不绑定 SOP，定时任务也不会自动认领；以后想跑 SOP 可在详情里选择','No SOP bound; scheduled triggers will skip this. You can select one later in details');
 }
 function renderReqFooter(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const creating=!!state.reqCreating;
-  const reason=reqDescription()?'':'先写一句需求';
+  const reason=reqDescription()?'':_t('先写一句需求','Enter a requirement description first');
   const create=$('#reqCreate'),chat=$('#reqCreateChat');
   if(create){
     create.disabled=creating||!!reason;
     create.title=reason;
-    create.innerHTML=creating==='issue'?'<span class="req-spin" aria-hidden="true"></span>正在创建…':'创建需求';
+    create.innerHTML=creating==='issue'?`<span class="req-spin" aria-hidden="true"></span>${_t('正在创建…','Creating…')}`:_t('创建需求','Create requirement');
   }
   if(chat){
     chat.disabled=creating||!!reason;
-    chat.title=reason||'建单后打开 AI 工作台，新对话里已 @ 这个需求';
-    chat.innerHTML=creating==='chat'?'<span class="req-spin" aria-hidden="true"></span>正在创建…':`${reqIcon('chat')}创建并去对话澄清`;
+    chat.title=reason||_t('建单后打开 AI 工作台，新对话里已 @ 这个需求','Opens AI Workspace with this requirement @mentioned in a new chat');
+    chat.innerHTML=creating==='chat'?`<span class="req-spin" aria-hidden="true"></span>${_t('正在创建…','Creating…')}`:`${reqIcon('chat')}${_t('创建并去对话澄清','Create & clarify in chat')}`;
   }
   const note=$('#reqComposerHint');
   if(note)note.textContent=reqFooterNote();
   hydrateReqIcons($('#reqFooter'));
 }
 function renderReqTarget(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const tapdReady=projectTAPDReady();
   if(state.reqTarget==='tapd'&&!tapdReady)state.reqTarget='local';
   const target=state.reqTarget||'local';
@@ -223,7 +232,7 @@ function renderReqTarget(){
   const field=$('#reqTarget')?.closest('.req-field');
   if(field)field.hidden=!tapdReady;
   const hint=$('#reqTargetTAPDHint');
-  if(hint)hint.textContent=tapdReady?'先在平台建单，再同步到 TAPD':'未配置';
+  if(hint)hint.textContent=tapdReady?_t('先在平台建单，再同步到 TAPD','Create on platform first, then sync to TAPD'):_t('未配置','Not configured');
   hydrateReqIcons($('#reqTarget'));
 }
 function setReqTarget(target){
@@ -233,8 +242,9 @@ function setReqTarget(target){
   persistRequirementComposer();
 }
 function updateReqCharCount(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const count=$('#reqCharCount'),len=($('#chatInput')?.value||'').length;
-  if(count)count.textContent=len?`${len} 字`:'';
+  if(count)count.textContent=len?_t(`${len} 字`,`${len} chars`):'';
 }
 function onReqDescriptionInput(){
   updateReqCharCount();
@@ -375,30 +385,32 @@ async function pushExistingIssueToTAPD(issue){
   return rememberIssue(updated, issue.id);
 }
 async function pushIssueToTAPDFromDetail(issueId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!issueId)return;
   try{
     const current=(state.data.issues||[]).find(i=>i.id===issueId)||state.issueDetailData?.issue;
-    if(!current)return toast('未找到工作项');
-    if(!projectTAPDReady((state.data.projects||[]).find(p=>p.id===current.projectId)))return toast('当前项目未配置 TAPD，无法同步');
+    if(!current)return toast(_t('未找到工作项','Work item not found'));
+    if(!projectTAPDReady((state.data.projects||[]).find(p=>p.id===current.projectId)))return toast(_t('当前项目未配置 TAPD，无法同步','TAPD is not configured for this project'));
     const updated=await pushExistingIssueToTAPD(current);
     renderIssues();
-    toast(`已在 TAPD 创建需求 ${updated.externalRef?.externalId||''}`,'ok');
+    toast(_t(`已在 TAPD 创建需求 ${updated.externalRef?.externalId||''}`,`Created TAPD item ${updated.externalRef?.externalId||''}`),'ok');
     if(state.drawerOpen)openIssueDetail(updated.id);
   }catch(e){toast(e.message,'err')}
 }
 // createIssueFromChat 直接建单，不再在弹窗里澄清。mode 为 'chat' 时建单后打开
 // AI 工作台的新对话，并 @ 这个需求，在对话里把需求聊清楚。
 async function createIssueFromChat(target,mode){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   target=target||state.reqTarget||'local';
   const toChat=mode==='chat';
-  if(target!=='local'&&target!=='tapd')return toast('请选择平台或 TAPD');
+  if(target!=='local'&&target!=='tapd')return toast(_t('请选择平台或 TAPD','Select Platform or TAPD'));
   const draft=collectRequirementDraft();
-  if(!draft.description){$('#chatInput')?.focus();return toast('先写一句需求')}
-  if(target==='tapd'&&!projectTAPDReady())return toast('当前项目未配置 TAPD');
-  if(state.reqCreating)return toast('正在建单，请勿重复点击');
+  if(!draft.description){$('#chatInput')?.focus();return toast(_t('先写一句需求','Enter a requirement description first'))}
+  if(target==='tapd'&&!projectTAPDReady())return toast(_t('当前项目未配置 TAPD','TAPD is not configured for this project'));
+  if(state.reqCreating)return toast(_t('正在建单，请勿重复点击','Creating requirement, please wait'));
   const useSOP=reqUsesSOP();
   const workflowId=selectedReqWorkflowId();
-  if(useSOP&&!workflowId)return toast('请选择 SOP，或改为不使用 SOP');
+  if(useSOP&&!workflowId)return toast(_t('请选择 SOP，或改为不使用 SOP','Select an SOP or choose not to use one'));
   state.reqCreating=toChat?'chat':'issue';
   renderReqFooter();
   const project=currentProject();
@@ -414,7 +426,7 @@ async function createIssueFromChat(target,mode){
       repositoryIds:selectedReqRepositoryIds(),
       baseBranch:selectedReqBaseBranch(),
       assigneeUserId:Number(state.currentUser?.id)||0,
-      title:draft.title||'新工作项',
+      title:draft.title||_t('新工作项','New work item'),
       description:draft.description,
       priority:'medium',
     })});
@@ -428,9 +440,9 @@ async function createIssueFromChat(target,mode){
     $('#requirementModal').classList.remove('open');
     resetRequirementComposer();
     renderIssues();
-    if(syncError)toast('已在平台建单，TAPD 同步失败：'+syncError,'err');
-    else if(target==='tapd')toast(`已创建需求并同步 TAPD ${issue.externalRef?.externalId||''}`,'ok');
-    else toast(toChat?'已创建需求，在对话里继续澄清':(useSOP?'已在平台创建需求，可在详情里触发 SOP':'已创建需求（不使用 SOP）'),'ok');
+    if(syncError)toast(_t('已在平台建单，TAPD 同步失败：','Created on platform; TAPD sync failed: ')+syncError,'err');
+    else if(target==='tapd')toast(_t(`已创建需求并同步 TAPD ${issue.externalRef?.externalId||''}`,`Created requirement and synced TAPD ${issue.externalRef?.externalId||''}`),'ok');
+    else toast(toChat?_t('已创建需求，在对话里继续澄清','Requirement created; clarify it in chat'):(useSOP?_t('已在平台创建需求，可在详情里触发 SOP','Requirement created; trigger SOP from detail view'):_t('已创建需求（不使用 SOP）','Requirement created (without SOP)')),'ok');
     if(toChat)openIssueInChat(issue);
     else openIssueDetail(issue.id);
   }catch(err){toast(err.message,'err')}

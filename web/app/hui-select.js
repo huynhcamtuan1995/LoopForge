@@ -138,13 +138,14 @@
     panel.inert = true;
     const searchBar = el('label', 'hui-select-search');
     const search = el('input');
+    const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
     search.type = 'search';
-    search.placeholder = '搜索…';
-    search.setAttribute('aria-label', '搜索选项');
+    search.placeholder = _t('搜索…', 'Search…');
+    search.setAttribute('aria-label', _t('搜索选项', 'Search options'));
     searchBar.appendChild(icon('search'));
     searchBar.appendChild(search);
     const list = el('div', 'hui-select-options');
-    const empty = el('div', 'hui-select-empty', '没有匹配的选项');
+    const empty = el('div', 'hui-select-empty', _t('没有匹配的选项', 'No matching options'));
     empty.hidden = true;
     panel.appendChild(searchBar);
     panel.appendChild(list);

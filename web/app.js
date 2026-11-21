@@ -57,7 +57,7 @@ function pagerHTML(key, p){
     buttons+=`<button type="button" class="pager-page${n===page?' active':''}" data-page-key="${escapeHTML(key)}" data-page="${n}">${n}</button>`;
     prev=n;
   }
-  return `<nav class="pager" data-pager="${escapeHTML(key)}" aria-label="分页"><span class="pager-meta">第 ${p.start+1}–${p.end} 条 / 共 ${p.total} 条</span><div class="pager-nav"><button type="button" class="pager-btn" data-page-key="${escapeHTML(key)}" data-page="${page-1}" ${page<=1?'disabled':''}>上一页</button>${buttons}<button type="button" class="pager-btn" data-page-key="${escapeHTML(key)}" data-page="${page+1}" ${page>=pages?'disabled':''}>下一页</button></div></nav>`;
+  return `<nav class="pager" data-pager="${escapeHTML(key)}" aria-label="${(typeof lfT==='function'?lfT:z=>z)('分页','Pagination')}"><span class="pager-meta">${(typeof lfT==='function'?lfT:z=>z)(`第 ${p.start+1}–${p.end} 条 / 共 ${p.total} 条`,`${p.start+1}–${p.end} of ${p.total}`)}</span><div class="pager-nav"><button type="button" class="pager-btn" data-page-key="${escapeHTML(key)}" data-page="${page-1}" ${page<=1?'disabled':''}>${(typeof lfT==='function'?lfT:z=>z)('上一页','Previous')}</button>${buttons}<button type="button" class="pager-btn" data-page-key="${escapeHTML(key)}" data-page="${page+1}" ${page>=pages?'disabled':''}>${(typeof lfT==='function'?lfT:z=>z)('下一页','Next')}</button></div></nav>`;
 }
 function goListPage(key, page){
   if(!state.listPages)state.listPages={};
@@ -124,7 +124,7 @@ function toast(message, type='info', duration=2600){
   const item=document.createElement('div');
   item.className=`toast-item toast-${kind}`;
   item.setAttribute('role','status');
-  item.innerHTML=`<span class="toast-item-icon"><svg class="agent-icon harness-icon" data-icon="${icons[kind]}" width="16" height="16" aria-hidden="true" focusable="false"></svg></span><span class="toast-item-msg">${escapeHTML(message)}</span><button type="button" class="toast-item-close" title="关闭" aria-label="关闭"><svg class="agent-icon harness-icon" data-icon="close" width="14" height="14" aria-hidden="true" focusable="false"></svg></button>`;
+  item.innerHTML=`<span class="toast-item-icon"><svg class="agent-icon harness-icon" data-icon="${icons[kind]}" width="16" height="16" aria-hidden="true" focusable="false"></svg></span><span class="toast-item-msg">${escapeHTML(message)}</span><button type="button" class="toast-item-close" title="${(typeof lfT==='function'?lfT:z=>z)('关闭','Close')}" aria-label="${(typeof lfT==='function'?lfT:z=>z)('关闭','Close')}"><svg class="agent-icon harness-icon" data-icon="close" width="14" height="14" aria-hidden="true" focusable="false"></svg></button>`;
   const action=toastActions.get(message);
   if(action){
     const button=document.createElement('button');button.type='button';button.className='button primary small toast-item-action';button.textContent=action.label;
@@ -434,7 +434,7 @@ function renderMarkdown(md){
       if(inCode){
         const rawCode=codeLines.join('\n');
         const highlighted=highlightCode(rawCode, codeLang);
-        out.push(`<div class="md-code-block"><div class="md-code-header"><span class="md-code-lang">${escapeHTML(codeLang||'TEXT')}</span><button type="button" class="md-code-copy">复制</button></div><pre><code>${highlighted}</code></pre></div>`);
+        out.push(`<div class="md-code-block"><div class="md-code-header"><span class="md-code-lang">${escapeHTML(codeLang||'TEXT')}</span><button type="button" class="md-code-copy">${(typeof lfT==='function'?lfT:z=>z)('复制','Copy')}</button></div><pre><code>${highlighted}</code></pre></div>`);
         inCode=false;codeLang='';codeLines=[];
       } else {
         flushList();
@@ -621,7 +621,7 @@ function openCodeEditorModal({ title, subtitle, language='shell', value='', onSa
     const beforeCursor=text.slice(0, selStart);
     const curLine=beforeCursor.split('\n').length;
     const curCol=selStart - beforeCursor.lastIndexOf('\n');
-    stats.textContent=`行 ${curLine}，列 ${curCol} · 共 ${lineCount} 行 · ${text.length} 字符`;
+    stats.textContent=(typeof lfT==='function'?lfT:z=>z)(`行 ${curLine}，列 ${curCol} · 共 ${lineCount} 行 · ${text.length} 字符`,`Ln ${curLine}, Col ${curCol} · ${lineCount} lines · ${text.length} chars`);
     syncScroll();
   }
 
@@ -729,7 +729,7 @@ function genericMCPChecked(id,selected){
 function assetVisible(item){return !item?.projectId||item.projectId===state.projectFilter}
 function catalogWorkflows(){return (state.data?.workflows||[]).filter(w=>!catalogGeneric(w)&&catalogVisible(w.projectId,w.shared))}
 // Runnable options = stored SOPs + platform generic templates (run by reference).
-function runnableWorkflowOptions(){return catalogWorkflows().concat((state.data?.workflows||[]).filter(catalogGeneric).map(w=>({...w,name:`通用 · ${w.name}`})))}
+function runnableWorkflowOptions(){return catalogWorkflows().concat((state.data?.workflows||[]).filter(catalogGeneric).map(w=>({...w,name:(typeof lfT==='function'?lfT:z=>z)(`通用 · ${w.name}`,`Generic · ${w.name}`)})))}
 function scopedWorkflows(){
   const all=state.data?.workflows||[];
   if(state.sopScope==='generic')return all.filter(w=>catalogGeneric(w));
@@ -833,7 +833,7 @@ const DEFAULT_PROJECT_ID='welcome';
 function defaultProjectId(projects,userId){const list=projects||[];const mine=userId?list.find(p=>p.ownerId===userId||(p.members||[]).some(m=>m.userId===userId)):null;return (mine||list.find(p=>p.id===DEFAULT_PROJECT_ID)||list[0])?.id||''}
 function currentRepository(project=currentProject()){const id=project?.defaultRepositoryId;return (state.data.repositories||[]).find(r=>r.id===id)}
 function userById(id){return (state.data.users||[]).find(u=>Number(u.id)===Number(id))}
-function userDisplay(user){return user?(user.chineseName&&user.loginName?`${user.loginName}(${user.chineseName})`:user.loginName||user.chineseName||`用户 ${user.id}`):''}
+function userDisplay(user){return user?(user.chineseName&&user.loginName?`${user.loginName}(${user.chineseName})`:user.loginName||user.chineseName||(typeof lfT==='function'?lfT:z=>z)(`用户 ${user.id}`,`User ${user.id}`)):''}
 function projectMembers(projectId){return ((state.data.projects||[]).find(p=>p.id===projectId)||{}).members||[]}
 function issueAssigneeName(issue){
 	if(issue?.assigneeUserId)return userDisplay(userById(issue.assigneeUserId));
@@ -914,7 +914,7 @@ async function boot(){
     const local=await api('/api/auth/local',{silent:true}).catch(()=>({enabled:false}));
     if(local.enabled){
       finishBootLoader();
-      document.body.innerHTML='<main style="max-width:480px;margin:15vh auto;padding:32px"><h1>本地验收环境</h1><p>登录配置的本地验收账号后查看项目和业务域。</p><button id="localBootLogin" class="button primary">本地验收登录</button><p id="localBootError"></p></main>';
+      document.body.innerHTML=(typeof lfT==='function'?lfT:z=>z)('<main style="max-width:480px;margin:15vh auto;padding:32px"><h1>本地验收环境</h1><p>登录配置的本地验收账号后查看项目和业务域。</p><button id="localBootLogin" class="button primary">本地验收登录</button><p id="localBootError"></p></main>','<main style="max-width:480px;margin:15vh auto;padding:32px"><h1>Local acceptance environment</h1><p>Sign in with the configured local acceptance account to view projects and domains.</p><button id="localBootLogin" class="button primary">Local acceptance sign in</button><p id="localBootError"></p></main>');
       $('#localBootLogin').onclick=async()=>{const button=$('#localBootLogin');button.disabled=true;try{await api('/api/auth/local',{method:'POST',body:'{}'});location.reload()}catch(e){$('#localBootError').textContent=e.message;button.disabled=false}};
       return;
     }

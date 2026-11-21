@@ -1,19 +1,21 @@
 function renderAgentsLegacy(){
-  const list=$('#agentList');list.innerHTML=state.data.agents.map(a=>`<div class="agent-card ${state.selectedAgent===a.id?'active':''}" data-id="${a.id}"><div class="agent-card-top"><h3>${escapeHTML(a.name)}</h3><span class="pill">v${a.version}</span></div><p>${escapeHTML(a.description||'暂无说明')}</p><div class="chips"><span class="chip">${a.rules?.length||0} rules</span><span class="chip">${a.skills?.length||0} skills</span><span class="chip">${a.mcpServers?.length||0} MCP</span></div></div>`).join('');
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  const list=$('#agentList');list.innerHTML=state.data.agents.map(a=>`<div class="agent-card ${state.selectedAgent===a.id?'active':''}" data-id="${a.id}"><div class="agent-card-top"><h3>${escapeHTML(a.name)}</h3><span class="pill">v${a.version}</span></div><p>${escapeHTML(a.description||_t('暂无说明','No description'))}</p><div class="chips"><span class="chip">${a.rules?.length||0} rules</span><span class="chip">${a.skills?.length||0} skills</span><span class="chip">${a.mcpServers?.length||0} MCP</span></div></div>`).join('');
   list.querySelectorAll('.agent-card').forEach(el=>el.onclick=()=>selectAgent(state.data.agents.find(a=>a.id===el.dataset.id)));
   if(!state.selectedAgent&&state.data.agents[0])selectAgent(state.data.agents[0],false);
 }
 function renderAgents(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const list=$('#agentList');if(!list)return;renderCatalogScopes();
   const query=($('#agentSearch')?.value||'').trim().toLowerCase(),agents=scopedAgents().filter(a=>!query||`${a.name} ${a.id} ${a.description} ${(a.rules||[]).join(' ')} ${(a.skills||[]).join(' ')}`.toLowerCase().includes(query));
   const used=new Map();(state.data.workflows||[]).forEach(w=>(w.nodes||[]).forEach(n=>{if(n.agentId)used.set(n.agentId,(used.get(n.agentId)||0)+1)}));
-  $('#agentCatalogStats').innerHTML=`<span><b>${agents.length}</b> 个${state.agentScope==='shared'?'共享':'项目'}角色</span><span><b>${agents.reduce((n,a)=>n+(a.skills?.length||0),0)}</b> 项技能绑定</span><span><b>${agents.reduce((n,a)=>n+(a.mcpServers?.length||0),0)}</b> 个 MCP 连接</span>`;
-  const empty=state.agentScope==='shared'?'还没有共享给当前项目的角色。':'当前项目还没有角色。可以新建，或从共享角色复制后改。';
+  $('#agentCatalogStats').innerHTML=`<span><b>${agents.length}</b> ${_t(`个${state.agentScope==='shared'?'共享':'项目'}角色`,state.agentScope==='shared'?'shared Roles':'project Roles')}</span><span><b>${agents.reduce((n,a)=>n+(a.skills?.length||0),0)}</b> ${_t('项技能绑定','skill bindings')}</span><span><b>${agents.reduce((n,a)=>n+(a.mcpServers?.length||0),0)}</b> ${_t('个 MCP 连接','MCP connections')}</span>`;
+  const empty=state.agentScope==='shared'?_t('还没有共享给当前项目的角色。','No shared Roles available for this project yet.'):_t('当前项目还没有角色。可以新建，或从共享角色复制后改。','No Roles in this project yet. Create one or copy from Shared.');
   closeAgentRowMenu();
   state.agentUsage=used;
-  const rows=agents.map(a=>{const exec=(state.data.executors||[]).find(x=>x.id===a.executorId);const model=a.model||exec?.model||exec?.name||'';const uses=used.get(a.id)||0;return`<div class="agent-row" role="button" tabindex="0" data-agent-id="${escapeHTML(a.id)}" title="${escapeHTML(`${a.id} · v${a.version||1}`)}"><div class="agent-row-who"><div><b>${escapeHTML(a.name)}</b>${agentRowTag(a)}<small>${escapeHTML(a.description||'未填写职责')}</small></div></div><div class="agent-row-model${model?'':' none'}">${escapeHTML(model||'未选模型')}</div><div class="agent-row-config agent-col-config">${agentConfigSummary(a)}</div><div class="agent-row-uses agent-col-uses${uses?'':' zero'}">${uses?`${uses} 个节点`:'未使用'}</div><div class="agent-row-more"><button type="button" class="agent-more-btn" data-agent-more="${escapeHTML(a.id)}" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></div></div>`}).join('');
-  const head='<div class="agent-row agent-row-head" aria-hidden="true"><div>角色</div><div>模型</div><div class="agent-col-config">配置</div><div class="agent-col-uses">引用</div><div></div></div>';
-  list.innerHTML=rows?head+rows:(query&&scopedAgents().length?'<div class="catalog-empty"><span>AI</span><b>没有匹配的角色。</b><p>调整搜索，或新建一个角色。</p></div>':`<div class="catalog-empty"><span>AI</span><b>${empty}</b><p>调整搜索，或新建一个角色。</p></div>`);
+  const rows=agents.map(a=>{const exec=(state.data.executors||[]).find(x=>x.id===a.executorId);const model=a.model||exec?.model||exec?.name||'';const uses=used.get(a.id)||0;return`<div class="agent-row" role="button" tabindex="0" data-agent-id="${escapeHTML(a.id)}" title="${escapeHTML(`${a.id} · v${a.version||1}`)}"><div class="agent-row-who"><div><b>${escapeHTML(a.name)}</b>${agentRowTag(a)}<small>${escapeHTML(a.description||_t('未填写职责','No responsibility set'))}</small></div></div><div class="agent-row-model${model?'':' none'}">${escapeHTML(model||_t('未选模型','No model'))}</div><div class="agent-row-config agent-col-config">${agentConfigSummary(a)}</div><div class="agent-row-uses agent-col-uses${uses?'':' zero'}">${uses?_t(`${uses} 个节点`,`${uses} steps`):_t('未使用','Unused')}</div><div class="agent-row-more"><button type="button" class="agent-more-btn" data-agent-more="${escapeHTML(a.id)}" aria-label="${_t('更多操作','More actions')}" aria-haspopup="menu" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></div></div>`}).join('');
+  const head=`<div class="agent-row agent-row-head" aria-hidden="true"><div>${_t('角色','Role')}</div><div>${_t('模型','Model')}</div><div class="agent-col-config">${_t('配置','Config')}</div><div class="agent-col-uses">${_t('引用','Usage')}</div><div></div></div>`;
+  list.innerHTML=rows?head+rows:(query&&scopedAgents().length?`<div class="catalog-empty"><span>AI</span><b>${_t('没有匹配的角色。','No matching Roles.')}</b><p>${_t('调整搜索，或新建一个角色。','Adjust search or create a new Role.')}</p></div>`:`<div class="catalog-empty"><span>AI</span><b>${empty}</b><p>${_t('调整搜索，或新建一个角色。','Adjust search or create a new Role.')}</p></div>`);
   list.querySelectorAll('[data-agent-more]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();openAgentRowMenu(btn,state.data.agents.find(a=>a.id===btn.dataset.agentMore))});
   list.querySelectorAll('.agent-row[data-agent-id]').forEach(row=>{
     const open=()=>openAgentWizard(state.data.agents.find(a=>a.id===row.dataset.agentId));
@@ -23,21 +25,25 @@ function renderAgents(){
   syncTabIndicator($('#agentsView [data-scope-for="agent"]'));
 }
 function agentRowTag(a){
-  if(catalogOwned(a.projectId))return a.shared?'<span class="agent-row-tag shared">已共享</span>':'';
-  return `<span class="agent-row-tag">${!a.projectId?'平台':`来自 ${escapeHTML((state.data.projects||[]).find(p=>p.id===a.projectId)?.name||a.projectId)}`}</span>`;
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(catalogOwned(a.projectId))return a.shared?`<span class="agent-row-tag shared">${_t('已共享','Shared')}</span>`:'';
+  return `<span class="agent-row-tag">${!a.projectId?_t('平台','Platform'):_t(`来自 ${escapeHTML((state.data.projects||[]).find(p=>p.id===a.projectId)?.name||a.projectId)}`,`From ${escapeHTML((state.data.projects||[]).find(p=>p.id===a.projectId)?.name||a.projectId)}`)}</span>`;
 }
 function agentConfigSummary(a){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const parts=[];
-  if(a?.loop?.enabled)parts.push(`<span class="loop">${a.loop.maxIterations||1} 轮 Loop</span>`);
-  [[a?.artifactOutputs?.length,'产物'],[a?.verification?.length,'门禁'],[a?.rules?.length,'规则'],[a?.skills?.length,'技能'],[a?.mcpServers?.length,'MCP'],[a?.hooks?.length,'Hook']].forEach(([n,label])=>{if(n)parts.push(`${n} ${label}`)});
-  return parts.length?parts.join(' · '):'<span class="empty">未配置</span>';
+  if(a?.loop?.enabled)parts.push(`<span class="loop">${_t(`${a.loop.maxIterations||1} 轮 Loop`,`${a.loop.maxIterations||1}-round loop`)}</span>`);
+  [[a?.artifactOutputs?.length,_t('产物','outputs')],[a?.verification?.length,_t('门禁','gates')],[a?.rules?.length,_t('规则','rules')],[a?.skills?.length,_t('技能','skills')],[a?.mcpServers?.length,'MCP'],[a?.hooks?.length,'Hook']].forEach(([n,label])=>{if(n)parts.push(`${n} ${label}`)});
+  return parts.length?parts.join(' · '):`<span class="empty">${_t('未配置','Unconfigured')}</span>`;
 }
 function agentDeleteBlockReason(a){
-  if(a.shared)return '共享状态的角色不能删除，请先取消共享';
-  if(state.agentUsage?.get(a.id))return '角色仍被流程引用，请先解除引用';
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(a.shared)return _t('共享状态的角色不能删除，请先取消共享','Shared Roles cannot be deleted; unshare first');
+  if(state.agentUsage?.get(a.id))return _t('角色仍被流程引用，请先解除引用','Role is referenced by SOPs; remove references first');
   return '';
 }
 function openAgentRowMenu(btn,a){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const menu=$('#agentRowMenu');if(!menu||!a)return;
   const wasOpen=state.agentMenuFor===a.id&&!menu.hidden;
   closeAgentRowMenu();
@@ -45,9 +51,9 @@ function openAgentRowMenu(btn,a){
   const id=escapeHTML(a.id);
   if(catalogOwned(a.projectId)){
     const why=agentDeleteBlockReason(a);
-    menu.innerHTML=`<button type="button" role="menuitem" data-agent-act="edit">编辑</button><button type="button" role="menuitem" data-agent-act="clone">复制</button><button type="button" role="menuitem" data-agent-act="share">${a.shared?'取消共享':'共享给其他项目'}</button><hr><button type="button" role="menuitem" class="danger" data-agent-act="delete" ${why?`disabled title="${why}"`:''}>删除</button>${why?`<small>${why}</small>`:''}`;
+    menu.innerHTML=`<button type="button" role="menuitem" data-agent-act="edit">${_t('编辑','Edit')}</button><button type="button" role="menuitem" data-agent-act="clone">${_t('复制','Copy')}</button><button type="button" role="menuitem" data-agent-act="share">${a.shared?_t('取消共享','Unshare'):_t('共享给其他项目','Share with other projects')}</button><hr><button type="button" role="menuitem" class="danger" data-agent-act="delete" ${why?`disabled title="${why}"`:''}>${_t('删除','Delete')}</button>${why?`<small>${why}</small>`:''}`;
   }else{
-    menu.innerHTML=`<button type="button" role="menuitem" data-agent-act="edit">查看</button><button type="button" role="menuitem" data-agent-act="clone">复制到本项目</button>`;
+    menu.innerHTML=`<button type="button" role="menuitem" data-agent-act="edit">${_t('查看','View')}</button><button type="button" role="menuitem" data-agent-act="clone">${_t('复制到本项目','Copy to project')}</button>`;
   }
   menu.dataset.agentId=a.id;state.agentMenuFor=a.id;
   menu.hidden=false;btn.setAttribute('aria-expanded','true');btn.closest('.agent-row')?.classList.add('menu-open');
@@ -115,9 +121,9 @@ function bindAgentModalInputs(){
 }
 function syncAgentTabIndicators(){$$('#agentsView .agent-tabs, #agentModal .agent-tabs').forEach(syncTabIndicator)}
 if(typeof document!=='undefined'&&document.fonts?.ready)document.fonts.ready.then(()=>syncAgentTabIndicators()).catch(()=>{});
-function pickerHTML(items,selected,prefix){return `<input class="input picker-filter" data-picker-filter="${prefix}" placeholder="筛选名称或说明…">${(items||[]).map(x=>`<label class="asset-check"><input type="checkbox" name="${prefix}" value="${x.id}" ${(selected||[]).includes(x.id)?'checked':''}><span>${escapeHTML(x.name)}<small>${escapeHTML(x.description||x.id)}</small></span></label>`).join('')||'<span class="type-label">暂无可用资产，请先到对应的资产管理页面添加</span>'}`}
+function pickerHTML(items,selected,prefix){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;return `<input class="input picker-filter" data-picker-filter="${prefix}" placeholder="${_t('筛选名称或说明…','Filter by name or description…')}">${(items||[]).map(x=>`<label class="asset-check"><input type="checkbox" name="${prefix}" value="${x.id}" ${(selected||[]).includes(x.id)?'checked':''}><span>${escapeHTML(x.name)}<small>${escapeHTML(x.description||x.id)}</small></span></label>`).join('')||`<span class="type-label">${_t('暂无可用资产，请先到对应的资产管理页面添加','No assets available; add some on the Assets page first')}</span>`}`}
 function bindPickerFilters(root){(root||document).querySelectorAll('[data-picker-filter]').forEach(input=>input.oninput=()=>{const q=input.value.trim().toLowerCase();input.parentElement.querySelectorAll('.asset-check').forEach(row=>row.hidden=!!q&&!row.textContent.toLowerCase().includes(q))})}
-function executorOptions(selected){const allowed=new Set(['codebuddy','codex','claude','opencode','cursor','agy','kimi','pi','dsh','zcode']),items=(state.data.executors||[]).filter(x=>allowed.has(x.id)),legacy=selected&&!allowed.has(selected)?`<option value="${escapeHTML(selected)}" selected disabled>历史执行器 ${escapeHTML(selected)}（请重新选择 CLI）</option>`:'';return legacy+items.map(x=>`<option value="${escapeHTML(x.id)}" ${x.id===selected?'selected':''}>${escapeHTML(x.name||x.id)}</option>`).join('')}
+function executorOptions(selected){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;const allowed=new Set(['codebuddy','codex','claude','opencode','cursor','agy','kimi','pi','dsh','zcode']),items=(state.data.executors||[]).filter(x=>allowed.has(x.id)),legacy=selected&&!allowed.has(selected)?`<option value="${escapeHTML(selected)}" selected disabled>${_t(`历史执行器 ${escapeHTML(selected)}（请重新选择 CLI）`,`Legacy CLI ${escapeHTML(selected)} (please choose another)`)}</option>`:'';return legacy+items.map(x=>`<option value="${escapeHTML(x.id)}" ${x.id===selected?'selected':''}>${escapeHTML(x.name||x.id)}</option>`).join('')}
 const AGENT_CUSTOM_MODEL='__custom__';
 let executorModelCatalogUser, executorModelCatalogRequest, agentModelRevision=0;
 function executorModelCatalogs(){
@@ -142,16 +148,18 @@ function loadExecutorModelCatalogs(){
 function agentModelAPI(){return window.AgentFlowAssistantModels}
 function currentAgentExecutorId(){return $('#agentForm')?.elements?.executorId?.value||'codebuddy'}
 function agentModelItems(executorId,current){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const cat=executorModelCatalogs()[executorId]||{},items=(cat.models||[]).filter(item=>item.id!=='default');
-  if(current&&current!=='default'&&current!==AGENT_CUSTOM_MODEL&&!items.some(m=>m.id===current))items.push({id:current,name:`${current}（历史模型）`,family:'other'});
-  if(cat.customModel)items.push({id:AGENT_CUSTOM_MODEL,name:'手动输入模型 ID…',icon:false});
+  if(current&&current!=='default'&&current!==AGENT_CUSTOM_MODEL&&!items.some(m=>m.id===current))items.push({id:current,name:_t(`${current}（历史模型）`,`${current} (legacy model)`),family:'other'});
+  if(cat.customModel)items.push({id:AGENT_CUSTOM_MODEL,name:_t('手动输入模型 ID…','Enter model ID…'),icon:false});
   return items;
 }
 function agentEffortItems(executorId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const cat=executorModelCatalogs()[executorId]||{};
   const choice=$('#agentModelPicker [name="modelChoice"]')?.value,model=choice===AGENT_CUSTOM_MODEL?$('#agentModelCustomField input[name="model"]')?.value:choice;
   const selected=(cat.models||[]).find(item=>item.id===model),efforts=Array.isArray(selected?.efforts)?selected.efforts:(cat.efforts||[]);
-  return [{id:'',name:'默认',icon:false}].concat(efforts.map(e=>({id:e.value,name:e.label,icon:false})));
+  return [{id:'',name:_t('默认','Default'),icon:false}].concat(efforts.map(e=>({id:e.value,name:e.label,icon:false})));
 }
 function paintAgentPicker(pickerId,item){
   const picker=$(pickerId);if(!picker)return;
@@ -260,9 +268,10 @@ function selectAgent(a,rerender=true){
   });
   if(f.elements.id)f.elements.id.readOnly=!!a.id;
   renderAgentPresets();renderAgentTaskBook(a);renderAgentGovernance(a);renderAgentAssetsPanel(a);renderAgentSummary();
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   $('#agentVersion').textContent=`v${a.version||1}`;
   const idShow=$('#agentIdShow');if(idShow)idShow.value=a.id||'';
-  $('#agentWizardTitle').textContent=agentWizardForeign(a)?`查看 ${a.name}`:(a.id?`编辑 ${a.name}`:'新建角色');
+  $('#agentWizardTitle').textContent=agentWizardForeign(a)?_t(`查看 ${a.name}`,`View ${a.name}`):(a.id?_t(`编辑 ${a.name}`,`Edit ${a.name}`):_t('新建角色','New Role'));
   syncAgentOwnershipUI(a);
   if(rerender)renderAgents();
 }
@@ -337,6 +346,7 @@ function resetAgentIdentityErrors(){
   ['#agentNameError','#agentIdError'].forEach(sel=>{const el=$(sel);if(el)el.hidden=true});
 }
 function applyAgentPreset(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const f=$('#agentForm');if(!f)return;
   const prev=agentPresets.find(x=>x.id===state.agentCreatePreset),p=agentPresets.find(x=>x.id===id);
   if(id!=='blank'&&!p)return;
@@ -346,7 +356,7 @@ function applyAgentPreset(id){
   $$('[data-agent-preset]').forEach(b=>{const on=b.dataset.agentPreset===id;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
   if(f.elements.name.value.trim())$('#agentNameError')&&($('#agentNameError').hidden=true);
   syncAgentSlug();renderAgentSummary();
-  if(p)toast(`已套用「${p.name}」模板，可直接保存或继续调整`);
+  if(p)toast(_t(`已套用「${p.name}」模板，可直接保存或继续调整`,`Applied "${p.name}" preset; save now or customize further`));
 }
 function showAgentPane(name){
   $('#agentForm')?.querySelectorAll('.wizard-pane').forEach(p=>p.classList.toggle('active',p.dataset.agentPane===name));
@@ -363,10 +373,11 @@ function setAgentTab(tab){
   syncTabIndicator($('#agentForm [data-wizard-steps="agent"]'));
 }
 function validateAgentCreateIdentity(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const f=$('#agentForm'),name=f.elements.name.value.trim(),id=f.elements.id.value.trim();
   if(!name){const err=$('#agentNameError');if(err)err.hidden=false;f.elements.name.focus();return false}
-  if(!id){showAgentIdField('标识不能为空');f.elements.id.focus();return false}
-  if(agentIdTaken(id)){showAgentIdField('标识已存在，请换一个');f.elements.id.focus();return false}
+  if(!id){showAgentIdField(_t('标识不能为空','ID cannot be empty'));f.elements.id.focus();return false}
+  if(agentIdTaken(id)){showAgentIdField(_t('标识已存在，请换一个','ID already exists; choose another'));f.elements.id.focus();return false}
   return true;
 }
 function setAgentCreateStep(step){
@@ -388,23 +399,25 @@ function setAgentWizardStep(step){
   setAgentTab(AGENT_TABS[Math.max(1,Math.min(4,Number(step)||1))-1]);
 }
 function renderAgentCreateReview(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const host=$('#agentCreateReview'),f=$('#agentForm');if(!host||!f)return;
   const preset=agentPresets.find(x=>x.id===state.agentCreatePreset);
   const cli=f.elements.executorId?.selectedOptions?.[0]?.textContent||f.elements.executorId?.value||'';
   const effort=(f.elements.effort?.value||'').trim();
-  const rows=[['名称',f.elements.name.value.trim()],['标识',f.elements.id.value.trim()],['起点',preset?.name||'空白'],['CLI · 模型',`${cli} · ${agentEffectiveModel(f)||'未选模型'}${effort?` · ${effort}`:''}`],['职责',f.elements.description.value.trim()||'未填写职责']];
+  const rows=[[_t('名称','Name'),f.elements.name.value.trim()],[_t('标识','ID'),f.elements.id.value.trim()],[_t('起点','Starter'),preset?.name||_t('空白','Blank')],[_t('CLI · 模型','CLI · Model'),`${cli} · ${agentEffectiveModel(f)||_t('未选模型','No model')}${effort?` · ${effort}`:''}`],[_t('职责','Description'),f.elements.description.value.trim()||_t('未填写职责','No responsibility set')]];
   host.innerHTML=rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${escapeHTML(v)}</dd></div>`).join('');
 }
 function syncAgentModalChrome(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const create=state.agentModalMode==='create',step=state.agentCreateStep||1;
   const save=$('#agentSave'),next=$('#agentNext'),prev=$('#agentPrev');
   const foreign=agentWizardForeign(agentWizardSubject());
-  if(save){save.hidden=create||foreign;save.textContent='保存'}
+  if(save){save.hidden=create||foreign;save.textContent=_t('保存','Save')}
   const cloneBtn=$('#agentClone');
   if(cloneBtn)cloneBtn.hidden=catalogGeneric(state.workflow)||!foreign;
-  if(next){next.hidden=!create;next.textContent=step===3?'创建':'下一步'}
+  if(next){next.hidden=!create;next.textContent=step===3?_t('创建','Create'):_t('下一步','Next')}
   if(prev){prev.hidden=!create||step===1;prev.disabled=false}
-  const hint=$('#agentStepHint');if(hint)hint.textContent=create?`第 ${step} 步，共 3 步`:'';
+  const hint=$('#agentStepHint');if(hint)hint.textContent=create?_t(`第 ${step} 步，共 3 步`,`Step ${step} of 3`):'';
   renderAgentSummary();
 }
 function agentWizardNext(){
@@ -428,11 +441,12 @@ function saveAgent(e){
   return persistAgent(e.currentTarget);
 }
 async function persistAgent(f){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const creating=state.agentModalMode==='create';
   const changedExecutor=currentAgentExecutorId()!==(agentWizardSubject()?.executorId||'codebuddy');
   const model=agentEffectiveModel(f);
   if((creating||changedExecutor||f.elements.modelChoice?.value===AGENT_CUSTOM_MODEL)&&(!model||model==='default')){
-    toast('请选择模型或填写模型 ID','err');
+    toast(_t('请选择模型或填写模型 ID','Select a model or enter a model ID'),'err');
     if(creating)setAgentCreateStep(2);
     else setAgentTab('identity');
     return null;
@@ -443,25 +457,27 @@ async function persistAgent(f){
 }
 // MR gates are checked by the platform and carry no commands; every other
 // gate is saved as a command gate and dropped while it has no command.
-function agentGatesForSave(gates){return (gates||[]).map((gate,i)=>{const base={id:gate.id||`gate-${i+1}`,name:gate.name||`门禁 ${i+1}`,stage:'after_execution',required:true,onFailure:['loop','reject','fail','human'].includes(gate.onFailure)?gate.onFailure:'loop'};return gate.mode==='mr'?{...base,mode:'mr'}:{...base,mode:'command',commands:(gate.commands||[]).map(c=>String(c||'').trim()).filter(Boolean),executionScope:gate.executionScope==='repositories'?'repositories':'run'}}).filter(g=>g.mode==='mr'||g.commands.length)}
-async function persistAgentRequest(f,creating){const existing=state.data.agents.find(a=>a.id===f.elements.id.value);if(!catalogGeneric(state.workflow)&&existing&&catalogForeign(existing.projectId))return toast('这是其他项目的共享角色，请先复制到本项目再改');const checked=name=>[...f.querySelectorAll(`input[name="${name}"]:checked`)].map(x=>x.value);const draft=readAgentDraft(f);const artifacts=draft.artifactOutputs.map((x,i)=>({name:x.name||`artifact-${i+1}`,path:x.path||'result.md',mediaType:x.path?.endsWith('.json')?'application/json':(x.mediaType||'text/markdown'),required:!!x.required})),verification=agentGatesForSave(draft.verification),hooks=(draft.hooks||[]).map((h,i)=>({id:String(h.id||`hook-${i+1}`).trim(),name:String(h.name||`Hook ${i+1}`).trim(),event:h.event||'PreToolUse',matcher:String(h.matcher||'').trim(),language:h.language==='python'?'python':'shell',script:String(h.script||'').trim(),timeoutSec:Number(h.timeoutSec)||10,executionScope:h.executionScope==='repositories'?'repositories':'run'})).filter(h=>h.script),interventions=[];if(f.elements.interventionAfter?.checked)interventions.push({id:'human-review',name:'人工结果复核',stage:'after_execution',required:true});if(f.elements.interventionPublish?.checked)interventions.push({id:'publish-approval',name:'产物发布确认',stage:'before_publish',required:true});const a={id:f.elements.id.value.trim(),name:f.elements.name.value.trim(),version:(existing?.version||0)+1,projectId:existing?(existing.projectId||state.projectFilter||''):(state.projectFilter||''),shared:!!f.elements.shared?.checked,description:f.elements.description.value,prompt:draft.prompt,executorId:f.elements.executorId?.value||'',model:agentEffectiveModel(f),effort:f.elements.effort?.value||'',rules:checked('rules'),skills:checked('skills'),mcpServers:checked('mcpServers'),platformMcp:!!f.elements.platformMcp?.checked,knowledgeBase:!!f.elements.knowledgeBase?.checked,hooks,loop:{enabled:!!f.elements.loopEnabled?.checked,maxIterations:Number(f.elements.loopMaxIterations?.value)||1,exitCondition:'all_gates_pass',onExhausted:f.elements.loopOnExhausted?.value||'fail',feedbackPrompt:f.elements.loopFeedbackPrompt?.value||''},interventions,artifactOutputs:artifacts,verification};if(!a.id||!a.name)return toast('标识和名称不能为空');if(catalogGeneric(state.workflow)){if(!isPlatformAdmin())return toast('只有平台管理员可以编辑通用模板角色');const bundled=workflowAgent(a.id);if(!bundled)return toast('该角色不属于当前通用模板');a.projectId='';a.shared=false;a.rules=bundled.rules||[];a.skills=bundled.skills||[];a.mcpServers=f.querySelectorAll('input[name="mcpServers"]').length?checked('mcpServers'):(bundled.mcpServers||[]);a.hooks=Array.isArray(bundled.hooks)?bundled.hooks:a.hooks;a.version=bundled.version||0;try{const saved=await api(`/api/workflows/${encodeURIComponent(state.workflow.id)}/agents`,{method:'PUT',body:JSON.stringify(a)});const list=state.genericTemplateAgents||[];const gi=list.findIndex(x=>x.id===saved.id);if(gi>=0)list[gi]=saved;else list.push(saved);state.genericTemplateAgents=list;state.selectedAgent=saved.id;state.agentDraft=null;$('#agentModal').classList.remove('open');renderCanvas();renderProperties();toast('通用模板角色已保存，所有项目下次运行生效');}catch(err){toast(err.message)}return;}try{await api('/api/agents',{method:'PUT',body:JSON.stringify(a)});const i=state.data.agents.findIndex(x=>x.id===a.id);if(i>=0)state.data.agents[i]=a;else state.data.agents.push(a);if(a.shared){(state.data.rules||[]).forEach(item=>{if(a.rules.includes(item.id)&&item.projectId===a.projectId)item.shared=true});(state.data.skills||[]).forEach(item=>{if(a.skills.includes(item.id)&&item.projectId===a.projectId)item.shared=true})}state.selectedAgent=a.id;state.agentDraft=null;if(creating){state.agentScope='project';renderAgents();renderWorkflowMeta();renderCanvas();toast('Agent 新版本已保存');showCreatedAgent(a);return a}closeAgentWizard();renderAgents();renderCanvas();toast('Agent 新版本已保存');return a}catch(err){toast(err.message)}return null}
+function agentGatesForSave(gates){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;return (gates||[]).map((gate,i)=>{const base={id:gate.id||`gate-${i+1}`,name:gate.name||_t(`门禁 ${i+1}`,`Gate ${i+1}`),stage:'after_execution',required:true,onFailure:['loop','reject','fail','human'].includes(gate.onFailure)?gate.onFailure:'loop'};return gate.mode==='mr'?{...base,mode:'mr'}:{...base,mode:'command',commands:(gate.commands||[]).map(c=>String(c||'').trim()).filter(Boolean),executionScope:gate.executionScope==='repositories'?'repositories':'run'}}).filter(g=>g.mode==='mr'||g.commands.length)}
+async function persistAgentRequest(f,creating){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;const existing=state.data.agents.find(a=>a.id===f.elements.id.value);if(!catalogGeneric(state.workflow)&&existing&&catalogForeign(existing.projectId))return toast(_t('这是其他项目的共享角色，请先复制到本项目再改','This Role is shared from another project; copy it to this project first'));const checked=name=>[...f.querySelectorAll(`input[name="${name}"]:checked`)].map(x=>x.value);const draft=readAgentDraft(f);const artifacts=draft.artifactOutputs.map((x,i)=>({name:x.name||`artifact-${i+1}`,path:x.path||'result.md',mediaType:x.path?.endsWith('.json')?'application/json':(x.mediaType||'text/markdown'),required:!!x.required})),verification=agentGatesForSave(draft.verification),hooks=(draft.hooks||[]).map((h,i)=>({id:String(h.id||`hook-${i+1}`).trim(),name:String(h.name||`Hook ${i+1}`).trim(),event:h.event||'PreToolUse',matcher:String(h.matcher||'').trim(),language:h.language==='python'?'python':'shell',script:String(h.script||'').trim(),timeoutSec:Number(h.timeoutSec)||10,executionScope:h.executionScope==='repositories'?'repositories':'run'})).filter(h=>h.script),interventions=[];if(f.elements.interventionAfter?.checked)interventions.push({id:'human-review',name:'人工结果复核',stage:'after_execution',required:true});if(f.elements.interventionPublish?.checked)interventions.push({id:'publish-approval',name:'产物发布确认',stage:'before_publish',required:true});const a={id:f.elements.id.value.trim(),name:f.elements.name.value.trim(),version:(existing?.version||0)+1,projectId:existing?(existing.projectId||state.projectFilter||''):(state.projectFilter||''),shared:!!f.elements.shared?.checked,description:f.elements.description.value,prompt:draft.prompt,executorId:f.elements.executorId?.value||'',model:agentEffectiveModel(f),effort:f.elements.effort?.value||'',rules:checked('rules'),skills:checked('skills'),mcpServers:checked('mcpServers'),platformMcp:!!f.elements.platformMcp?.checked,knowledgeBase:!!f.elements.knowledgeBase?.checked,hooks,loop:{enabled:!!f.elements.loopEnabled?.checked,maxIterations:Number(f.elements.loopMaxIterations?.value)||1,exitCondition:'all_gates_pass',onExhausted:f.elements.loopOnExhausted?.value||'fail',feedbackPrompt:f.elements.loopFeedbackPrompt?.value||''},interventions,artifactOutputs:artifacts,verification};if(!a.id||!a.name)return toast(_t('标识和名称不能为空','ID and name cannot be empty'));if(catalogGeneric(state.workflow)){if(!isPlatformAdmin())return toast(_t('只有平台管理员可以编辑通用模板角色','Only platform admins can edit generic template Roles'));const bundled=workflowAgent(a.id);if(!bundled)return toast(_t('该角色不属于当前通用模板','This Role does not belong to the current generic template'));a.projectId='';a.shared=false;a.rules=bundled.rules||[];a.skills=bundled.skills||[];a.mcpServers=f.querySelectorAll('input[name="mcpServers"]').length?checked('mcpServers'):(bundled.mcpServers||[]);a.hooks=Array.isArray(bundled.hooks)?bundled.hooks:a.hooks;a.version=bundled.version||0;try{const saved=await api(`/api/workflows/${encodeURIComponent(state.workflow.id)}/agents`,{method:'PUT',body:JSON.stringify(a)});const list=state.genericTemplateAgents||[];const gi=list.findIndex(x=>x.id===saved.id);if(gi>=0)list[gi]=saved;else list.push(saved);state.genericTemplateAgents=list;state.selectedAgent=saved.id;state.agentDraft=null;$('#agentModal').classList.remove('open');renderCanvas();renderProperties();toast(_t('通用模板角色已保存，所有项目下次运行生效','Generic template Role saved; takes effect on next run across projects'));}catch(err){toast(err.message)}return;}try{await api('/api/agents',{method:'PUT',body:JSON.stringify(a)});const i=state.data.agents.findIndex(x=>x.id===a.id);if(i>=0)state.data.agents[i]=a;else state.data.agents.push(a);if(a.shared){(state.data.rules||[]).forEach(item=>{if(a.rules.includes(item.id)&&item.projectId===a.projectId)item.shared=true});(state.data.skills||[]).forEach(item=>{if(a.skills.includes(item.id)&&item.projectId===a.projectId)item.shared=true})}state.selectedAgent=a.id;state.agentDraft=null;if(creating){state.agentScope='project';renderAgents();renderWorkflowMeta();renderCanvas();toast(_t('Agent 新版本已保存','New Role version saved'));showCreatedAgent(a);return a}closeAgentWizard();renderAgents();renderCanvas();toast(_t('Agent 新版本已保存','New Role version saved'));return a}catch(err){toast(err.message)}return null}
 async function deleteAgent(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const a=(state.data.agents||[]).find(x=>x.id===id);
-  if(!a)return toast('角色不存在或已删除');
-  if(!await afConfirm({title:'删除角色确认',message:`确认删除角色「${a.name}」？此操作不可恢复。`,confirmText:'确认删除',isDanger:true}))return;
+  if(!a)return toast(_t('角色不存在或已删除','Role does not exist or was deleted'));
+  if(!await afConfirm({title:_t('删除角色确认','Confirm delete Role'),message:_t(`确认删除角色「${a.name}」？此操作不可恢复。`,`Delete Role "${a.name}"? This cannot be undone.`),confirmText:_t('确认删除','Delete'),isDanger:true}))return;
   try{
     await api(`/api/agents/${encodeURIComponent(id)}`,{method:'DELETE'});
     state.data.agents=state.data.agents.filter(x=>x.id!==id);
     if(state.selectedAgent===id)state.selectedAgent=null;
     if(state.agentDraft&&state.agentDraft.id===id)state.agentDraft=null;
     renderAgents();renderCanvas();
-    toast('角色已删除')
-  }catch(e){toast(e.message||'删除失败')}
+    toast(_t('角色已删除','Role deleted'))
+  }catch(e){toast(e.message||_t('删除失败','Delete failed'))}
 }
 async function cloneAgent(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const src=id?(state.data.agents||[]).find(a=>a.id===id):state.data.agents.find(a=>a.id===state.selectedAgent);
-  if(!src?.id)return toast('先选择一个角色');
-  const name=await afPrompt({title:'复制角色',message:'请输入复制后的角色名称：',defaultValue:`${src.name} - 副本`});
+  if(!src?.id)return toast(_t('先选择一个角色','Select a Role first'));
+  const name=await afPrompt({title:_t('复制角色','Copy Role'),message:_t('请输入复制后的角色名称：','Enter a name for the copied Role:'),defaultValue:_t(`${src.name} - 副本`,`${src.name} - Copy`)});
   if(!name)return;
   try{
     const copied=await api(`/api/agents/${encodeURIComponent(src.id)}/clone`,{method:'POST',body:JSON.stringify({id:uid('agent'),name,projectId:state.projectFilter||''})});
@@ -471,6 +487,6 @@ async function cloneAgent(id){
     state.agentScope='project';
     renderAgents();
     openAgentWizard(copied);
-    toast('已复制到本项目，可继续改');
+    toast(_t('已复制到本项目，可继续改','Copied to project; you can customize it now'));
   }catch(e){toast(e.message)}
 }

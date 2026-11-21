@@ -3,6 +3,7 @@
 const runActivationRequests=new Map();
 
 function paintRunActivationProgress(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const host=$('#runDetail');
   if(!host||host.dataset.runId!==id)return;
   const activation=runActivationRequests.get(id);
@@ -20,8 +21,8 @@ function paintRunActivationProgress(id){
       host.querySelector('.run-detail-header')?.after(notice);
     }
     notice.textContent=activation
-      ? (activation.restoring?'正在恢复工作区，完成后继续执行，请稍候…':'正在提交执行请求，请稍候…')
-      : '正在后台恢复工作区，完成后可继续操作，请稍候…';
+      ? (activation.restoring?_t('正在恢复工作区，完成后继续执行，请稍候…','Restoring workspace; execution will continue once ready, please wait…'):_t('正在提交执行请求，请稍候…','Submitting execution request, please wait…'))
+      : _t('正在后台恢复工作区，完成后可继续操作，请稍候…','Restoring workspace in background, please wait…');
   }else notice?.remove();
   host.querySelectorAll('[data-rerun-from-here],[data-resume-run],[data-retry-node],[data-resume-paused]').forEach(button=>{
     if(pending&&!button.disabled){button.dataset.activationDisabled='true';button.disabled=true}
@@ -30,20 +31,22 @@ function paintRunActivationProgress(id){
 }
 
 async function waitForRunWorkspaceRestore(id, isCurrent=()=>true){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   for(;;){
     await new Promise(resolve=>setTimeout(resolve,1000));
     if(!isCurrent())return;
     const status=await api(`/api/runs/${encodeURIComponent(id)}/workspace/restore`,{silent:true});
     if(status.status==='ready')return;
-    if(status.status==='failed')throw new Error(status.error||'工作区恢复失败，请重试');
-    if(status.status!=='restoring')throw new Error('工作区恢复状态已变化，请重新发起操作');
+    if(status.status==='failed')throw new Error(status.error||_t('工作区恢复失败，请重试','Workspace restore failed, please retry'));
+    if(status.status!=='restoring')throw new Error(_t('工作区恢复状态已变化，请重新发起操作','Workspace restore state changed; please retry the action'));
   }
 }
 
 function requestRunActivation(id,action,body={}){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const intent=JSON.stringify({action,body});
   const existing=runActivationRequests.get(id);
-  if(existing)return existing.intent===intent?existing.promise:Promise.reject(new Error('已有执行请求正在处理，请等待完成后再操作'));
+  if(existing)return existing.intent===intent?existing.promise:Promise.reject(new Error(_t('已有执行请求正在处理，请等待完成后再操作','An execution request is already in progress; please wait until it finishes')));
   // Freeze the viewed attempt before restoration starts. A delayed replay
   // cannot reset a newer attempt completed by another operator in the meantime.
   const node=body.nodeId?cachedRun(id)?.nodes?.[body.nodeId]:null;

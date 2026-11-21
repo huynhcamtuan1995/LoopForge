@@ -14,6 +14,7 @@ function loadGitSSHKeys(refresh = false) {
 }
 
 async function renderGitSSHMissingHint(element, remote) {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   if (!element) return;
   const version = element.sshHintVersion = (element.sshHintVersion || 0) + 1;
   const userId = state.currentUser?.id;
@@ -24,13 +25,13 @@ async function renderGitSSHMissingHint(element, remote) {
     const keys = await loadGitSSHKeys();
     if (element.sshHintVersion !== version || state.currentUser?.id !== userId) return;
     if (keys.some(key => globalThis.LoopForgeGitSSHHost(key.host) === remote.host)) return;
-    element.textContent = window.lfT?.(
+    element.textContent = _t(
       `尚未配置 ${remote.host} 的 SSH 密钥，可稍后在「个人配置 → Git SSH 密钥」添加。`,
       `No SSH key configured for ${remote.host}. You can add one later in Personal settings → Git SSH keys.`,
-    ) || `尚未配置 ${remote.host} 的 SSH 密钥，可稍后在「个人配置 → Git SSH 密钥」添加。`;
+    );
   } catch {
     if (element.sshHintVersion !== version || state.currentUser?.id !== userId) return;
-    element.textContent = '无法读取 SSH 密钥配置，请稍后重试。';
+    element.textContent = _t('无法读取 SSH 密钥配置，请稍后重试。', 'Unable to load SSH key config, please try again later.');
   }
   element.hidden = false;
 }
@@ -46,6 +47,7 @@ window.addEventListener('focus', () => {
 });
 
 function openGitSSHKeys(remote = '') {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
   const user = state.currentUser;
   if (!user?.id || user.isGuest) return;
 
@@ -65,21 +67,21 @@ function openGitSSHKeys(remote = '') {
   dialog.setAttribute('aria-labelledby', 'gitSSHKeyTitle');
   dialog.innerHTML = `
     <header class="git-ssh-dialog-head">
-      <h2 id="gitSSHKeyTitle">Git SSH 密钥</h2>
-      <button type="button" class="credential-btn ghost icon" data-ssh-key-close aria-label="关闭">${credentialGlyph('close', 16)}</button>
+      <h2 id="gitSSHKeyTitle">${_t('Git SSH 密钥', 'Git SSH keys')}</h2>
+      <button type="button" class="credential-btn ghost icon" data-ssh-key-close aria-label="${_t('关闭', 'Close')}">${credentialGlyph('close', 16)}</button>
     </header>
-    <p class="git-ssh-description">每个 SSH 主机配置一把个人密钥，同一主机的仓库自动共用。SSH 密钥只用于 Git 克隆和推送，不能用于创建 PR/MR；创建 PR/MR 需要访问令牌。</p>
-    <p class="git-ssh-status" role="status">正在读取密钥…</p>
+    <p class="git-ssh-description">${_t('每个 SSH 主机配置一把个人密钥，同一主机的仓库自动共用。SSH 密钥只用于 Git 克隆和推送，不能用于创建 PR/MR；创建 PR/MR 需要访问令牌。', 'Configure one personal SSH key per SSH host, shared across repositories on that host. SSH keys handle Git clone and push only; PR/MR creation requires an access token.')}</p>
+    <p class="git-ssh-status" role="status">${_t('正在读取密钥…', 'Loading keys…')}</p>
     <div class="git-ssh-key-list"></div>
-    <button type="button" class="credential-btn primary" data-ssh-key-add disabled>添加密钥</button>
+    <button type="button" class="credential-btn primary" data-ssh-key-add disabled>${_t('添加密钥', 'Add key')}</button>
     <form class="git-ssh-key-form" hidden>
       <h3></h3>
-      ${credentialFieldHTML({label:'密钥名称', name:'name', type:'text', placeholder:'例如 GitLab 或 Gitea', hint:null})}
-      ${credentialFieldHTML({label:'SSH 主机', name:'host', type:'text', placeholder:'gitlab.com 或 git.example.org:2222', hint:'不填写端口时使用 22。'})}
-      ${credentialFieldHTML({label:'SSH 私钥', name:'privateKey', multiline:true, placeholder:'粘贴完整的 OpenSSH 或 PEM 私钥', hint:'把对应公钥添加到代码托管账号，并授予仓库访问权限。推送需要写权限。'})}
+      ${credentialFieldHTML({label:_t('密钥名称', 'Key name'), name:'name', type:'text', placeholder:_t('例如 GitLab 或 Gitea', 'e.g. GitLab or Gitea'), hint:null})}
+      ${credentialFieldHTML({label:_t('SSH 主机', 'SSH host'), name:'host', type:'text', placeholder:_t('gitlab.com 或 git.example.org:2222', 'gitlab.com or git.example.org:2222'), hint:_t('不填写端口时使用 22。', 'Uses port 22 if omitted.')})}
+      ${credentialFieldHTML({label:_t('SSH 私钥', 'SSH private key'), name:'privateKey', multiline:true, placeholder:_t('粘贴完整的 OpenSSH 或 PEM 私钥', 'Paste complete OpenSSH or PEM private key'), hint:_t('把对应公钥添加到代码托管账号，并授予仓库访问权限。推送需要写权限。', 'Add the matching public key to your Git host account with repository access (write access required for push).')})}
       <footer class="git-ssh-form-actions">
-        <button type="button" class="credential-btn secondary" data-ssh-key-cancel>取消</button>
-        <button type="submit" class="credential-btn primary">保存密钥</button>
+        <button type="button" class="credential-btn secondary" data-ssh-key-cancel>${_t('取消', 'Cancel')}</button>
+        <button type="submit" class="credential-btn primary">${_t('保存密钥', 'Save key')}</button>
       </footer>
     </form>`;
 
@@ -106,8 +108,8 @@ function openGitSSHKeys(remote = '') {
       return `<div class="git-ssh-key-row">
         <div class="git-ssh-key-summary"><b>${escapeHTML(key.name)}</b><small><code>${escapeHTML(key.host)}</code></small></div>
         ${deleting === key.id
-          ? `<span>删除这把密钥？</span><button type="button" class="credential-btn ghost" data-ssh-key-keep>取消</button><button type="button" class="credential-btn danger-solid" data-ssh-key-remove="${id}">确认删除</button>`
-          : `<button type="button" class="credential-btn ghost" data-ssh-key-edit="${id}">编辑</button><button type="button" class="credential-btn ghost" data-ssh-key-delete="${id}">删除</button>`}
+          ? `<span>${_t('删除这把密钥？', 'Delete this key?')}</span><button type="button" class="credential-btn ghost" data-ssh-key-keep>${_t('取消', 'Cancel')}</button><button type="button" class="credential-btn danger-solid" data-ssh-key-remove="${id}">${_t('确认删除', 'Delete')}</button>`
+          : `<button type="button" class="credential-btn ghost" data-ssh-key-edit="${id}">${_t('编辑', 'Edit')}</button><button type="button" class="credential-btn ghost" data-ssh-key-delete="${id}">${_t('删除', 'Delete')}</button>`}
       </div>`;
     }).join('');
   }
@@ -119,12 +121,12 @@ function openGitSSHKeys(remote = '') {
     form.reset();
     form.hidden = false;
     add.hidden = true;
-    form.querySelector('h3').textContent = key ? '编辑密钥' : '添加密钥';
+    form.querySelector('h3').textContent = key ? _t('编辑密钥', 'Edit key') : _t('添加密钥', 'Add key');
     name.value = key?.name || prefill?.host || '';
     host.value = key?.host || prefill?.host || '';
     host.readOnly = !!key;
     privateKey.required = !key;
-    privateKey.placeholder = key ? '留空保留现有私钥' : '粘贴完整的 OpenSSH 或 PEM 私钥';
+    privateKey.placeholder = key ? _t('留空保留现有私钥', 'Leave blank to keep existing key') : _t('粘贴完整的 OpenSSH 或 PEM 私钥', 'Paste complete OpenSSH or PEM private key');
     (prefill ? privateKey : name).focus();
   }
 
@@ -142,7 +144,7 @@ function openGitSSHKeys(remote = '') {
     dialog.setAttribute('aria-busy', 'true');
     const save = form.querySelector('button[type="submit"]');
     save.disabled = true;
-    setStatus(method === 'PUT' ? '正在保存…' : '正在删除…');
+    setStatus(method === 'PUT' ? _t('正在保存…', 'Saving…') : _t('正在删除…', 'Deleting…'));
     try {
       keys = await api(id ? `${endpoint}/${encodeURIComponent(id)}` : endpoint, {
         method, silent:true, ...(body ? {body:JSON.stringify(body)} : {}),
@@ -155,7 +157,7 @@ function openGitSSHKeys(remote = '') {
       deleting = '';
       renderList();
       if (method === 'PUT') closeForm();
-      setStatus(method === 'PUT' ? '密钥已保存' : '密钥已删除');
+      setStatus(method === 'PUT' ? _t('密钥已保存', 'Key saved') : _t('密钥已删除', 'Key deleted'));
     } catch (error) {
       setStatus(error.message, true);
     } finally {

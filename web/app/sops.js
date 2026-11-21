@@ -23,23 +23,24 @@ function replaceCatalogItem(kind,saved){
   if(kind==='agent'&&state.selectedAgent===saved.id)state.selectedAgent=saved.id;
 }
 async function toggleShare(kind,id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const list=kind==='workflow'?state.data.workflows:state.data.agents;
   const item=list.find(x=>x.id===id);
-  if(!item||!catalogOwned(item.projectId))return toast('只能共享本项目的内容');
+  if(!item||!catalogOwned(item.projectId))return toast(_t('只能共享本项目的内容','Can only share items owned by this project'));
   try{
     const full=await catalogItemFull(kind,id);
-    if(!catalogOwned(full.projectId))return toast('只能共享本项目的内容');
+    if(!catalogOwned(full.projectId))return toast(_t('只能共享本项目的内容','Can only share items owned by this project'));
     // Sharing a role also shares the project's skills bound to it, and a
     // shared skill is installed into every conversation, so name them first.
     // The list is reloaded: a skill may have been added since the page loaded.
     if(kind==='agent'&&!full.shared&&(full.skills||[]).length)state.data.skills=await api('/api/skills',{silent:true});
     const newlyShared=kind==='agent'&&!full.shared?(state.data.skills||[]).filter(s=>(full.skills||[]).includes(s.id)&&s.projectId===full.projectId&&!s.shared):[];
-    if(newlyShared.length&&!(await afConfirm({title:'共享角色',message:`共享这个角色会同时共享它绑定的技能：${newlyShared.map(s=>s.name||s.id).join('、')}。${SHARED_SKILL_NOTICE}`,confirmText:'共享'})))return;
+    if(newlyShared.length&&!(await afConfirm({title:_t('共享角色','Share Role'),message:_t(`共享这个角色会同时共享它绑定的技能：${newlyShared.map(s=>s.name||s.id).join('、')}。${SHARED_SKILL_NOTICE}`,`Sharing this Role also shares its bound skills: ${newlyShared.map(s=>s.name||s.id).join(', ')}. ${SHARED_SKILL_NOTICE}`),confirmText:_t('共享','Share')})))return;
     const saved=await api(kind==='workflow'?'/api/workflows':'/api/agents',{method:'PUT',body:JSON.stringify({...full,shared:!full.shared})});
     replaceCatalogItem(kind,saved);
     if(kind==='agent'&&saved.shared){(state.data.rules||[]).forEach(item=>{if((saved.rules||[]).includes(item.id)&&item.projectId===saved.projectId)item.shared=true});(state.data.skills||[]).forEach(item=>{if((saved.skills||[]).includes(item.id)&&item.projectId===saved.projectId)item.shared=true})}
     kind==='workflow'?renderSOPCatalog():renderAgents();
-    toast(saved.shared?'已共享，其他项目可在共享页看到':'已取消共享');
+    toast(saved.shared?_t('已共享，其他项目可在共享页看到','Shared; visible to other projects in Shared tab'):_t('已取消共享','Unshared'));
   }catch(e){toast(e.message)}
 }
 // --- 通用模板：依赖预检与复制 -------------------------------------------------
@@ -47,18 +48,13 @@ async function toggleShare(kind,id){
 // Token to push and a 工蜂 MCP to create the merge
 // request, so the catalog surfaces that dependency before adoption.
 const GENERIC_REQUIREMENT_CHECKS={
-  'gongfeng-git-token':{label:'Git 访问令牌',hint:'按主机认证并推送工作分支。',fix:'settings',fixLabel:'去个人配置配置',check:()=>!!(userById(state.currentUser?.id)||{}).gitHttpCredentialsConfigured},
-  'gongfeng-mcp':{label:'工蜂 MCP',hint:'调用工蜂接口创建 MR；未安装时复制出的 SOP 需安装后为「交付工程师」角色绑定。',fix:'mcp',fixLabel:'去能力资产添加',check:()=>gongfengMCPInstalled()},
-  'tapd-mcp':{label:'TAPD MCP',hint:'把验收结论回写 TAPD；未安装时只产出待人工粘贴的说明。',fix:'mcp',fixLabel:'去能力资产添加',check:()=>tapdMCPInstalled()}
+  'gongfeng-git-token':{label:'Git 访问令牌',labelEn:'Git access token',hint:'按主机认证并推送工作分支。',hintEn:'Authenticates per host to push working branches.',fix:'settings',fixLabel:'去个人配置配置',fixLabelEn:'Configure in Settings',check:()=>!!(userById(state.currentUser?.id)||{}).gitHttpCredentialsConfigured},
+  'gongfeng-mcp':{label:'工蜂 MCP',labelEn:'Gongfeng MCP',hint:'调用工蜂接口创建 MR；未安装时复制出的 SOP 需安装后为「交付工程师」角色绑定。',hintEn:'Calls Gongfeng API to create MRs; once cloned, bind this MCP to the Delivery Engineer Role.',fix:'mcp',fixLabel:'去能力资产添加',fixLabelEn:'Add in MCP Assets',check:()=>gongfengMCPInstalled()},
+  'tapd-mcp':{label:'TAPD MCP',labelEn:'TAPD MCP',hint:'把验收结论回写 TAPD；未安装时只产出待人工粘贴的说明。',hintEn:'Writes acceptance results back to TAPD; if missing, outputs text for manual copy.',fix:'mcp',fixLabel:'去能力资产添加',fixLabelEn:'Add in MCP Assets',check:()=>tapdMCPInstalled()}
 };
 function gongfengMarketItem(){
   return (state.mcpMarket||[]).find(item=>(item.aliases||[]).includes('gongfeng')||/gongfeng/i.test(item.url||''))||null;
 }
-// With the catalog loaded, a market-installed row is recognised by its market
-// ID or alias even when that ID does not mention the service. Rows without a
-// market ID (custom MCPs) and installs made before the catalog loads fall back
-// to name/URL matching. Kept self-contained: genericRequirementRows swallows
-// errors, so a missing helper from another file would silently read as "not installed".
 function projectMCPInstalled(market,pattern){
   const keys=market?[market.id,...(market.aliases||[])].map(key=>String(key||'').toLowerCase()).filter(Boolean):[];
   return (state.data?.mcpServers||[]).some(item=>{
@@ -73,11 +69,12 @@ function tapdMarketItem(){
 }
 function tapdMCPInstalled(){return projectMCPInstalled(tapdMarketItem(),/tapd/i)}
 function genericRequirementRows(w){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   return (w?.requirements||[]).map(req=>{
     const meta=GENERIC_REQUIREMENT_CHECKS[req.key]||{};
     let ok=false;
     try{ok=typeof meta.check==='function'?!!meta.check():false}catch(e){ok=false}
-    return {key:req.key,label:req.label||meta.label||req.key,hint:req.hint||meta.hint||'',nodeId:req.nodeId||'',ok,fix:meta.fix||'',fixLabel:meta.fixLabel||'去处理'};
+    return {key:req.key,label:req.label||_t(meta.label||req.key,meta.labelEn||meta.label||req.key),hint:req.hint||_t(meta.hint||'',meta.hintEn||meta.hint||''),nodeId:req.nodeId||'',ok,fix:meta.fix||'',fixLabel:_t(meta.fixLabel||'去处理',meta.fixLabelEn||'Fix')};
   });
 }
 function workflowNodeName(w,id){return (w?.nodes||[]).find(n=>n.id===id)?.name||id}
@@ -89,6 +86,7 @@ function genericRequirementChips(w){
 // Agent nodes run with the executor credentials of the requirement owner; a
 // bound repository only matters for templates that check out project code.
 function sopRunRequirements(w){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const nodes=w?.nodes||[],user=userById(state.currentUser?.id)||{};
   const project=(state.data?.projects||[]).find(p=>p.id===(w?.projectId||state.projectFilter))||(state.data?.projects||[]).find(p=>p.id===state.projectFilter);
   const driver=((state.data?.sandboxes||[]).find(sb=>sb.id===w?.sandboxProfileId)||{}).driver||(/docker/i.test(w?.sandboxProfileId||'')?'docker':'');
@@ -106,23 +104,24 @@ function sopRunRequirements(w){
     const known={codebuddy:['CodeBuddy','codeBuddyApiKey','codeBuddyApiKeyConfigured'],codex:['Codex','codexApiKey','codexApiKeyConfigured'],'claude-code':['Claude Code','claudeCodeApiKey','claudeCodeApiKeyConfigured']}[kind];
     const [label,field,flag]=known||[agentLabels[kind]||kind,'agentCli.'+kind,'agentCliConfigured'];
     if(!known){
-      rows.push({key:'run-key-'+kind,field,fix:'settings',fixLabel:'去个人配置配置',label:label+' API Key',ok:!!user.agentCliCredentials?.[kind]?.apiKeyConfigured,hint:lfT('Agent 节点使用 '+label+'，请在个人配置里配置对应 API Key。','Agent nodes use '+label+'. Configure its API key in Settings.')});
+      rows.push({key:'run-key-'+kind,field,fix:'settings',fixLabel:_t('去个人配置配置','Configure in Settings'),label:label+' API Key',ok:!!user.agentCliCredentials?.[kind]?.apiKeyConfigured,hint:_t('Agent 节点使用 '+label+'，请在个人配置里配置对应 API Key。','Agent nodes use '+label+'. Configure its API key in Settings.')});
       continue;
     }
-    rows.push({key:'run-key-'+kind,field,fix:'settings',fixLabel:'去个人配置配置',label:label+' API Key',ok:!!user[flag],hint:lfT('Agent 节点使用 '+label+'，请在个人配置里配置对应 API Key。','Agent nodes use '+label+'. Configure its API key in Settings.')});
+    rows.push({key:'run-key-'+kind,field,fix:'settings',fixLabel:_t('去个人配置配置','Configure in Settings'),label:label+' API Key',ok:!!user[flag],hint:_t('Agent 节点使用 '+label+'，请在个人配置里配置对应 API Key。','Agent nodes use '+label+'. Configure its API key in Settings.')});
   }
-  if(usesRepo)rows.push({key:'run-repo',fix:'',label:'GitHub 仓库（已绑定）',ok:true,hint:'使用项目已绑定的仓库。访问私有仓库或推送代码时需要在个人配置中配置 GitHub Token；未绑定仓库时可在任务工作区直接运行。'});
-  if(driver==='docker')rows.push({key:'run-docker',label:'Docker',ok:state.data?.capabilities?.docker!==false,hint:state.data?.capabilities?.docker===false?'平台连不上 Docker，这个 SOP 现在跑不了。重新运行 scripts/install.sh 会自动安装并挂载 Docker。':'在隔离的 Docker 沙箱里运行，首次运行会构建镜像，需要几分钟。'});
+  if(usesRepo)rows.push({key:'run-repo',fix:'',label:_t('GitHub 仓库（已绑定）','GitHub repo (bound)'),ok:true,hint:_t('使用项目已绑定的仓库。访问私有仓库或推送代码时需要在个人配置中配置 GitHub Token；未绑定仓库时可在任务工作区直接运行。','Uses the bound project repository. Private repos or pushes require a GitHub Token in Personal Settings; unbound projects run directly in task workspace.')});
+  if(driver==='docker')rows.push({key:'run-docker',label:'Docker',ok:state.data?.capabilities?.docker!==false,hint:state.data?.capabilities?.docker===false?_t('平台连不上 Docker，这个 SOP 现在跑不了。重新运行 scripts/install.sh 会自动安装并挂载 Docker。','Platform cannot reach Docker; this SOP cannot run right now. Re-run scripts/install.sh to install and mount Docker.'):_t('在隔离的 Docker 沙箱里运行，首次运行会构建镜像，需要几分钟。','Runs in an isolated Docker sandbox; the first run takes a few minutes to build the image.')});
   return rows;
 }
 function sopRunRequirementChips(w){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const rows=sopRunRequirements(w);
-  if(!rows.length)return `<div class="sop-requirements">${sopBadge('无需 Key 或仓库','success','check','只包含脚本和人工审批节点')}</div>`;
-  return `<div class="sop-requirements" aria-label="运行条件">${rows.map(r=>sopBadge((r.ok?'':'需要 ')+r.label,r.ok?'success':'warn',r.ok?'check':'alert',r.hint)).join('')}</div>`;
+  if(!rows.length)return `<div class="sop-requirements">${sopBadge(_t('无需 Key 或仓库','No key or repo needed'),'success','check',_t('只包含脚本和人工审批节点','Contains only script and human-approval steps'))}</div>`;
+  return `<div class="sop-requirements" aria-label="${_t('运行条件','Runtime requirements')}">${rows.map(r=>sopBadge((r.ok?'':_t('需要 ','Requires '))+r.label,r.ok?'success':'warn',r.ok?'check':'alert',r.hint)).join('')}</div>`;
 }
 // --- 流程模板卡片 -------------------------------------------------------------
 // Each card exposes one primary action; the rest live in the ⋯ popover.
-const SOP_HEALTH_TONES={'运行中':{tone:'info',icon:'lamp'},'待审批':{tone:'warn',icon:'user-hold'},'已闭环':{tone:'success',icon:'check'},'有阻塞':{tone:'error',icon:'alert'},'未闭环':{tone:'error',icon:'alert'},'从未运行':{tone:'neutral',icon:'circle'}};
+const SOP_HEALTH_TONES={'运行中':{tone:'info',icon:'lamp'},'Running':{tone:'info',icon:'lamp'},'待审批':{tone:'warn',icon:'user-hold'},'Awaiting approval':{tone:'warn',icon:'user-hold'},'已闭环':{tone:'success',icon:'check'},'Closed':{tone:'success',icon:'check'},'有阻塞':{tone:'error',icon:'alert'},'Blocked':{tone:'error',icon:'alert'},'未闭环':{tone:'error',icon:'alert'},'Open':{tone:'error',icon:'alert'},'从未运行':{tone:'neutral',icon:'circle'},'Never run':{tone:'neutral',icon:'circle'}};
 function sopHealthTone(health){return SOP_HEALTH_TONES[health?.label]||{tone:'neutral',icon:'circle'}}
 function sopBadge(label,tone,icon,title){
   const mark=icon==='lamp'?'<span class="sop-lamp" aria-hidden="true"><i></i></span>':icon?huiIcon(icon):'';
@@ -130,39 +129,44 @@ function sopBadge(label,tone,icon,title){
 }
 function sopHealthBadge(health){const {tone,icon}=sopHealthTone(health);return sopBadge(health?.label||'',tone,icon)}
 function sopStatusBadge(w){
-  if(catalogGeneric(w))return sopBadge('通用','accent','layers');
-  if(w?.status==='published')return sopBadge('已发布','success','check');
-  if(w?.status==='archived')return sopBadge('已归档','neutral','circle');
-  return sopBadge('草稿','neutral','edit');
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(catalogGeneric(w))return sopBadge(_t('通用','Generic'),'accent','layers');
+  if(w?.status==='published')return sopBadge(_t('已发布','Published'),'success','check');
+  if(w?.status==='archived')return sopBadge(_t('已归档','Archived'),'neutral','circle');
+  return sopBadge(_t('草稿','Draft'),'neutral','edit');
 }
 function sopCardHead(left,hint,right){return `<div class="sop-card-head"><div>${left}<span class="sop-card-hint">${escapeHTML(hint||'')}</span></div>${right}</div>`}
 function sopCardTitle(w){return `<div class="sop-card-title"><span class="sop-card-tile">${huiIcon('workflow')}</span><h3 title="${escapeHTML(w.name)}">${escapeHTML(w.name)}</h3></div>`}
 function sopCardPrimary(attr,id,label,icon='',title=''){return `<button type="button" class="sop-card-primary" ${attr}="${escapeHTML(id)}" data-hover-ink-control${title?` title="${escapeHTML(title)}"`:''}>${icon?huiIcon(icon):''}${escapeHTML(label)}</button>`}
-function sopCardMoreButton(w){return `<button type="button" class="sop-card-more" data-sop-menu="${escapeHTML(w.id)}" data-hover-ink-control aria-haspopup="menu" aria-expanded="false" aria-label="更多操作" title="更多操作">${huiIcon('more-horizontal')}</button>`}
-function sopRunKpis(m,liveCount){return `<div class="sop-kpis"><span><b>${m.totalRuns||0}</b>运行</span><span><b>${m.succeededRuns||0}</b>成功</span><span${m.failedRuns>0?' class="is-bad"':''}><b>${m.failedRuns||0}</b>失败</span><span><b>${liveCount}</b>进行中</span></div>`}
+function sopCardMoreButton(w){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;return `<button type="button" class="sop-card-more" data-sop-menu="${escapeHTML(w.id)}" data-hover-ink-control aria-haspopup="menu" aria-expanded="false" aria-label="${_t('更多操作','More actions')}" title="${_t('更多操作','More actions')}">${huiIcon('more-horizontal')}</button>`}
+function sopRunKpis(m,liveCount){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;return `<div class="sop-kpis"><span><b>${m.totalRuns||0}</b>${_t('运行','Runs')}</span><span><b>${m.succeededRuns||0}</b>${_t('成功','Succeeded')}</span><span${m.failedRuns>0?' class="is-bad"':''}><b>${m.failedRuns||0}</b>${_t('失败','Failed')}</span><span><b>${liveCount}</b>${_t('进行中','Active')}</span></div>`}
 function sopRunCardBody(w,m,liveCount){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const health=metricHealth(m,liveCount);
-  return `${sopCardHead(sopHealthBadge(health),m.totalRuns?`${percent(m.successRate)} 成功率`:health.hint,sopStatusBadge(w))}${sopCardTitle(w)}<p>${escapeHTML(w.description||'暂无流程说明')}</p>${sopRunRequirementChips(w)}${sopRunKpis(m,liveCount)}`;
+  return `${sopCardHead(sopHealthBadge(health),m.totalRuns?_t(`${percent(m.successRate)} 成功率`,`${percent(m.successRate)} success rate`):health.hint,sopStatusBadge(w))}${sopCardTitle(w)}<p>${escapeHTML(w.description||_t('暂无流程说明','No description'))}</p>${sopRunRequirementChips(w)}${sopRunKpis(m,liveCount)}`;
 }
 function projectSOPCard(w,m={},liveCount=0){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const recent=formatTimestamp(m.lastRunAt);
-  const meta=`${w.owner||'未分配负责人'} · v${w.version||1} · ${recent?`最近 ${recent}`:'尚未运行'}`;
-  return `<article class="sop-card" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="打开流程设计器：${escapeHTML(w.name)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(meta)}">${escapeHTML(meta)}</span>${sopCardPrimary('data-open-sop',w.id,'打开')}${sopCardMoreButton(w)}</div></article>`;
+  const meta=`${w.owner||_t('未分配负责人','Unassigned owner')} · v${w.version||1} · ${recent?_t(`最近 ${recent}`,`Last ${recent}`):_t('尚未运行','Never run')}`;
+  return `<article class="sop-card" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="${_t(`打开流程设计器：${escapeHTML(w.name)}`,`Open SOP designer: ${escapeHTML(w.name)}`)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(meta)}">${escapeHTML(meta)}</span>${sopCardPrimary('data-open-sop',w.id,_t('打开','Open'))}${sopCardMoreButton(w)}</div></article>`;
 }
 function sharedSOPCard(w,m={},liveCount=0){
-  const from=!w.projectId?'平台':`来自 ${(state.data.projects||[]).find(p=>p.id===w.projectId)?.name||w.projectId}`;
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  const from=!w.projectId?_t('平台','Platform'):_t(`来自 ${(state.data.projects||[]).find(p=>p.id===w.projectId)?.name||w.projectId}`,`From ${(state.data.projects||[]).find(p=>p.id===w.projectId)?.name||w.projectId}`);
   const meta=`${w.owner?`${w.owner} · `:''}v${w.version||1}`;
-  return `<article class="sop-card" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="打开流程设计器：${escapeHTML(w.name)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${from} · ${meta}`)}"><span class="sop-card-tag">${escapeHTML(from)}</span>${escapeHTML(meta)}</span>${sopCardPrimary('data-clone-workflow',w.id,'复制到本项目','copy')}</div></article>`;
+  return `<article class="sop-card" data-sop="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="${_t(`打开流程设计器：${escapeHTML(w.name)}`,`Open SOP designer: ${escapeHTML(w.name)}`)}">${sopRunCardBody(w,m,liveCount)}<div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${from} · ${meta}`)}"><span class="sop-card-tag">${escapeHTML(from)}</span>${escapeHTML(meta)}</span>${sopCardPrimary('data-clone-workflow',w.id,_t('复制到本项目','Copy to project'),'copy')}</div></article>`;
 }
 function genericProjectCopy(w){return (state.data?.workflows||[]).find(x=>!catalogGeneric(x)&&x.projectId===state.projectFilter&&(x.tags||[]).includes(`generic-source:${w.id}`))}
 function genericSOPCard(w){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const nodes=w.nodes||[],agentCount=nodes.filter(n=>n.type==='agent').length,gates=nodes.filter(n=>n.type==='approval').length;
   const copy=genericProjectCopy(w);
   const primary=copy
-    ?sopCardPrimary('data-open-sop',copy.id,'查看项目副本','eye')
-    :sopCardPrimary('data-adopt-generic',w.id,'复制到本项目','copy','复制后归本项目所有、可自由修改，不再跟随平台更新');
-  const tags=(w.tags||[]).filter(t=>!t.startsWith('generic-source:')).join(' · ')||'通用模板';
-  return `<article class="sop-card generic" data-generic-id="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="使用通用模板：${escapeHTML(w.name)}">${sopCardHead(sopStatusBadge(w),'平台维护 · 与项目无关',sopBadge(`v${w.version||1}`,'neutral',''))}${sopCardTitle(w)}<p>${escapeHTML(w.description||'平台提供的通用流程模板')}</p>${sopRunRequirementChips(w)}${genericRequirementChips(w)}<div class="sop-kpis"><span><b>${nodes.length}</b>节点</span><span><b>${agentCount}</b>角色节点</span><span><b>${gates}</b>人工门禁</span><span><b>v${w.version||1}</b>版本</span></div><div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${w.owner||'平台'} · ${tags}`)}"><span class="sop-card-tag">${escapeHTML(w.owner||'平台')}</span>${escapeHTML(tags)}</span>${primary}${sopCardMoreButton(w)}</div></article>`;
+    ?sopCardPrimary('data-open-sop',copy.id,_t('查看项目副本','Open project copy'),'eye')
+    :sopCardPrimary('data-adopt-generic',w.id,_t('复制到本项目','Copy to project'),'copy',_t('复制后归本项目所有、可自由修改，不再跟随平台更新','Creates an editable copy owned by this project without future platform updates'));
+  const tags=(w.tags||[]).filter(t=>!t.startsWith('generic-source:')).join(' · ')||_t('通用模板','Generic template');
+  return `<article class="sop-card generic" data-generic-id="${escapeHTML(w.id)}" tabindex="0" role="button" aria-label="${_t(`使用通用模板：${escapeHTML(w.name)}`,`Use generic template: ${escapeHTML(w.name)}`)}">${sopCardHead(sopStatusBadge(w),_t('平台维护 · 与项目无关','Platform-maintained · Project-independent'),sopBadge(`v${w.version||1}`,'neutral',''))}${sopCardTitle(w)}<p>${escapeHTML(w.description||_t('平台提供的通用流程模板','Platform generic workflow template'))}</p>${sopRunRequirementChips(w)}${genericRequirementChips(w)}<div class="sop-kpis"><span><b>${nodes.length}</b>${_t('节点','Steps')}</span><span><b>${agentCount}</b>${_t('角色节点','Roles')}</span><span><b>${gates}</b>${_t('人工门禁','Approvals')}</span><span><b>v${w.version||1}</b>${_t('版本','Version')}</span></div><div class="sop-card-foot"><span class="sop-card-meta" title="${escapeHTML(`${w.owner||_t('平台','Platform')} · ${tags}`)}"><span class="sop-card-tag">${escapeHTML(w.owner||_t('平台','Platform'))}</span>${escapeHTML(tags)}</span>${primary}${sopCardMoreButton(w)}</div></article>`;
 }
 function sopCatalogCard(w,metrics,live){
   if(catalogGeneric(w))return genericSOPCard(w);
@@ -177,22 +181,24 @@ const SOP_MENU_ACTIONS={
   edit:{hook:'data-edit-generic',run:id=>openGenericTemplateEditor(id)}
 };
 function sopCardMenuItems(w){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!w)return [];
-  if(catalogGeneric(w))return [{action:'run',label:'直接运行',icon:'play'},...(isPlatformAdmin()?[{action:'edit',label:'编辑模板',icon:'edit'}]:[])];
+  if(catalogGeneric(w))return [{action:'run',label:_t('直接运行','Run directly'),icon:'play'},...(isPlatformAdmin()?[{action:'edit',label:_t('编辑模板','Edit template'),icon:'edit'}]:[])];
   if(!catalogOwned(w.projectId))return [];
-  return [{action:'share',label:w.shared?'取消共享':'共享给其他项目',icon:w.shared?'close':'arrow-up'},'-',{action:'delete',label:'删除',icon:'trash',danger:true}];
+  return [{action:'share',label:w.shared?_t('取消共享','Unshare'):_t('共享给其他项目','Share with other projects'),icon:w.shared?'close':'arrow-up'},'-',{action:'delete',label:_t('删除','Delete'),icon:'trash',danger:true}];
 }
 function sopCardMenuHTML(w){
   return sopCardMenuItems(w).map(item=>item==='-'?'<span class="sop-popover-sep" role="separator"></span>':`<button type="button" role="menuitem" tabindex="-1" class="issue-popover-item${item.danger?' danger':''}" data-sop-action="${item.action}" ${SOP_MENU_ACTIONS[item.action].hook}="${escapeHTML(w.id)}">${huiIcon(item.icon,'popover-icon')}${escapeHTML(item.label)}</button>`).join('');
 }
 let sopMenuPopover=null,sopMenuTrigger=null;
 function ensureSOPMenuPopover(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(sopMenuPopover)return sopMenuPopover;
   const menu=document.createElement('div');
   menu.id='sopActionPopover';
   menu.className='issue-action-popover sop-action-popover';
   menu.setAttribute('role','menu');
-  menu.setAttribute('aria-label','SOP 更多操作');
+  menu.setAttribute('aria-label',_t('SOP 更多操作','SOP more actions'));
   menu.hidden=true;
   document.body.appendChild(menu);
   menu.addEventListener('click',e=>{
@@ -361,9 +367,10 @@ function restoreSOPCatalogFocus(root,focus){
   (card&&focus.part?card.querySelector(focus.part):card)?.focus({preventScroll:true});
 }
 function liveSOPCards(root){return [...root.querySelectorAll('.sop-card:not(.is-leaving)')]}
-function openSOPDesigner(id,missing='SOP 不存在或已删除'){
+function openSOPDesigner(id,missing){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const wf=(state.data.workflows||[]).find(x=>x.id===id);
-  if(!wf)return toast(missing);
+  if(!wf)return toast(missing||_t('SOP 不存在或已删除','SOP does not exist or was deleted'));
   state.workflow=clone(wf);state.selectedNode=null;renderWorkflowMeta();renderCanvas();renderProperties();switchView('flow');
 }
 function activateSOPCard(card){
@@ -371,6 +378,7 @@ function activateSOPCard(card){
   else if(card.dataset.sop)openSOPDesigner(card.dataset.sop);
 }
 function bindSOPCatalogEvents(root){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(root.dataset.sopEvents)return;
   root.dataset.sopEvents='1';
   root.addEventListener('click',e=>{
@@ -381,7 +389,7 @@ function bindSOPCatalogEvents(root){
       e.stopPropagation();
       if(btn.dataset.sopMenu)return showSOPCardMenu(btn);
       hideSOPCardMenu();
-      if(btn.dataset.openSop)openSOPDesigner(btn.dataset.openSop,'项目副本不存在或已删除');
+      if(btn.dataset.openSop)openSOPDesigner(btn.dataset.openSop,_t('项目副本不存在或已删除','Project copy does not exist or was deleted'));
       else if(btn.dataset.cloneWorkflow)cloneWorkflow(btn.dataset.cloneWorkflow);
       else if(btn.dataset.adoptGeneric)openGenericTemplateModal(btn.dataset.adoptGeneric);
       return;
@@ -397,32 +405,36 @@ function bindSOPCatalogEvents(root){
   });
 }
 function renderGenericRequirementRows(w){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const host=$('#genericTemplateRequirements');if(!host)return;
   const rows=[...sopRunRequirements(w).map(r=>({...r,fix:r.ok?'':r.fix||''})),...genericRequirementRows(w)];
-  host.innerHTML=rows.map(r=>`<div class="req-row ${r.ok?'ok':'missing'}"><span class="req-mark">${r.ok?'✓':'!'}</span><div><b>${escapeHTML(r.label)}</b><p>${escapeHTML(r.hint)}${r.nodeId?` · 节点「${escapeHTML(workflowNodeName(w,r.nodeId))}」`:''}</p></div><span class="req-state">${r.ok?'已配置':'未配置'}</span>${r.fix?`<button type="button" class="button ghost small" data-fix-requirement="${escapeHTML(r.key)}">${escapeHTML(r.fixLabel)}</button>`:''}</div>`).join('')||'<div class="req-row ok"><span class="req-mark">✓</span><div><b>无额外依赖</b><p>复制到本项目后即可直接运行。</p></div></div>';
+  host.innerHTML=rows.map(r=>`<div class="req-row ${r.ok?'ok':'missing'}"><span class="req-mark">${r.ok?'✓':'!'}</span><div><b>${escapeHTML(r.label)}</b><p>${escapeHTML(r.hint)}${r.nodeId?_t(` · 节点「${escapeHTML(workflowNodeName(w,r.nodeId))}」`,` · Step "${escapeHTML(workflowNodeName(w,r.nodeId))}"`):''}</p></div><span class="req-state">${r.ok?_t('已配置','Configured'):_t('未配置','Missing')}</span>${r.fix?`<button type="button" class="button ghost small" data-fix-requirement="${escapeHTML(r.key)}">${escapeHTML(r.fixLabel)}</button>`:''}</div>`).join('')||`<div class="req-row ok"><span class="req-mark">✓</span><div><b>${_t('无额外依赖','No extra dependencies')}</b><p>${_t('复制到本项目后即可直接运行。','Ready to run after copying to this project.')}</p></div></div>`;
   host.querySelectorAll('[data-fix-requirement]').forEach(btn=>btn.onclick=()=>openGenericRequirementTarget(btn.dataset.fixRequirement));
 }
 async function openGenericTemplateEditor(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const w=(state.data?.workflows||[]).find(x=>x.id===id&&catalogGeneric(x));
-  if(!w)return toast('通用模板不存在或已下架');
-  if(!isPlatformAdmin())return toast('只有平台管理员可以编辑通用模板');
+  if(!w)return toast(_t('通用模板不存在或已下架','Generic template not found or retired'));
+  if(!isPlatformAdmin())return toast(_t('只有平台管理员可以编辑通用模板','Only platform admins can edit generic templates'));
   state.workflow=clone(w);state.selectedNode=null;markWorkflowClean();
   clearGenericTemplateAgents();
   renderWorkflowMeta();renderCanvas();renderProperties();switchView('flow');
   await refreshGenericWorkflowRoles();
 }
 function openGenericTemplateModal(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const w=(state.data?.workflows||[]).find(x=>x.id===id&&catalogGeneric(x));
-  if(!w)return toast('通用模板不存在或已下架');
+  if(!w)return toast(_t('通用模板不存在或已下架','Generic template not found or retired'));
   state.genericTemplateId=id;
-  $('#genericTemplateTitle').textContent=`使用「${w.name}」`;
-  $('#genericTemplateIntro').textContent=w.description||'平台提供的通用流程模板，复制后归本项目所有。';
+  $('#genericTemplateTitle').textContent=_t(`使用「${w.name}」`,`Use "${w.name}"`);
+  $('#genericTemplateIntro').textContent=w.description||_t('平台提供的通用流程模板，复制后归本项目所有。','Platform generic workflow template; copying creates an editable project-owned SOP.');
   const nodes=w.nodes||[],agentCount=nodes.filter(n=>n.type==='agent').length,gates=nodes.filter(n=>n.type==='approval').length;
-  $('#genericTemplateStructure').innerHTML=`<span>${nodes.length} 个节点</span><span>${agentCount} 个角色节点</span><span>${gates} 个人工门禁</span>${nodes.some(n=>n.id==='mr')?'<span class="highlight">含「发起 PR」节点</span>':''}<span>复制=归本项目、可自由修改、不再跟随平台更新</span><span>直接运行=始终使用平台最新版</span>`;
+  $('#genericTemplateStructure').innerHTML=`<span>${_t(`${nodes.length} 个节点`,`${nodes.length} steps`)}</span><span>${_t(`${agentCount} 个角色节点`,`${agentCount} Role steps`)}</span><span>${_t(`${gates} 个人工门禁`,`${gates} human gates`)}</span>${nodes.some(n=>n.id==='mr')?`<span class="highlight">${_t('含「发起 PR」节点','Includes "Open PR" step')}</span>`:''}<span>${_t('复制=归本项目、可自由修改、不再跟随平台更新','Copy = project-owned, editable, detached from platform updates')}</span><span>${_t('直接运行=始终使用平台最新版','Run directly = always uses latest platform version')}</span>`;
   renderGenericRequirementRows(w);
   $('#genericTemplateModal').classList.add('open');
 }
 function openGenericRequirementTarget(key){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(key==='run-key'||key.startsWith('run-key-')||key==='run-repo'){
     const w=(state.data?.workflows||[]).find(x=>x.id===state.genericTemplateId);
     const row=sopRunRequirements(w).find(r=>r.key===key);
@@ -438,17 +450,18 @@ function openGenericRequirementTarget(key){
     state.mcpScope='project';state.mcpQuery=query;
     const input=$('#mcpMarketSearch');if(input)input.value=query;
     switchView('mcp');
-    toast(query==='tapd'?'在「能力资产 › MCP」添加 TAPD MCP，添加后回到通用模板查看状态':'在「能力资产 › MCP」添加 Gongfeng MCP，添加后回到通用模板查看状态');
+    toast(query==='tapd'?_t('在「能力资产 › MCP」添加 TAPD MCP，添加后回到通用模板查看状态','Add TAPD MCP under Assets › MCP, then return to check status'):_t('在「能力资产 › MCP」添加 Gongfeng MCP，添加后回到通用模板查看状态','Add Gongfeng MCP under Assets › MCP, then return to check status'));
     return;
   }
   switchView('settings');
-  toast('在「个人凭证」中配置后，重新打开通用模板即可看到最新状态');
+  toast(_t('在「个人凭证」中配置后，重新打开通用模板即可看到最新状态','Configure this in Personal Settings, then reopen the generic template to refresh'));
 }
 async function adoptGenericTemplate(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const src=(state.data?.workflows||[]).find(w=>w.id===state.genericTemplateId&&catalogGeneric(w));
-  if(!src)return toast('通用模板不存在或已下架');
-  if(!state.projectFilter)return toast('请先在顶部选择一个项目');
-  const button=$('#confirmGenericTemplate');button.disabled=true;button.textContent='复制中…';
+  if(!src)return toast(_t('通用模板不存在或已下架','Generic template not found or retired'));
+  if(!state.projectFilter)return toast(_t('请先在顶部选择一个项目','Select a project from the top bar first'));
+  const button=$('#confirmGenericTemplate');button.disabled=true;button.textContent=_t('复制中…','Copying…');
   try{
     const copied=await api(`/api/workflows/${encodeURIComponent(src.id)}/clone`,{method:'POST',body:JSON.stringify({id:uid('sop'),name:src.name.replace(/^通用/,''),owner:src.owner||'',projectId:state.projectFilter})});
     state.data.workflows.unshift(copied);
@@ -456,24 +469,25 @@ async function adoptGenericTemplate(){
     $('#genericTemplateModal').classList.remove('open');
     renderAll();switchView('flow');
     const missing=genericRequirementRows(copied).filter(r=>!r.ok);
-    toast(missing.length?`已复制到本项目；${missing.length} 项运行依赖未配置（${missing.map(r=>r.label).join('、')}）`:'已复制到本项目，可直接修改和运行',missing.length?'':'ok');
-  }catch(e){toast(e.message||'复制通用模板失败')}
-  finally{button.disabled=false;button.textContent='复制到本项目'}
+    toast(missing.length?_t(`已复制到本项目；${missing.length} 项运行依赖未配置（${missing.map(r=>r.label).join('、')}）`,`Copied to project; ${missing.length} missing dependency(ies): ${missing.map(r=>r.label).join(', ')}`):_t('已复制到本项目，可直接修改和运行','Copied to project; ready to edit and run'),missing.length?'':'ok');
+  }catch(e){toast(e.message||_t('复制通用模板失败','Failed to copy generic template'))}
+  finally{button.disabled=false;button.textContent=_t('复制到本项目','Copy to project')}
 }
 function renderSOPCatalog(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   renderCatalogScopes();
   let workflows=scopedWorkflows();
   const metrics=new Map((state.data.workflowMetrics||[]).map(m=>[m.workflowId,m]));
   const live=liveRuns();
   const all=[...metrics.values()],totalRuns=all.reduce((n,m)=>n+m.totalRuns,0),succeeded=all.reduce((n,m)=>n+m.succeededRuns,0),failed=all.reduce((n,m)=>n+m.failedRuns,0),active=live.length,tokens=all.reduce((n,m)=>n+m.totalTokens,0);
-  const scopeLabel=state.sopScope==='generic'?'通用':state.sopScope==='shared'?'共享':'项目';
-  $('#sopOverview').innerHTML=`<div class="overview-metric primary"><span>本项目运行</span><b>${totalRuns}</b><small>${workflows.length} 条${scopeLabel} SOP</small></div><div class="overview-metric success"><span>已闭环</span><b>${succeeded}</b><small>${totalRuns?percent(succeeded*100/totalRuns):'暂无运行'}</small></div><div class="overview-metric live"><span>进行中 / 待审批</span><b>${active}</b><small>实时更新 · 不含中断残留</small></div><div class="overview-metric danger${failed>0?' is-bad':''}"><span>失败运行</span><b>${failed}</b><small>${totalRuns?percent(failed*100/totalRuns):'0%'}</small></div><div class="overview-metric"><span>Token 消耗</span><b>${formatTokens(tokens)}</b><small>当前项目累计</small></div>`;
+  const scopeLabel=state.sopScope==='generic'?_t('通用','Generic'):state.sopScope==='shared'?_t('共享','Shared'):_t('项目','Project');
+  $('#sopOverview').innerHTML=`<div class="overview-metric primary"><span>${_t('本项目运行','Project runs')}</span><b>${totalRuns}</b><small>${_t(`${workflows.length} 条${scopeLabel} SOP`,`${workflows.length} ${scopeLabel} SOPs`)}</small></div><div class="overview-metric success"><span>${_t('已闭环','Succeeded')}</span><b>${succeeded}</b><small>${totalRuns?percent(succeeded*100/totalRuns):_t('暂无运行','No runs yet')}</small></div><div class="overview-metric live"><span>${_t('进行中 / 待审批','Active / Waiting')}</span><b>${active}</b><small>${_t('实时更新 · 不含中断残留','Live · excludes stale interrupted')}</small></div><div class="overview-metric danger${failed>0?' is-bad':''}"><span>${_t('失败运行','Failed runs')}</span><b>${failed}</b><small>${totalRuns?percent(failed*100/totalRuns):'0%'}</small></div><div class="overview-metric"><span>${_t('Token 消耗','Tokens used')}</span><b>${formatTokens(tokens)}</b><small>${_t('当前项目累计','Project cumulative')}</small></div>`;
   const filter=$('#sopHealthFilter')?.value||'all',sort=$('#sopSort')?.value||'recent';
   if(filter!=='all')workflows=workflows.filter(w=>metricHealth(metrics.get(w.id), live.filter(r=>r.workflowId===w.id).length).key===filter);
   workflows.sort((a,b)=>{const x=metrics.get(a.id)||{},y=metrics.get(b.id)||{};if(sort==='runs')return (y.totalRuns||0)-(x.totalRuns||0);if(sort==='closure')return (y.closureRate||0)-(x.closureRate||0);if(sort==='failures')return (y.failedRuns||0)-(x.failedRuns||0);return new Date(y.lastRunAt||0)-new Date(x.lastRunAt||0)});
-  $('#sopStats').innerHTML=`<span class="issue-stat">${workflows.length} SOPs</span><span class="issue-stat">${workflows.filter(w=>w.status==='published').length} 已发布</span><span class="issue-stat">${new Set(workflows.map(w=>w.owner).filter(Boolean)).size} 负责人</span>`;
-  const empty=state.sopScope==='generic'?'通用模板暂时不可用。它们由平台维护、与项目无关，所有项目都能复制使用。':state.sopScope==='shared'?'还没有共享给当前项目的 SOP。把本项目模板设为共享后，其他项目会在这里看到。':'当前项目还没有 SOP。可以新建，或从共享模板 / 通用模板复制一份。';
-  const emptyText=filter!=='all'&&scopedWorkflows().length?'当前筛选下没有 SOP。可以切换健康状态查看全部。':empty;
+  $('#sopStats').innerHTML=`<span class="issue-stat">${workflows.length} SOPs</span><span class="issue-stat">${workflows.filter(w=>w.status==='published').length} ${_t('已发布','Published')}</span><span class="issue-stat">${new Set(workflows.map(w=>w.owner).filter(Boolean)).size} ${_t('负责人','Owners')}</span>`;
+  const empty=state.sopScope==='generic'?_t('通用模板暂时不可用。它们由平台维护、与项目无关，所有项目都能复制使用。','Generic templates are currently unavailable. They are platform-maintained blueprints available to copy into any project.'):state.sopScope==='shared'?_t('还没有共享给当前项目的 SOP。把本项目模板设为共享后，其他项目会在这里看到。','No shared SOPs available. Share an SOP in a project for others to see it here.'):_t('当前项目还没有 SOP。可以新建，或从共享模板 / 通用模板复制一份。','No SOPs in this project yet. Create one or copy from Shared/Generic templates.');
+  const emptyText=filter!=='all'&&scopedWorkflows().length?_t('当前筛选下没有 SOP。可以切换健康状态查看全部。','No SOPs match the current filter. Switch health filter to View All.'):empty;
   const sopCatalog=$('#sopCatalog');
   bindSOPCatalogEvents(sopCatalog);
   const before=sopCatalogMotion.snapshot(sopCatalog),focus=sopCatalogFocus(sopCatalog);

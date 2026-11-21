@@ -50,17 +50,18 @@ const flowPalette=(()=>{
     });
   }
   // Stable per-role tint so the same role keeps its colour across nodes.
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const ROLE_TINTS=['79 107 255','236 72 153','16 163 127','217 119 6','139 92 246','14 165 233','220 38 38','101 163 13'];
   function roleTint(id){let h=0;for(const ch of String(id||''))h=(h*31+ch.charCodeAt(0))>>>0;return ROLE_TINTS[h%ROLE_TINTS.length]}
   const initial=name=>(String(name||'?').trim()[0]||'?').toUpperCase();
   function roleDesc(a){
     const exec=(state.data?.executors||[]).find(x=>x.id===a.executorId);
-    const model=a.model||exec?.model||exec?.name||'未选模型';
-    if(catalogGeneric(state.workflow))return `${model} · 通用模板`;
+    const model=a.model||exec?.model||exec?.name||_t('未选模型','No model');
+    if(catalogGeneric(state.workflow))return _t(`${model} · 通用模板`,`${model} · Generic template`);
     const projectId=state.workflow?.projectId||state.projectFilter||'';
-    if(a.projectId===projectId)return `${model} · 本项目`;
+    if(a.projectId===projectId)return _t(`${model} · 本项目`,`${model} · This project`);
     const owner=(state.data?.projects||[]).find(p=>p.id===a.projectId)?.name||a.projectId;
-    return `${model} · 共享自 ${owner}`;
+    return _t(`${model} · 共享自 ${owner}`,`${model} · Shared from ${owner}`);
   }
   const matches=(q,...texts)=>!q||texts.join(' ').toLowerCase().includes(q);
 
@@ -70,7 +71,7 @@ const flowPalette=(()=>{
     const roles=workflowAgents().map(a=>({id:a.id,name:a.name||a.id,desc:roleDesc(a)})).filter(r=>matches(q,r.name,r.desc));
     const all=workflowAgents().length;
     host.innerHTML=roles.map(r=>`<div class="fd-pal-item" role="button" tabindex="0" draggable="true" data-add="agent" data-agent-id="${escapeHTML(r.id)}" data-tip="${escapeHTML(r.name)}"><span class="fd-tile" style="--tint:${roleTint(r.id)}">${escapeHTML(initial(r.name))}</span><div class="fd-pal-text"><b>${escapeHTML(r.name)}</b><small>${escapeHTML(r.desc)}</small></div><span class="fd-grip">${icon('grip',14)}</span></div>`).join('')
-      ||(!q&&!all?`<div class="fd-pal-none">${state.workflow?'这个项目还没有角色':'先选择一条 SOP'}${state.workflow&&!catalogGeneric(state.workflow)?'<button type="button" class="fd-link" data-pal-agents>去角色定义</button>':''}</div>`:'');
+      ||(!q&&!all?`<div class="fd-pal-none">${state.workflow?_t('这个项目还没有角色','No Roles in this project'):_t('先选择一条 SOP','Select an SOP first')}${state.workflow&&!catalogGeneric(state.workflow)?`<button type="button" class="fd-link" data-pal-agents>${_t('去角色定义','Go to Roles')}</button>`:''}</div>`:'');
     const count=document.getElementById('flowPaletteRoleCount');if(count)count.textContent=all?String(roles.length):'';
     let shown=roles.length;
     document.querySelectorAll('#flowPaletteBody .fd-pal-group').forEach(group=>{
@@ -80,7 +81,7 @@ const flowPalette=(()=>{
       group.hidden=!visibleItems;shown+=visibleItems;
     });
     const empty=document.getElementById('flowPaletteEmpty');
-    if(empty){empty.hidden=!!shown||!q;empty.textContent=`没有匹配「${raw}」的节点`}
+    if(empty){empty.hidden=!!shown||!q;empty.textContent=_t(`没有匹配「${raw}」的节点`,`No nodes matching "${raw}"`)}
     const pal=document.getElementById('flowPalette');
     pal?.classList.toggle('readonly',typeof flowReadOnly==='function'&&flowReadOnly());
   }
@@ -89,7 +90,7 @@ const flowPalette=(()=>{
     const pal=document.getElementById('flowPalette');if(!pal)return;
     pal.classList.toggle('collapsed',on);
     localStorage.setItem(COLLAPSE_KEY,on?'1':'0');
-    const btn=document.getElementById('flowPaletteCollapse');if(btn)btn.dataset.tip=on?'展开节点库':'收起节点库';
+    const btn=document.getElementById('flowPaletteCollapse');if(btn)btn.dataset.tip=on?_t('展开节点库','Expand node palette'):_t('收起节点库','Collapse node palette');
     flowViewport.paletteToggled();
     setTimeout(()=>flowViewport.layoutTight(),220);
   }
@@ -138,17 +139,17 @@ const flowPalette=(()=>{
 
   // ---- SOP switcher ----
   function workflowStatus(w){
-    if(catalogGeneric(w))return {cls:'ro',label:'只读模板'};
-    if(catalogForeign(w.projectId))return {cls:'ro',label:'共享 · 只读'};
-    if(w.status==='published')return {cls:'ok',label:'已发布'};
-    if(w.status==='archived')return {cls:'ro',label:'已归档'};
-    return {cls:'draft',label:'草稿'};
+    if(catalogGeneric(w))return {cls:'ro',label:_t('只读模板','Read-only template')};
+    if(catalogForeign(w.projectId))return {cls:'ro',label:_t('共享 · 只读','Shared · Read-only')};
+    if(w.status==='published')return {cls:'ok',label:_t('已发布','Published')};
+    if(w.status==='archived')return {cls:'ro',label:_t('已归档','Archived')};
+    return {cls:'draft',label:_t('草稿','Draft')};
   }
   function switcherGroups(){
     const wf=state.workflow,listed=catalogWorkflows(),generic=(state.data?.workflows||[]).filter(catalogGeneric);
     const own=listed.filter(w=>!catalogForeign(w.projectId)),shared=listed.filter(w=>catalogForeign(w.projectId));
     if(wf&&!listed.some(w=>w.id===wf.id)&&!generic.some(w=>w.id===wf.id))own.unshift(wf);
-    return [{title:'本项目',items:own},{title:'共享给本项目',items:shared},{title:'通用模板 · 只读',items:generic}];
+    return [{title:_t('本项目','This project'),items:own},{title:_t('共享给本项目','Shared with this project'),items:shared},{title:_t('通用模板 · 只读','Generic templates · Read-only'),items:generic}];
   }
   function renderSwitcher(){
     const host=document.getElementById('flowSwitchList');if(!host)return;
@@ -156,8 +157,8 @@ const flowPalette=(()=>{
     host.innerHTML=switcherGroups().map(g=>{
       const items=g.items.filter(w=>matches(q,w.name||'',w.id||''));
       if(!items.length)return '';
-      return `<div class="fd-pop-gh">${escapeHTML(g.title)}</div>`+items.map(w=>{const s=workflowStatus(w),current=w.id===cur,name=w.name||'未命名 SOP';return `<button type="button" class="fd-pop-item ${current?'cur':''}" role="option" aria-selected="${current}" data-switch-workflow="${escapeHTML(w.id)}"><span class="fd-sd ${s.cls}"></span><span class="fd-pop-text"><span class="fd-pop-title"><b>${escapeHTML(name)}</b><span class="fd-pop-copy" role="button" tabindex="0" data-copy-sop-name="${escapeHTML(name)}" aria-label="复制 SOP 名称" title="复制 SOP 名称">${icon('copy',14,1.7)}</span></span><small>${s.label} · v${w.version||1} · ${(w.nodes||[]).length} 步</small></span>${current?`<span class="fd-ck">${icon('check',15,2.2)}</span>`:''}</button>`}).join('');
-    }).join('')||`<div class="fd-pal-empty">没有匹配的 SOP</div>`;
+      return `<div class="fd-pop-gh">${escapeHTML(g.title)}</div>`+items.map(w=>{const s=workflowStatus(w),current=w.id===cur,name=w.name||_t('未命名 SOP','Untitled SOP');return `<button type="button" class="fd-pop-item ${current?'cur':''}" role="option" aria-selected="${current}" data-switch-workflow="${escapeHTML(w.id)}"><span class="fd-sd ${s.cls}"></span><span class="fd-pop-text"><span class="fd-pop-title"><b>${escapeHTML(name)}</b><span class="fd-pop-copy" role="button" tabindex="0" data-copy-sop-name="${escapeHTML(name)}" aria-label="${_t('复制 SOP 名称','Copy SOP name')}" title="${_t('复制 SOP 名称','Copy SOP name')}">${icon('copy',14,1.7)}</span></span><small>${s.label} · v${w.version||1} · ${_t(`${(w.nodes||[]).length} 步`,`${(w.nodes||[]).length} steps`)}</small></span>${current?`<span class="fd-ck">${icon('check',15,2.2)}</span>`:''}</button>`}).join('');
+    }).join('')||`<div class="fd-pal-empty">${_t('没有匹配的 SOP','No matching SOPs')}</div>`;
   }
   function isSwitcherOpen(){const p=document.getElementById('flowSwitchPop');return !!p&&!p.hidden}
   function setSwitcher(open){
@@ -174,9 +175,9 @@ const flowPalette=(()=>{
     ident.addEventListener('click',e=>{if(e.target.closest('#sandboxChip,#copyWorkflowName'))return;setSwitcher(!isSwitcherOpen())});
     document.getElementById('copyWorkflowName')?.addEventListener('click',e=>{
       e.preventDefault();e.stopPropagation();
-      const name=(state.workflow?.name||'').trim()||'未命名流程';
+      const name=(state.workflow?.name||'').trim()||_t('未命名流程','Untitled SOP');
       if(!state.workflow||typeof copyText!=='function')return;
-      copyText(name,'SOP 名称已复制');
+      copyText(name,_t('SOP 名称已复制','SOP name copied'));
     });
     const q=document.getElementById('flowSwitchQ');
     q?.addEventListener('input',renderSwitcher);
@@ -185,8 +186,8 @@ const flowPalette=(()=>{
       const copy=e.target.closest('[data-copy-sop-name]');
       if(copy){
         e.preventDefault();e.stopPropagation();
-        const name=(copy.getAttribute('data-copy-sop-name')||'').trim()||'未命名流程';
-        if(typeof copyText==='function')copyText(name,'SOP 名称已复制');
+        const name=(copy.getAttribute('data-copy-sop-name')||'').trim()||_t('未命名流程','Untitled SOP');
+        if(typeof copyText==='function')copyText(name,_t('SOP 名称已复制','SOP name copied'));
         return;
       }
       const item=e.target.closest('[data-switch-workflow]');if(!item)return;

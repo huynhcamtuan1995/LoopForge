@@ -13,6 +13,8 @@ function gitHTTPDefaultUsername(platform) {
 }
 
 function openGitHTTPCredentials() {
+  const _t = (z, e) => (typeof lfT === 'function' ? lfT(z, e) : z);
+  const pLabel = l => l === '其他平台' ? _t('其他平台', 'Other platform') : l;
   const user = state.currentUser;
   if (!user?.id || user.isGuest) return;
 
@@ -31,31 +33,31 @@ function openGitHTTPCredentials() {
   dialog.setAttribute('aria-labelledby', 'gitHTTPCredentialTitle');
   dialog.innerHTML = `
     <header class="git-ssh-dialog-head">
-      <h2 id="gitHTTPCredentialTitle">Git 访问令牌（按主机）</h2>
-      <button type="button" class="credential-btn ghost icon" data-http-cred-close aria-label="关闭">${credentialGlyph('close', 16)}</button>
+      <h2 id="gitHTTPCredentialTitle">${_t('Git 访问令牌（按主机）', 'Git access tokens (by host)')}</h2>
+      <button type="button" class="credential-btn ghost icon" data-http-cred-close aria-label="${_t('关闭', 'Close')}">${credentialGlyph('close', 16)}</button>
     </header>
-    <p class="git-ssh-description">每个 HTTPS 主机配置一个个人访问令牌。平台与工作区访问该主机时，使用本轮责任人或发言人的凭据。</p>
-    <p class="git-ssh-status" role="status">正在读取凭据…</p>
+    <p class="git-ssh-description">${_t('每个 HTTPS 主机配置一个个人访问令牌。平台与工作区访问该主机时，使用本轮责任人或发言人的凭据。', 'Configure one personal access token per HTTPS host. Platform and workspace requests use the current assignee or speaker credentials.')}</p>
+    <p class="git-ssh-status" role="status">${_t('正在读取凭据…', 'Loading credentials…')}</p>
     <div class="git-ssh-key-list"></div>
-    <button type="button" class="credential-btn primary" data-http-cred-add disabled>添加令牌</button>
+    <button type="button" class="credential-btn primary" data-http-cred-add disabled>${_t('添加令牌', 'Add token')}</button>
     <form class="git-ssh-key-form" hidden>
       <h3></h3>
-      ${credentialFieldHTML({label:'HTTPS 主机', name:'host', type:'text', placeholder:'github.com 或 gitlab.example.org:8443', hint:'只填主机名，可附带端口；令牌只提供给这台主机。'})}
+      ${credentialFieldHTML({label:_t('HTTPS 主机', 'HTTPS host'), name:'host', type:'text', placeholder:_t('github.com 或 gitlab.example.org:8443', 'github.com or gitlab.example.org:8443'), hint:_t('只填主机名，可附带端口；令牌只提供给这台主机。', 'Hostname only (with optional port); the token is sent only to this host.')})}
       <label class="credential-field">
-        <span>平台</span>
+        <span>${_t('平台', 'Platform')}</span>
         <div class="credential-input is-plain">
-          <select name="platform" class="git-http-select" aria-label="平台" aria-describedby="gitHTTPCredentialPlatformHint">
-            ${GIT_HTTP_PLATFORMS.map(([value, label]) => `<option value="${value}">${escapeHTML(label)}</option>`).join('')}
+          <select name="platform" class="git-http-select" aria-label="${_t('平台', 'Platform')}" aria-describedby="gitHTTPCredentialPlatformHint">
+            ${GIT_HTTP_PLATFORMS.map(([value, label]) => `<option value="${value}">${escapeHTML(pLabel(label))}</option>`).join('')}
           </select>
         </div>
-        <small id="gitHTTPCredentialPlatformHint">GitHub 和 GitLab 支持 gh / glab 认证和 PR/MR 合并状态同步。其他平台也可由 Agent 创建 PR/MR，合并状态请到托管平台查看。</small>
+        <small id="gitHTTPCredentialPlatformHint">${_t('GitHub 和 GitLab 支持 gh / glab 认证和 PR/MR 合并状态同步。其他平台也可由 Agent 创建 PR/MR，合并状态请到托管平台查看。', 'GitHub and GitLab support gh / glab authentication and PR/MR merge status sync. Agents can still create PRs/MRs on other hosts; check merge status there.')}</small>
       </label>
-      ${credentialFieldHTML({label:'名称', name:'name', type:'text', placeholder:'例如 公司 GitLab', hint:null})}
-      ${credentialFieldHTML({label:'Git 认证用户名', name:'username', type:'text', placeholder:'x-access-token', hint:'按托管平台要求填写；这是 HTTPS 认证用户名，不是提交作者名，通常无法从 Token 推导。'})}
-      ${credentialFieldHTML({label:'个人访问令牌', name:'token', placeholder:'粘贴个人访问令牌', hint:'保存后不再显示；编辑时留空保留现有令牌。'})}
+      ${credentialFieldHTML({label:_t('名称', 'Name'), name:'name', type:'text', placeholder:_t('例如 公司 GitLab', 'e.g. Company GitLab'), hint:null})}
+      ${credentialFieldHTML({label:_t('Git 认证用户名', 'Git auth username'), name:'username', type:'text', placeholder:'x-access-token', hint:_t('按托管平台要求填写；这是 HTTPS 认证用户名，不是提交作者名，通常无法从 Token 推导。', 'Enter the HTTPS auth username required by your host (not the Git commit author name, which usually cannot be inferred from the token).')})}
+      ${credentialFieldHTML({label:_t('个人访问令牌', 'Personal access token'), name:'token', placeholder:_t('粘贴个人访问令牌', 'Paste personal access token'), hint:_t('保存后不再显示；编辑时留空保留现有令牌。', 'Not shown again after saving; leave blank when editing to keep the existing token.')})}
       <footer class="git-ssh-form-actions">
-        <button type="button" class="credential-btn secondary" data-http-cred-cancel>取消</button>
-        <button type="submit" class="credential-btn primary">保存令牌</button>
+        <button type="button" class="credential-btn secondary" data-http-cred-cancel>${_t('取消', 'Cancel')}</button>
+        <button type="submit" class="credential-btn primary">${_t('保存令牌', 'Save token')}</button>
       </footer>
     </form>`;
 
@@ -78,20 +80,20 @@ function openGitHTTPCredentials() {
   }
 
   function credentialSummary(cred) {
-    const platformLabel = (GIT_HTTP_PLATFORMS.find(([value]) => value === cred.platform) || [, cred.platform])[1];
-    const tags = [platformLabel, cred.managed ? '平台托管' : ''].filter(Boolean);
+    const platformLabel = pLabel((GIT_HTTP_PLATFORMS.find(([value]) => value === cred.platform) || [, cred.platform])[1]);
+    const tags = [platformLabel, cred.managed ? _t('平台托管', 'Platform-managed') : ''].filter(Boolean);
     return `<div class="git-ssh-key-summary"><b>${escapeHTML(cred.name)}</b><small><code>${escapeHTML(cred.host)}</code> · ${tags.map(escapeHTML).join(' · ')}</small></div>`;
   }
 
   function renderList() {
     list.innerHTML = creds.map(cred => {
       const id = escapeHTML(cred.id);
-      const verify = cred.platform !== 'other' || cred.managed ? `<button type="button" class="credential-btn ghost" data-http-cred-verify="${id}">校验令牌</button>` : '';
+      const verify = cred.platform !== 'other' || cred.managed ? `<button type="button" class="credential-btn ghost" data-http-cred-verify="${id}">${_t('校验令牌', 'Verify')}</button>` : '';
       const actions = cred.managed
         ? verify
         : deleting === cred.id
-          ? `<span>删除这条令牌？</span><button type="button" class="credential-btn ghost" data-http-cred-keep>取消</button><button type="button" class="credential-btn danger-solid" data-http-cred-remove="${id}">确认删除</button>`
-          : `${verify}<button type="button" class="credential-btn ghost" data-http-cred-edit="${id}">编辑</button><button type="button" class="credential-btn ghost" data-http-cred-delete="${id}">删除</button>`;
+          ? `<span>${_t('删除这条令牌？', 'Delete this token?')}</span><button type="button" class="credential-btn ghost" data-http-cred-keep>${_t('取消', 'Cancel')}</button><button type="button" class="credential-btn danger-solid" data-http-cred-remove="${id}">${_t('确认删除', 'Delete')}</button>`
+          : `${verify}<button type="button" class="credential-btn ghost" data-http-cred-edit="${id}">${_t('编辑', 'Edit')}</button><button type="button" class="credential-btn ghost" data-http-cred-delete="${id}">${_t('删除', 'Delete')}</button>`;
       return `<div class="git-ssh-key-row">${credentialSummary(cred)}${actions}</div>`;
     }).join('');
   }
@@ -103,7 +105,7 @@ function openGitHTTPCredentials() {
     form.reset();
     form.hidden = false;
     add.hidden = true;
-    form.querySelector('h3').textContent = cred ? '编辑令牌' : '添加令牌';
+    form.querySelector('h3').textContent = cred ? _t('编辑令牌', 'Edit token') : _t('添加令牌', 'Add token');
     host.value = cred?.host || '';
     host.readOnly = !!cred;
     platform.value = cred?.platform || 'github';
@@ -111,7 +113,7 @@ function openGitHTTPCredentials() {
     username.value = cred?.username || '';
     username.placeholder = gitHTTPDefaultUsername(platform.value);
     token.required = !cred;
-    token.placeholder = cred ? '留空保留现有令牌' : '粘贴个人访问令牌';
+    token.placeholder = cred ? _t('留空保留现有令牌', 'Leave blank to keep existing token') : _t('粘贴个人访问令牌', 'Paste personal access token');
     (cred ? name : host).focus();
   }
 
@@ -132,7 +134,7 @@ function openGitHTTPCredentials() {
   async function request(method, body, id) {
     if (busy) return;
     setBusy(true);
-    setStatus(method === 'PUT' ? '正在保存…' : '正在删除…');
+    setStatus(method === 'PUT' ? _t('正在保存…', 'Saving…') : _t('正在删除…', 'Deleting…'));
     try {
       creds = await api(id ? `${endpoint}/${encodeURIComponent(id)}` : endpoint, {
         method, silent:true, ...(body ? {body:JSON.stringify(body)} : {}),
@@ -143,7 +145,7 @@ function openGitHTTPCredentials() {
       deleting = '';
       renderList();
       if (method === 'PUT') closeForm();
-      setStatus(method === 'PUT' ? '令牌已保存' : '令牌已删除');
+      setStatus(method === 'PUT' ? _t('令牌已保存', 'Token saved') : _t('令牌已删除', 'Token deleted'));
     } catch (error) {
       setStatus(error.message, true);
     } finally {
@@ -154,11 +156,11 @@ function openGitHTTPCredentials() {
   async function verify(id) {
     if (busy) return;
     setBusy(true);
-    setStatus('正在校验…');
+    setStatus(_t('正在校验…', 'Verifying…'));
     try {
       const result = await api(`${endpoint}/${encodeURIComponent(id)}/verify`, {method:'POST', silent:true});
-      if (result?.valid) setStatus(result.login ? `令牌有效，账号 ${result.login}` : '令牌有效');
-      else setStatus(result?.error || '令牌校验未通过', true);
+      if (result?.valid) setStatus(result.login ? _t(`令牌有效，账号 ${result.login}`, `Token valid for ${result.login}`) : _t('令牌有效', 'Token valid'));
+      else setStatus(result?.error || _t('令牌校验未通过', 'Token verification failed'), true);
     } catch (error) {
       setStatus(error.message, true);
     } finally {
