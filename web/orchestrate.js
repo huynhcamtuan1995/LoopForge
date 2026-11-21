@@ -502,7 +502,8 @@ async function aiWireEdge(build, edge, key) {
   aiDrawEdge(edge.id);
   const from = build.placed.get(edge.source);
   const to = build.placed.get(edge.target);
-  setAIBuildStatus('连线 ' + (from?.name || edge.source) + ' → ' + (to?.name || edge.target));
+  const _t = (z, e) => typeof lfT === 'function' ? lfT(z, e) : z;
+  setAIBuildStatus(_t('连线 ', 'Connecting ') + (from?.name || edge.source) + ' → ' + (to?.name || edge.target));
   await aiSleep(280);
 }
 
@@ -564,7 +565,8 @@ async function completeAIBuild(build, finalRaw) {
     syncCanvasAIEntry();
     return false;
   }
-  setAIBuildStatus('整理布局…');
+  const _t = (z, e) => typeof lfT === 'function' ? lfT(z, e) : z;
+  setAIBuildStatus(_t('整理布局…', 'Arranging layout…'));
   await aiRelayout(build);
   if (!isCurrentAIBuild(build)) return false;
   const canvas = $('#canvas');
@@ -577,7 +579,7 @@ async function completeAIBuild(build, finalRaw) {
   renderCanvas();
   renderProperties();
   aiOverview();
-  setAIBuildStatus(state.workflow.edges.length ? '节点和连线都已放好，确认后点保存' : '节点已放好，确认后点保存');
+  setAIBuildStatus(state.workflow.edges.length ? _t('节点和连线都已放好，确认后点保存', 'Steps and connections are ready. Click Save to confirm') : _t('节点已放好，确认后点保存', 'Steps are ready. Click Save to confirm'));
   return true;
 }
 
@@ -704,8 +706,9 @@ async function completeAIEdit(build, finalRaw) {
   renderWorkflowMeta();
   renderCanvas();
   renderProperties();
+  const _t = (z, e) => typeof lfT === 'function' ? lfT(z, e) : z;
   if (newcomers.length || laterEdges.length) {
-    setAIBuildStatus('补上新的步骤…');
+    setAIBuildStatus(_t('补上新的步骤…', 'Adding new steps…'));
     ingestStreamingWorkflow({name: merged.name, nodes: newcomers, edges: laterEdges});
     await drainAIBuild();
   }
@@ -718,7 +721,7 @@ async function completeAIEdit(build, finalRaw) {
   renderWorkflowMeta();
   renderCanvas();
   renderProperties();
-  setAIBuildStatus('已改在当前流程上，确认后点保存');
+  setAIBuildStatus(_t('已改在当前流程上，确认后点保存', 'Updated current SOP. Click Save to confirm'));
   return (state.workflow.nodes || []).length > 0;
 }
 
@@ -754,7 +757,8 @@ async function finishAIOrchestration(raw) {
     return playWorkflowOnCanvas(body, {confirmed: false});
   }
   const ok = await completeAIBuild(build, body);
-  if (!ok && build.token === aiBuildToken) setAIBuildStatus(build.mode === 'edit' ? '这轮没有改动画布，当前流程还在' : '这轮没有生成可放置的 SOP，可以换个说法再试');
+  const _t = (z, e) => typeof lfT === 'function' ? lfT(z, e) : z;
+  if (!ok && build.token === aiBuildToken) setAIBuildStatus(build.mode === 'edit' ? _t('这轮没有改动画布，当前流程还在', 'No canvas changes this round; current SOP preserved') : _t('这轮没有生成可放置的 SOP，可以换个说法再试', 'No placeable SOP generated this round; try rephrasing'));
   return ok;
 }
 

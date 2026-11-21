@@ -65,6 +65,6 @@ async function loadAssistantSettings(){
  assistantPrefsUI.loading=true;assistantPrefsUI.error='';
  if(!assistantPrefsUI.saved)renderAssistantSettings();
  try{assistantPrefsUI.saved=await api('/api/assistant/preferences',{silent:true})}
- catch(err){assistantPrefsUI.error=err.message||'读取设置失败'}
+ catch(err){assistantPrefsUI.error=err.message||(typeof lfT==='function'?lfT('读取设置失败','Failed to load settings'):'Failed to load settings')}
  finally{assistantPrefsUI.loading=false;renderAssistantSettings()}
 }

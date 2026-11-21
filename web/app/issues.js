@@ -458,6 +458,7 @@ function storedIssueWorkBranch(issue){
   return branch===String(repo?.defaultBranch||'').trim()?'':branch;
 }
 function updateIssueBaseBranchInput(input,hint,repositoryIds){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!input)return;
   const repos=(state.data.repositories||[]).filter(r=>(repositoryIds||[]).includes(r.id));
   const ids=JSON.stringify(repos.map(r=>r.id).sort());
@@ -465,8 +466,8 @@ function updateIssueBaseBranchInput(input,hint,repositoryIds){
   input.dataset.repositoryIds=ids;
   input.disabled=repos.length!==1;
   const mainBranch=repos.length===1?repos[0].defaultBranch:'';
-  input.placeholder=mainBranch?`留空从主分支 ${mainBranch} 新建`:'留空从各仓库配置的主分支新建';
-  if(hint)hint.textContent=repos.length!==1?'指定继续开发分支时请选择一个仓库；留空从各仓库配置的主分支分别新建工作分支。':'留空从配置主分支新建工作分支；填写时直接继续该已有分支，不新建。';
+  input.placeholder=mainBranch?_t(`留空从主分支 ${mainBranch} 新建`,`Leave blank to branch from ${mainBranch}`):_t('留空从各仓库配置的主分支新建','Leave blank to branch from default branch');
+  if(hint)hint.textContent=repos.length!==1?_t('指定继续开发分支时请选择一个仓库；留空从各仓库配置的主分支分别新建工作分支。','Select a single repository to specify an existing branch; leave blank to branch from each default branch.'):_t('留空从配置主分支新建工作分支；填写时直接继续该已有分支，不新建。','Leave blank to create a new branch from default; enter a branch name to continue on it directly.');
 }
 function refreshIssueBaseBranchInput(){
   renderIssueRepositoryBranchInputs($('#issueForm')?.elements.baseBranch,$('#issueBaseBranchHint'),$('#issueRepositoryBranches'),selectedIssueRepositoryIds());
@@ -479,6 +480,7 @@ function selectedIssueRepositoryBranches(input,host){
   return branches;
 }
 function renderIssueRepositoryBranchInputs(input,hint,host,repositoryIds,branches){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!input||!host)return;
   branches=branches||selectedIssueRepositoryBranches(input,host);
   const repos=repositoryIds.map(id=>(state.data.repositories||[]).find(r=>r.id===id)).filter(Boolean);
@@ -486,20 +488,22 @@ function renderIssueRepositoryBranchInputs(input,hint,host,repositoryIds,branche
   input.hidden=repos.length>1;
   if(repos.length===1)input.value=branches[repos[0].id]||'';
   host.hidden=repos.length<2;
-  host.innerHTML=repos.length<2?'':repos.map(repo=>`<label class="repository-branch-row"><span>${escapeHTML(repo.name)}</span><input class="input" data-repository-branch="${escapeHTML(repo.id)}" aria-label="${escapeHTML(repo.name)} 的继续开发分支" value="${escapeHTML(branches[repo.id]||'')}" placeholder="${escapeHTML(repo.defaultBranch?`留空从主分支 ${repo.defaultBranch} 新建`:'留空从配置主分支新建')}" autocomplete="off"></label>`).join('');
-  if(repos.length>1&&hint)hint.textContent='分别填写各仓库的已有功能分支，直接继续开发；留空的仓库从各自配置的主分支新建工作分支。';
+  host.innerHTML=repos.length<2?'':repos.map(repo=>`<label class="repository-branch-row"><span>${escapeHTML(repo.name)}</span><input class="input" data-repository-branch="${escapeHTML(repo.id)}" aria-label="${escapeHTML(_t(`${repo.name} 的继续开发分支`,`Existing branch for ${repo.name}`))}" value="${escapeHTML(branches[repo.id]||'')}" placeholder="${escapeHTML(repo.defaultBranch?_t(`留空从主分支 ${repo.defaultBranch} 新建`,`Leave blank to branch from ${repo.defaultBranch}`):_t('留空从配置主分支新建','Leave blank to branch from default branch'))}" autocomplete="off"></label>`).join('');
+  if(repos.length>1&&hint)hint.textContent=_t('分别填写各仓库的已有功能分支，直接继续开发；留空的仓库从各自配置的主分支新建工作分支。','Specify existing branches per repository to continue directly; blank repositories branch from their default branch.');
 }
 function fillIssueAssignees(projectId,value=''){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const f=$('#issueForm'),picker=$('#issueAssigneePicker');if(!f||!picker)return;
   const project=(state.data.projects||[]).find(p=>p.id===projectId),selected=Number(value)||Number(state.currentUser?.id)||Number(project?.ownerId)||0;
-  picker.innerHTML=userCombobox('assigneeUserId',selected,'使用项目 Owner');
+  picker.innerHTML=userCombobox('assigneeUserId',selected,_t('使用项目 Owner','Use project owner'));
   bindUserSearches(f);
 }
 function openIssue(issue=null){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   state.selectedIssue=issue?.id||null;
   const f=$('#issueForm'),projects=state.data.projects||[];
   f.elements.projectId.innerHTML=projects.map(p=>`<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
-  f.elements.workflowId.innerHTML=`<option value="">使用来源默认流程</option>`+runnableWorkflowOptions().map(w=>`<option value="${w.id}">${escapeHTML(w.name)}</option>`).join('');
+  f.elements.workflowId.innerHTML=`<option value="">${escapeHTML(_t('使用来源默认流程','Use source default SOP'))}</option>`+runnableWorkflowOptions().map(w=>`<option value="${w.id}">${escapeHTML(w.name)}</option>`).join('');
   const v=issue||{id:'',projectId:state.projectFilter||projects[0]?.id||'',title:'',description:'',priority:'medium',status:'backlog',workflowId:'',repositoryId:'',repositoryIds:[],baseBranch:''};
   ['id','projectId','title','description','priority','status','workflowId','baseBranch','tapdId'].forEach(k=>f.elements[k].value=v[k]||'');
   f.elements.baseBranch.value=storedIssueWorkBranch(v);
@@ -514,12 +518,12 @@ function openIssue(issue=null){
   renderIssueRepositoryBranchInputs(f.elements.baseBranch,$('#issueBaseBranchHint'),$('#issueRepositoryBranches'),selectedIssueRepositoryIds(),v.repositoryBranches||{[v.repositoryId]:storedIssueWorkBranch(v)});
   f.elements.projectId.onchange=()=>{fillIssueRepositories(f.elements.projectId.value);fillIssueAssignees(f.elements.projectId.value,'');renderIssueRepositoryBranchInputs(f.elements.baseBranch,$('#issueBaseBranchHint'),$('#issueRepositoryBranches'),selectedIssueRepositoryIds(),{})};
   $('#issueRepoChecks').onchange=refreshIssueBaseBranchInput;
-  $('#issueModalTitle').textContent=issue?`${(projects.find(p=>p.id===v.projectId)?.key||'ISS')}-${v.number} ${v.title}`:'新建工作项';
+  $('#issueModalTitle').textContent=issue?`${(projects.find(p=>p.id===v.projectId)?.key||'ISS')}-${v.number} ${v.title}`:_t('新建工作项','New Issue');
   const task=(state.data.tasks||[]).find(t=>t.id===v.latestTaskId);
-  let stateHtml=task?`最近任务 ${escapeHTML(task.id)} · ${taskStatusLabel(task.status)} · Run ${escapeHTML(task.runId)}`:'';
-  if(v.automationState==='ignored')stateHtml+=`${stateHtml?'<br>':''}定时 SOP：<b>已忽略</b>`;
-  if(v.deliveryState==='merged')stateHtml+=`${stateHtml?'<br>':''}交付状态：<b>${escapeHTML(deliveryLockedLabel(v))}，需要重新打开后才能触发</b>`;
-  if(v.externalRef){stateHtml+=`<br>外部来源: <b>${escapeHTML(v.externalRef.source)}</b> · <a href="${escapeHTML(safeURL(v.externalRef.externalUrl))}" target="_blank" rel="noopener noreferrer">${escapeHTML(v.externalRef.externalId)}</a> · 状态: ${escapeHTML(v.externalRef.externalState||'—')}`}
+  let stateHtml=task?_t(`最近任务 ${escapeHTML(task.id)} · ${taskStatusLabel(task.status)} · Run ${escapeHTML(task.runId)}`,`Latest task ${escapeHTML(task.id)} · ${taskStatusLabel(task.status)} · Run ${escapeHTML(task.runId)}`):'';
+  if(v.automationState==='ignored')stateHtml+=`${stateHtml?'<br>':''}${_t('定时 SOP：<b>已忽略</b>','Scheduled SOP: <b>Ignored</b>')}`;
+  if(v.deliveryState==='merged')stateHtml+=`${stateHtml?'<br>':''}${_t(`交付状态：<b>${escapeHTML(deliveryLockedLabel(v))}，需要重新打开后才能触发</b>`,`Delivery status: <b>${escapeHTML(deliveryLockedLabel(v))}, reopen required before triggering</b>`)}`;
+  if(v.externalRef){stateHtml+=`<br>${_t('外部来源','External source')}: <b>${escapeHTML(v.externalRef.source)}</b> · <a href="${escapeHTML(safeURL(v.externalRef.externalUrl))}" target="_blank" rel="noopener noreferrer">${escapeHTML(v.externalRef.externalId)}</a> · ${_t('状态','Status')}: ${escapeHTML(v.externalRef.externalState||'—')}`}
   $('#issueTaskState').innerHTML=stateHtml;
   const reopenBtn=$('#reopenDeliveredIssue'),dispatchBtn=$('#dispatchIssue');
   if(reopenBtn){
@@ -540,9 +544,9 @@ function openIssue(issue=null){
     });
   }
   showManualBinding();
-  if(note){note.hidden=isNew||!v.externalRef;const text=$('#issueBoundNoteText');if(text&&v.externalRef){const src=v.externalRef.source==='github'?'GitHub Issue':v.externalRef.source==='tapd'?'TAPD':v.externalRef.source==='gongfeng'?'工蜂 Issue':'外部';const id=v.externalRef.externalIid||v.externalRef.externalId||'';text.innerHTML=`已关联 ${src} <b>${escapeHTML(String(id))}</b>。保存只改本平台记录，不会回写外部单据。`}}
+  if(note){note.hidden=isNew||!v.externalRef;const text=$('#issueBoundNoteText');if(text&&v.externalRef){const src=v.externalRef.source==='github'?'GitHub Issue':v.externalRef.source==='tapd'?'TAPD':v.externalRef.source==='gongfeng'?_t('工蜂 Issue','Gongfeng Issue'):_t('外部','External');const id=v.externalRef.externalIid||v.externalRef.externalId||'';text.innerHTML=_t(`已关联 ${src} <b>${escapeHTML(String(id))}</b>。保存只改本平台记录，不会回写外部单据。`,`Linked to ${src} <b>${escapeHTML(String(id))}</b>. Saving only updates the local record and will not write back to the external tracker.`)}}
   const submit=document.querySelector('#issueForm button[type="submit"]');
-  if(submit)submit.textContent=isNew?'创建需求':'保存';
+  if(submit)submit.textContent=isNew?_t('创建需求','Create Issue'):_t('保存','Save');
   $('#issueModal').classList.add('open');
 }
 function issueFromForm(){
@@ -561,7 +565,10 @@ function issueFromForm(){
 // 就能完成仓库配置。
 // repoDisplayPath shows host/path for a parsed repository, e.g. github.com/owner/name.
 function repoDisplayPath(info,fallback=''){return info?.provider==='ssh'?(info.project||info.cloneUrl||fallback):info?.webUrl?String(info.webUrl).replace(/^https?:\/\//,''):String(fallback||'')}
-function repoProviderLabel(info){return info?.provider==='ssh'?'Git SSH':info?.provider==='github'?'GitHub':'工蜂'}
+function repoProviderLabel(info){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return info?.provider==='ssh'?'Git SSH':info?.provider==='github'?'GitHub':_t('工蜂','Gongfeng');
+}
 function parseGongfengRepoURL(raw){
   const httpsInfo=globalThis.LoopForgeGitHTTPS?.(raw);if(httpsInfo)return httpsInfo;
   const sshInfo=globalThis.LoopForgeGitSSH?.(raw);if(sshInfo)return sshInfo;
@@ -618,27 +625,29 @@ function renderRepositoryCredentialHint(){
   host.sshHintVersion=(host.sshHintVersion||0)+1;
   host.hidden=false;
   host.removeAttribute('role');
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const configured=!!user.gitHttpCredentialsConfigured;
-  const title=configured?'已配置 Git 访问令牌':'仓库可以先保存，代码任务还需要 Token';
-  const message=configured?'请确认 Token 已获得目标仓库的访问和写入权限。SOP 使用需求责任人的 Token，未指定时使用项目 Owner 的 Token。':'使用仓库进行需求分析、访问私有代码或提交 PR 前，请先配置 Git 访问令牌。SOP 使用需求责任人的 Token，未指定时使用项目 Owner 的 Token。';
+  const title=configured?_t('已配置 Git 访问令牌','Git access token configured'):_t('仓库可以先保存，代码任务还需要 Token','Repository saved, but code tasks require a token');
+  const message=configured?_t('请确认 Token 已获得目标仓库的访问和写入权限。SOP 使用需求责任人的 Token，未指定时使用项目 Owner 的 Token。','Ensure your token has read/write access to the repository. SOP uses the issue owner\'s token, or the project owner\'s token if unassigned.'):_t('使用仓库进行需求分析、访问私有代码或提交 PR 前，请先配置 Git 访问令牌。SOP 使用需求责任人的 Token，未指定时使用项目 Owner 的 Token。','Configure a Git access token before analyzing repositories, reading private code, or opening PRs. SOP uses the issue owner\'s token, or the project owner\'s if unassigned.');
   host.dataset.configured=String(configured);
-  host.innerHTML=`<div><b>${escapeHTML(title)}</b><p>${escapeHTML(message)}</p></div><button type="button" class="button ghost small" data-repository-configure-token>${configured?'个人设置':'配置 Git 访问令牌'}</button>`;
+  host.innerHTML=`<div><b>${escapeHTML(title)}</b><p>${escapeHTML(message)}</p></div><button type="button" class="button ghost small" data-repository-configure-token>${escapeHTML(configured?_t('个人设置','Profile Settings'):_t('配置 Git 访问令牌','Configure Git Token'))}</button>`;
   host.querySelector('[data-repository-configure-token]').onclick=()=>{
     $('#repositoryModal').classList.remove('open');gotoCredential('gitHttpCredentials');
   };
 }
-function renderRepositoryList(){renderRepositoryCredentialHint();const project=(state.data.projects||[]).find(p=>p.id===state.projectFilter),repos=(state.data.repositories||[]).filter(r=>r.projectId===state.projectFilter);$('#repositoryProjectHint').textContent=`当前项目：${project?.name||'—'}。粘贴 GitHub 链接或 Git SSH 地址；集成分支用于检查多个 SOP 执行后是否存在合并冲突，可留空。`;$('#repositoryList').innerHTML=repos.map(r=>`<button type="button" data-edit-repo="${escapeHTML(r.id)}"><b>${escapeHTML(r.name)}</b><span>${escapeHTML(r.gongfengProjectId||r.cloneUrl)} · 主分支 ${escapeHTML(r.defaultBranch||'master')} · 集成分支 ${escapeHTML(r.integrateBranch||'未配置')}</span><em>${project?.defaultRepositoryId===r.id?'默认仓库':'编辑'}</em></button>`).join('')||'<p>当前项目还没有绑定代码仓库。</p>';$('#repositoryList').querySelectorAll('[data-edit-repo]').forEach(b=>b.onclick=()=>fillRepositoryForm((state.data.repositories||[]).find(r=>r.id===b.dataset.editRepo)))}
+function renderRepositoryList(){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;renderRepositoryCredentialHint();const project=(state.data.projects||[]).find(p=>p.id===state.projectFilter),repos=(state.data.repositories||[]).filter(r=>r.projectId===state.projectFilter);$('#repositoryProjectHint').textContent=_t(`当前项目：${project?.name||'—'}。粘贴 GitHub 链接或 Git SSH 地址；集成分支用于检查多个 SOP 执行后是否存在合并冲突，可留空。`,`Current project: ${project?.name||'—'}. Paste a GitHub URL or Git SSH URL; leave the integration branch empty unless checking cross-SOP merge conflicts.`);$('#repositoryList').innerHTML=repos.map(r=>`<button type="button" data-edit-repo="${escapeHTML(r.id)}"><b>${escapeHTML(r.name)}</b><span>${escapeHTML(r.gongfengProjectId||r.cloneUrl)} · ${_t('主分支','Main branch')} ${escapeHTML(r.defaultBranch||'master')} · ${_t('集成分支','Integration branch')} ${escapeHTML(r.integrateBranch||_t('未配置','Not configured'))}</span><em>${project?.defaultRepositoryId===r.id?_t('默认仓库','Default'):_t('编辑','Edit')}</em></button>`).join('')||`<p>${escapeHTML(_t('当前项目还没有绑定代码仓库。','No repositories bound to this project yet.'))}</p>`;$('#repositoryList').querySelectorAll('[data-edit-repo]').forEach(b=>b.onclick=()=>fillRepositoryForm((state.data.repositories||[]).find(r=>r.id===b.dataset.editRepo)))}
 function fillRepositoryForm(repo={}){const f=$('#repositoryForm');['id','name','gongfengProjectId','webUrl','cloneUrl','localPath'].forEach(k=>{if(f.elements[k])f.elements[k].value=repo[k]||''});if(f.elements.repoUrl)f.elements.repoUrl.value=repo.provider==='ssh'?repo.cloneUrl:repo.webUrl||repo.cloneUrl||repo.gongfengProjectId||'';
   const nameField=$('#repositoryNameField');if(nameField)nameField.hidden=!repo.id;f.elements.defaultBranch.value=repo.defaultBranch||'master';f.elements.integrateBranch.value=repo.integrateBranch||'';const project=(state.data.projects||[]).find(p=>p.id===state.projectFilter);f.elements.makeDefault.checked=!project?.defaultRepositoryId||project.defaultRepositoryId===repo.id;if(f.elements.repoUrl){f.elements.repoUrl.oninput=renderRepositoryCredentialHint;f.elements.repoUrl.onchange=()=>{renderRepositoryCredentialHint();const form=f.elements,fill={name:form.name.value,gongfengProjectId:form.gongfengProjectId.value,webUrl:form.webUrl.value,cloneUrl:form.cloneUrl.value};if(fillRepositoryFromLink(form.repoUrl.value,fill)){form.name.value=fill.name;form.gongfengProjectId.value=fill.gongfengProjectId;form.webUrl.value=fill.webUrl;form.cloneUrl.value=fill.cloneUrl}}};renderRepositoryCredentialHint()}
-function openRepositoryModal(){if(!state.projectFilter)return toast('请先选择项目');gitSSHKeyCache=null;fillRepositoryForm();renderRepositoryList();$('#repositoryModal').classList.add('open')}
-async function saveRepository(e){e.preventDefault();const f=e.currentTarget,project=(state.data.projects||[]).find(p=>p.id===state.projectFilter);if(f.elements.repoUrl){const fill={name:f.elements.name.value,gongfengProjectId:f.elements.gongfengProjectId.value,webUrl:f.elements.webUrl.value,cloneUrl:f.elements.cloneUrl.value};if(fillRepositoryFromLink(f.elements.repoUrl.value,fill)){f.elements.name.value=fill.name;f.elements.gongfengProjectId.value=fill.gongfengProjectId;f.elements.webUrl.value=fill.webUrl;f.elements.cloneUrl.value=fill.cloneUrl}}const payload={id:f.elements.id.value,projectId:state.projectFilter,provider:(parseGongfengRepoURL(f.elements.repoUrl?.value)?.provider||'gongfeng'),name:f.elements.name.value.trim(),gongfengProjectId:f.elements.gongfengProjectId.value.trim(),webUrl:f.elements.webUrl.value.trim(),cloneUrl:f.elements.cloneUrl.value.trim(),defaultBranch:f.elements.defaultBranch.value.trim(),integrateBranch:f.elements.integrateBranch.value.trim(),localPath:f.elements.localPath.value.trim(),repoUrl:f.elements.repoUrl?f.elements.repoUrl.value.trim():''};try{const repo=await api('/api/repositories',{method:payload.id?'PUT':'POST',body:JSON.stringify(payload)}),idx=(state.data.repositories||[]).findIndex(r=>r.id===repo.id);if(idx>=0)state.data.repositories[idx]=repo;else(state.data.repositories||(state.data.repositories=[])).push(repo);if(f.elements.makeDefault.checked&&project){const saved=await api('/api/projects',{method:'PUT',body:JSON.stringify({...project,defaultRepositoryId:repo.id})});if(saved&&saved.id){const pi=(state.data.projects||[]).findIndex(p=>p.id===saved.id);if(pi>=0)state.data.projects[pi]=saved;project.defaultRepositoryId=repo.id}else project.defaultRepositoryId=repo.id}fillRepositoryForm(repo);renderRepositoryList();renderIssues();toast(repo.provider==='ssh'?'仓库已保存；检出和推送使用 Git SSH 密钥。':(userById(state.currentUser?.id)||{}).gitHubCredentialConfigured?'Git 仓库绑定已保存':'仓库已保存；配置 Git 访问令牌 后才能进行代码交付。')}catch(err){toast(err.message)}}
+function openRepositoryModal(){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;if(!state.projectFilter)return toast(_t('请先选择项目','Please select a project first'));gitSSHKeyCache=null;fillRepositoryForm();renderRepositoryList();$('#repositoryModal').classList.add('open')}
+async function saveRepository(e){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;e.preventDefault();const f=e.currentTarget,project=(state.data.projects||[]).find(p=>p.id===state.projectFilter);if(f.elements.repoUrl){const fill={name:f.elements.name.value,gongfengProjectId:f.elements.gongfengProjectId.value,webUrl:f.elements.webUrl.value,cloneUrl:f.elements.cloneUrl.value};if(fillRepositoryFromLink(f.elements.repoUrl.value,fill)){f.elements.name.value=fill.name;f.elements.gongfengProjectId.value=fill.gongfengProjectId;f.elements.webUrl.value=fill.webUrl;f.elements.cloneUrl.value=fill.cloneUrl}}const payload={id:f.elements.id.value,projectId:state.projectFilter,provider:(parseGongfengRepoURL(f.elements.repoUrl?.value)?.provider||'gongfeng'),name:f.elements.name.value.trim(),gongfengProjectId:f.elements.gongfengProjectId.value.trim(),webUrl:f.elements.webUrl.value.trim(),cloneUrl:f.elements.cloneUrl.value.trim(),defaultBranch:f.elements.defaultBranch.value.trim(),integrateBranch:f.elements.integrateBranch.value.trim(),localPath:f.elements.localPath.value.trim(),repoUrl:f.elements.repoUrl?f.elements.repoUrl.value.trim():''};try{const repo=await api('/api/repositories',{method:payload.id?'PUT':'POST',body:JSON.stringify(payload)}),idx=(state.data.repositories||[]).findIndex(r=>r.id===repo.id);if(idx>=0)state.data.repositories[idx]=repo;else(state.data.repositories||(state.data.repositories=[])).push(repo);if(f.elements.makeDefault.checked&&project){const saved=await api('/api/projects',{method:'PUT',body:JSON.stringify({...project,defaultRepositoryId:repo.id})});if(saved&&saved.id){const pi=(state.data.projects||[]).findIndex(p=>p.id===saved.id);if(pi>=0)state.data.projects[pi]=saved;project.defaultRepositoryId=repo.id}else project.defaultRepositoryId=repo.id}fillRepositoryForm(repo);renderRepositoryList();renderIssues();toast(repo.provider==='ssh'?_t('仓库已保存；检出和推送使用 Git SSH 密钥。','Repository saved; checkout and push will use your Git SSH key.'):(userById(state.currentUser?.id)||{}).gitHubCredentialConfigured?_t('Git 仓库绑定已保存','Git repository binding saved'):_t('仓库已保存；配置 Git 访问令牌 后才能进行代码交付。','Repository saved; configure a Git access token before code delivery.'))}catch(err){toast(err.message)}}
 function fillImportTAPDWorkflow(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const select=$('#importTAPDWorkflow');
   if(!select)return;
   const opts=runnableWorkflowOptions();
   const selected=defaultSOPForIssue({projectId:state.projectFilter,source:'tapd',kind:'requirement'});
   const chosen=opts.some(w=>w.id===selected)?selected:(opts[0]?.id||'');
-  select.innerHTML=opts.map(w=>`<option value="${escapeHTML(w.id)}" ${w.id===chosen?'selected':''}>${escapeHTML(w.name)}</option>`).join('')||'<option value="">暂无可选 SOP</option>';
+  select.innerHTML=opts.map(w=>`<option value="${escapeHTML(w.id)}" ${w.id===chosen?'selected':''}>${escapeHTML(w.name)}</option>`).join('')||`<option value="">${escapeHTML(_t('暂无可选 SOP','No available SOPs'))}</option>`;
 }
 function fillImportTAPDRepository(){
   const host=$('#importTAPDRepository');
@@ -659,6 +668,7 @@ function setImportTAPDRepositoryIds(ids){
   renderImportTAPDRepositoryPicker();
 }
 function renderImportTAPDRepositoryPicker(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const host=$('#importTAPDRepository');
   if(!host)return;
   const repos=(state.data.repositories||[]).filter(r=>r.projectId===state.projectFilter);
@@ -670,7 +680,7 @@ function renderImportTAPDRepositoryPicker(){
     return `<button type="button" class="repo-picker-tag" data-remove-repo="${escapeHTML(id)}">${escapeHTML(name)}<span aria-hidden="true">×</span></button>`;
   }).join('');
   const options=leftover.map(r=>`<option value="${escapeHTML(r.id)}">${escapeHTML(r.name)}</option>`).join('');
-  const placeholder=!repos.length?'暂无可选仓库':(!leftover.length?'已全部选择':'选择仓库');
+  const placeholder=!repos.length?_t('暂无可选仓库','No repositories available'):(!leftover.length?_t('已全部选择','All selected'):_t('选择仓库','Select repository'));
   host.innerHTML=`<div class="repo-picker-field">${tags}<select class="repo-picker-select"${leftover.length?'':' disabled'}><option value="">${placeholder}</option>${options}</select></div>`;
   host.querySelectorAll('[data-remove-repo]').forEach(b=>b.onclick=()=>setImportTAPDRepositoryIds(selected.filter(id=>id!==b.dataset.removeRepo)));
   const sel=host.querySelector('select');
@@ -678,7 +688,8 @@ function renderImportTAPDRepositoryPicker(){
   renderIssueRepositoryBranchInputs($('#importTAPDBaseBranch'),$('#importTAPDBaseBranchHint'),$('#importTAPDRepositoryBranches'),selected);
 }
 function openImportTAPDModal(){
-  if(!state.projectFilter)return toast('请先在顶部选择一个项目');
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(!state.projectFilter)return toast(_t('请先在顶部选择一个项目','Please select a project at the top first'));
   const input=$('#importTAPDURL');if(input)input.value='';
   const baseBranch=$('#importTAPDBaseBranch');if(baseBranch)baseBranch.value='';
   fillImportTAPDWorkflow();
@@ -687,15 +698,16 @@ function openImportTAPDModal(){
   setTimeout(()=>input?.focus(),0);
 }
 async function importTAPDStory(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   e.preventDefault();
   const url=$('#importTAPDURL')?.value.trim();
-  if(!url)return toast('请粘贴 TAPD 工作项链接或分享文本');
-  if(!state.projectFilter)return toast('请先选择项目');
+  if(!url)return toast(_t('请粘贴 TAPD 工作项链接或分享文本','Paste a TAPD work item URL or share text'));
+  if(!state.projectFilter)return toast(_t('请先选择项目','Please select a project first'));
   const repositoryIds=selectedImportTAPDRepositoryIds();
-  if(!repositoryIds.length)return toast('请至少选择一个代码仓库');
+  if(!repositoryIds.length)return toast(_t('请至少选择一个代码仓库','Select at least one repository'));
   const button=$('#confirmImportTAPD');
   try{
-    if(button){button.disabled=true;button.textContent='正在导入…'}
+    if(button){button.disabled=true;button.textContent=_t('正在导入…','Importing...')}
     const workflowId=$('#importTAPDWorkflow')?.value.trim();
     const baseBranch=$('#importTAPDBaseBranch')?.value.trim()||'';
     const repositoryBranches=selectedIssueRepositoryBranches($('#importTAPDBaseBranch'),$('#importTAPDRepositoryBranches'));
@@ -704,10 +716,10 @@ async function importTAPDStory(e){
     if(idx>=0)state.data.issues[idx]=issue;else (state.data.issues||(state.data.issues=[])).unshift(issue);
     $('#importTAPDModal').classList.remove('open');
     renderIssues();
-    toast(`已导入 TAPD 工作项：${issue.title||issue.id}`,'ok');
+    toast(_t(`已导入 TAPD 工作项：${issue.title||issue.id}`,`Imported TAPD issue: ${issue.title||issue.id}`),'ok');
     if(issue.id)openIssueDetail(issue.id);
   }catch(err){toast(err.message)}
-  finally{if(button){button.disabled=false;button.textContent='导入'}}
+  finally{if(button){button.disabled=false;button.textContent=_t('导入','Import')}}
 }
 function canonicalIssue(id){
   id=String(id||'').trim();
@@ -720,6 +732,7 @@ function trackerRefOf(issue){
   return undefined;
 }
 async function persistIssue(issue){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const id=String(issue.id||'').trim();
   const prior=canonicalIssue(id);
   const payload={...prior,...issue,id};
@@ -731,17 +744,17 @@ async function persistIssue(issue){
   const isNew=!id;
   if(isNew){
     const target=issue.syncTarget||document.querySelector('#issueForm [name="syncTarget"]:checked')?.value;
-    if(!target)throw new Error('新建必须选择创建方式');
+    if(!target)throw new Error(_t('新建必须选择创建方式','Please choose a creation mode'));
     payload.syncTarget=target;
   }
   const saved=await api('/api/issues',{method:isNew?'POST':'PUT',body:JSON.stringify(payload)});
   rememberIssue(saved, id);
   return saved;
 }
-async function saveIssue(e){e.preventDefault();const button=e.currentTarget.querySelector('button[type="submit"]');try{button.disabled=true;button.textContent='正在保存…';const saved=await persistIssue(issueFromForm());state.selectedIssue=saved.id;$('#issueModal').classList.remove('open');renderIssues();toast('需求已保存')}catch(err){toast(err.message)}finally{button.disabled=false;button.textContent='保存'}}
-async function dispatchIssue(){try{let issue=issueFromForm();const blocked=issueExecutionBlocked(issue);if(blocked)return toast(blocked);const current=latestIssueTask(issue),rerun=!!current;if(current&&!await afConfirm({title:'重新运行确认',message:['queued','dispatched','running'].includes(current.status)?'该需求已有进行中的任务，确定额外发起一次重新运行吗？':'该需求已经处理过，确定整条 SOP 重新运行吗？',confirmText:'确认重新运行'}))return;const button=$('#dispatchIssue');button.disabled=true;button.textContent='正在调度…';issue=await persistIssue(issue);const task=await api(`/api/issues/${issue.id}/dispatch`,{method:'POST',body:JSON.stringify({rerun,workflowId:issue.workflowId||''})});issue.latestTaskId=task.id;issue.status='in_progress';const idx=state.data.issues.findIndex(i=>i.id===issue.id);if(idx>=0)state.data.issues[idx]=issue;if(!state.data.tasks)state.data.tasks=[];const existingTaskIdx=state.data.tasks.findIndex(t=>t.id===task.id);if(existingTaskIdx>=0)state.data.tasks[existingTaskIdx]=task;else state.data.tasks.unshift(task);if(task.runId){startLiveRun(task.runId);try{const run=await api(`/api/runs/${encodeURIComponent(task.runId)}`,{silent:true});if(run?.id){if(!state.data.runs)state.data.runs=[];const rIdx=state.data.runs.findIndex(r=>r.id===run.id);if(rIdx>=0)state.data.runs[rIdx]={...state.data.runs[rIdx],...run};else state.data.runs=sortRunsDescending([run,...state.data.runs]);}}catch(e){}}$('#issueModal').classList.remove('open');renderIssues();await openIssueDetail(issue.id,'sop');toast(rerun?'已创建重新运行':'已创建执行任务并启动工作流','ok');Promise.all([refreshIssues(),refreshRuns(true)]).catch(()=>{});}catch(err){toast(err.message)}finally{const button=$('#dispatchIssue');button.disabled=false;button.textContent='启动 SOP'}}
-async function dispatchIssueById(issueId,rerun=false,workflowId=''){try{const issue=(state.data.issues||[]).find(i=>i.id===issueId),blocked=issueExecutionBlocked(issue);if(blocked)return toast(blocked);if(clarificationNeedsConfirm(issue)){openIssueDetail(issueId,'clarify');return toast('请先确认澄清结论后再触发 SOP')}
-const task=await api(`/api/issues/${issueId}/dispatch`,{method:'POST',body:JSON.stringify({rerun,workflowId})});if(issue){issue.latestTaskId=task.id;issue.status='in_progress';if(issueWithoutSOP(issue)&&workflowId){issue.sopMode='';issue.workflowId=workflowId}}if(!state.data.tasks)state.data.tasks=[];const existingTaskIdx=state.data.tasks.findIndex(t=>t.id===task.id);if(existingTaskIdx>=0)state.data.tasks[existingTaskIdx]=task;else state.data.tasks.unshift(task);if(task.runId){startLiveRun(task.runId);try{const run=await api(`/api/runs/${encodeURIComponent(task.runId)}`,{silent:true});if(run?.id){if(!state.data.runs)state.data.runs=[];const rIdx=state.data.runs.findIndex(r=>r.id===run.id);if(rIdx>=0)state.data.runs[rIdx]={...state.data.runs[rIdx],...run};else state.data.runs=sortRunsDescending([run,...state.data.runs]);}}catch(e){}}renderIssues();await openIssueDetail(issueId,'sop');toast(rerun?'已创建重新运行':'已启动 SOP','ok');Promise.all([refreshIssues(),refreshRuns(true)]).catch(()=>{});setTimeout(()=>refreshIssues(),2000);setTimeout(()=>refreshIssues(),10000);}catch(err){if(/澄清/.test(err.message||'')){state.issueDetailTab='clarify';openIssueDetail(issueId,'clarify')}toast(err.message,'err')}}
+async function saveIssue(e){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;e.preventDefault();const button=e.currentTarget.querySelector('button[type="submit"]');try{button.disabled=true;button.textContent=_t('正在保存…','Saving...');const saved=await persistIssue(issueFromForm());state.selectedIssue=saved.id;$('#issueModal').classList.remove('open');renderIssues();toast(_t('需求已保存','Issue saved'))}catch(err){toast(err.message)}finally{button.disabled=false;button.textContent=_t('保存','Save')}}
+async function dispatchIssue(){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;try{let issue=issueFromForm();const blocked=issueExecutionBlocked(issue);if(blocked)return toast(blocked);const current=latestIssueTask(issue),rerun=!!current;if(current&&!await afConfirm({title:_t('重新运行确认','Confirm re-run'),message:['queued','dispatched','running'].includes(current.status)?_t('该需求已有进行中的任务，确定额外发起一次重新运行吗？','This issue already has an active task. Start another run?'):_t('该需求已经处理过，确定整条 SOP 重新运行吗？','This issue has already been processed. Re-run the entire SOP?'),confirmText:_t('确认重新运行','Confirm Re-run')}))return;const button=$('#dispatchIssue');button.disabled=true;button.textContent=_t('正在调度…','Dispatching...');issue=await persistIssue(issue);const task=await api(`/api/issues/${issue.id}/dispatch`,{method:'POST',body:JSON.stringify({rerun,workflowId:issue.workflowId||''})});issue.latestTaskId=task.id;issue.status='in_progress';const idx=state.data.issues.findIndex(i=>i.id===issue.id);if(idx>=0)state.data.issues[idx]=issue;if(!state.data.tasks)state.data.tasks=[];const existingTaskIdx=state.data.tasks.findIndex(t=>t.id===task.id);if(existingTaskIdx>=0)state.data.tasks[existingTaskIdx]=task;else state.data.tasks.unshift(task);if(task.runId){startLiveRun(task.runId);try{const run=await api(`/api/runs/${encodeURIComponent(task.runId)}`,{silent:true});if(run?.id){if(!state.data.runs)state.data.runs=[];const rIdx=state.data.runs.findIndex(r=>r.id===run.id);if(rIdx>=0)state.data.runs[rIdx]={...state.data.runs[rIdx],...run};else state.data.runs=sortRunsDescending([run,...state.data.runs]);}}catch(e){}}$('#issueModal').classList.remove('open');renderIssues();await openIssueDetail(issue.id,'sop');toast(rerun?_t('已创建重新运行','Re-run created'):_t('已创建执行任务并启动工作流','Task created and workflow started'),'ok');Promise.all([refreshIssues(),refreshRuns(true)]).catch(()=>{});}catch(err){toast(err.message)}finally{const button=$('#dispatchIssue');button.disabled=false;button.textContent=_t('启动 SOP','Start SOP')}}
+async function dispatchIssueById(issueId,rerun=false,workflowId=''){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;try{const issue=(state.data.issues||[]).find(i=>i.id===issueId),blocked=issueExecutionBlocked(issue);if(blocked)return toast(blocked);if(clarificationNeedsConfirm(issue)){openIssueDetail(issueId,'clarify');return toast(_t('请先确认澄清结论后再触发 SOP','Please confirm the clarification conclusion before triggering SOP'))}
+const task=await api(`/api/issues/${issueId}/dispatch`,{method:'POST',body:JSON.stringify({rerun,workflowId})});if(issue){issue.latestTaskId=task.id;issue.status='in_progress';if(issueWithoutSOP(issue)&&workflowId){issue.sopMode='';issue.workflowId=workflowId}}if(!state.data.tasks)state.data.tasks=[];const existingTaskIdx=state.data.tasks.findIndex(t=>t.id===task.id);if(existingTaskIdx>=0)state.data.tasks[existingTaskIdx]=task;else state.data.tasks.unshift(task);if(task.runId){startLiveRun(task.runId);try{const run=await api(`/api/runs/${encodeURIComponent(task.runId)}`,{silent:true});if(run?.id){if(!state.data.runs)state.data.runs=[];const rIdx=state.data.runs.findIndex(r=>r.id===run.id);if(rIdx>=0)state.data.runs[rIdx]={...state.data.runs[rIdx],...run};else state.data.runs=sortRunsDescending([run,...state.data.runs]);}}catch(e){}}renderIssues();await openIssueDetail(issueId,'sop');toast(rerun?_t('已创建重新运行','Re-run created'):_t('已启动 SOP','SOP started'),'ok');Promise.all([refreshIssues(),refreshRuns(true)]).catch(()=>{});setTimeout(()=>refreshIssues(),2000);setTimeout(()=>refreshIssues(),10000);}catch(err){if(/澄清/.test(err.message||'')){state.issueDetailTab='clarify';openIssueDetail(issueId,'clarify')}toast(err.message,'err')}}
 function defaultSOPForIssue(issue){
   if(issueWithoutSOP(issue))return '';
   const projectId=issue?.projectId||state.projectFilter;
@@ -768,37 +781,39 @@ function defaultSOPForIssue(issue){
 }
 function bindIssueTriggers(root=document){root.querySelectorAll('[data-trigger-issue]').forEach(button=>{button.onclick=e=>{e.stopPropagation();e.preventDefault();triggerIssue(button.dataset.triggerIssue)}})}
 async function resumeRun(runId,fromEl){
-  if(!runId)return toast('没有可继续的运行');
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(!runId)return toast(_t('没有可继续的运行','No run available to resume'));
   const issue=(state.data.issues||[]).find(i=>i.id===issueIdForRun(runId));
   const blocked=issueExecutionBlocked(issue);if(blocked)return toast(blocked);
   const run=cachedRun(runId);
   if(queuedRunActionBlocked(runId))return;
-  if(run?.status==='cancelled')return toast('已取消的运行不能重试');
+  if(run?.status==='cancelled')return toast(_t('已取消的运行不能重试','Cancelled runs cannot be retried'));
   let context=readHumanContext(fromEl);
   if(!context && !fromEl?.closest?.('[data-human-context-root]') && runRetryNeedsContext(run)){
-    const typed=await afPrompt({title:'补充执行上下文',message:'可补充上下文后再从失败节点继续（例如单测失败用例名）。留空则直接重试，取消则中止。',placeholder:'例如：修复某用例或调整依赖',defaultValue:''});
+    const typed=await afPrompt({title:_t('补充执行上下文','Additional execution context'),message:_t('可补充上下文后再从失败节点继续（例如单测失败用例名）。留空则直接重试，取消则中止。','Optionally add context before resuming from the failed step (e.g. failing test case name). Leave blank to retry directly, or cancel to abort.'),placeholder:_t('例如：修复某用例或调整依赖','e.g. Fix a test case or adjust dependencies'),defaultValue:''});
     if(typed===null)return;
     context=typed.trim();
   }
   try{
-    await requestRunActivation(runId,'retry',withHumanContext({reason:'从中断处继续',context}));
+    await requestRunActivation(runId,'retry',withHumanContext({reason:_t('从中断处继续','Resume from interruption'),context}));
     const current=await syncRunControlState(runId);
-    toast(runControlToast(current,'已从失败节点继续，已完成的步骤不会重跑'));
+    toast(runControlToast(current,_t('已从失败节点继续，已完成的步骤不会重跑','Resumed from failed step; completed steps will not rerun')));
     Promise.all([refreshIssues(),refreshRuns(true)]).catch(()=>{});
     const issueId=issueIdForRun(runId);
     if(state.drawerOpen&&issueId)openIssueDetail(issueId,'sop');
   }catch(err){toast(err.message)}
 }
 async function triggerIssue(issueId,workflowId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const issue=(state.data.issues||[]).find(i=>i.id===issueId);
-  if(!issue)return toast('未找到工作项');
+  if(!issue)return toast(_t('未找到工作项','Requirement not found'));
   const blocked=issueExecutionBlocked(issue);if(blocked)return toast(blocked);
-  if(issueWithoutSOP(issue)&&!String(workflowId||'').trim()){openIssueDetail(issueId,'sop');return toast('这条需求不使用 SOP，请先选择要运行的 SOP')}
+  if(issueWithoutSOP(issue)&&!String(workflowId||'').trim()){openIssueDetail(issueId,'sop');return toast(_t('这条需求不使用 SOP，请先选择要运行的 SOP','This requirement uses no SOP; choose an SOP to run first'))}
   const targetWorkflow=String(workflowId||'').trim()||issue.workflowId||defaultSOPForIssue(issue);
   const laneTask=(state.data.tasks||[]).find(t=>t.issueId===issue.id&&t.workflowId===targetWorkflow);
   const latestRun=laneTask?latestIssueRun(issue,laneTask):null;
-  if(laneTask&&['queued','dispatched','running'].includes(laneTask.status)&&!await afConfirm({title:'发起新运行确认',message:'这条 SOP 已有进行中的任务，确定再次发起一个新运行吗？',confirmText:'确认发起'}))return;
-  if(['failed','cancelled','succeeded'].includes(latestRun?.status)&&!await afConfirm({title:'触发整条 SOP 确认',message:'「触发」会把这条 SOP 从头再跑，已完成的步骤也会重做。要从失败节点继续请用「重试」。确定触发？',confirmText:'确认触发'}))return;
+  if(laneTask&&['queued','dispatched','running'].includes(laneTask.status)&&!await afConfirm({title:_t('发起新运行确认','Confirm new run'),message:_t('这条 SOP 已有进行中的任务，确定再次发起一个新运行吗？','This SOP already has an active task. Start another run?'),confirmText:_t('确认发起','Confirm')}))return;
+  if(['failed','cancelled','succeeded'].includes(latestRun?.status)&&!await afConfirm({title:_t('触发整条 SOP 确认','Confirm full SOP trigger'),message:_t('「触发」会把这条 SOP 从头再跑，已完成的步骤也会重做。要从失败节点继续请用「重试」。确定触发？','“Trigger” restarts this SOP from the beginning and reruns completed steps. To continue from a failed step, use “Retry”. Proceed?'),confirmText:_t('确认触发','Confirm trigger')}))return;
   try{
     await dispatchIssueById(issue.id,!!laneTask,targetWorkflow);
   }catch(err){toast(err.message)}
@@ -820,12 +835,13 @@ function currentIssueSOPBindings(issueId){
   return effectiveIssueSOPBindings(issue).map((b,i)=>({id:b.id||('sop-'+b.workflowId),workflowId:b.workflowId,order:i+1,assigneeUserId:Number(b.assigneeUserId)||0,handoff:b.handoff||[],dependsOn:b.dependsOn||[]}));
 }
 async function addIssueSOP(issueId,workflowId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   workflowId=String(workflowId||'').trim();
-  if(!workflowId)return toast('请选择要绑定的 SOP');
+  if(!workflowId)return toast(_t('请选择要绑定的 SOP','Select an SOP to bind'));
   const bindings=currentIssueSOPBindings(issueId);
-  if(bindings.some(b=>b.workflowId===workflowId))return toast('这条 SOP 已经绑定');
+  if(bindings.some(b=>b.workflowId===workflowId))return toast(_t('这条 SOP 已经绑定','This SOP is already bound'));
   bindings.push({workflowId,order:bindings.length+1,assigneeUserId:0,handoff:[]});
-  try{await saveIssueSOPS(issueId,bindings);toast('已加上','ok')}catch(err){toast(err.message)}
+  try{await saveIssueSOPS(issueId,bindings);toast(_t('已加上','Added'),'ok')}catch(err){toast(err.message)}
 }
 async function removeIssueSOP(issueId,workflowId){
   const bindings=currentIssueSOPBindings(issueId).filter(b=>b.workflowId!==workflowId);
@@ -849,15 +865,16 @@ async function setIssueSOPHandoff(issueId,workflowId,raw){
   try{await saveIssueSOPS(issueId,bindings)}catch(err){toast(err.message)}
 }
 async function retriggerIssue(issueId,workflowId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const issue=(state.data.issues||[]).find(i=>i.id===issueId)||state.issueDetailData?.issue;
-  if(!issue)return toast('未找到工作项');
-  if(issueTrackerClosed(issue))return toast('外部工作项已关闭，请先在外部系统重新打开');
-  if(issueManuallyClosed(issue))return toast('请先重新打开该需求，再触发 SOP');
+  if(!issue)return toast(_t('未找到工作项','Requirement not found'));
+  if(issueTrackerClosed(issue))return toast(_t('外部工作项已关闭，请先在外部系统重新打开','External ticket is closed; reopen it in the external system first'));
+  if(issueManuallyClosed(issue))return toast(_t('请先重新打开该需求，再触发 SOP','Reopen this requirement before triggering an SOP'));
   if(clarificationNeedsConfirm(issue)){
     openIssueDetail(issue.id,'clarify');
-    return toast('请先确认澄清结论再重新触发');
+    return toast(_t('请先确认澄清结论再重新触发','Confirm the clarification conclusion before retriggering'));
   }
-  if(!await afConfirm({title:'重新触发确认',message:'会整条 SOP 从头再开一条新运行，已完成步骤也会重做，旧记录还在。失败时若只想从失败点继续，请用「重试」。',confirmText:'确认重新触发'}))return;
+  if(!await afConfirm({title:_t('重新触发确认','Confirm retrigger'),message:_t('会整条 SOP 从头再开一条新运行，已完成步骤也会重做，旧记录还在。失败时若只想从失败点继续，请用「重试」。','Starts a new run of the entire SOP from the beginning and reruns completed steps, keeping previous records. To resume from a failed step, use “Retry”.'),confirmText:_t('确认重新触发','Confirm retrigger')}))return;
   try{
     let target=issue;
     if(deliveryLocked(target))target=await reopenDeliveredIssueSilent(target.id);
@@ -874,13 +891,14 @@ async function reopenDeliveredIssueSilent(issueId){
   return issue;
 }
 async function reopenDeliveredIssue(issueId){
-  if(!await afConfirm({title:'重新打开确认',message:'重新打开后，该工作项可以再次触发 SOP。确定继续？',confirmText:'确认重新打开'}))return;
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(!await afConfirm({title:_t('重新打开确认','Confirm reopen'),message:_t('重新打开后，该工作项可以再次触发 SOP。确定继续？','Once reopened, this requirement can trigger SOPs again. Continue?'),confirmText:_t('确认重新打开','Confirm reopen')}))return;
   try{
     const issue=await reopenDeliveredIssueSilent(issueId);
     renderIssues();
     $('#issueModal')?.classList.remove('open');
     if(state.drawerOpen&&state.selectedIssue===issue.id)openIssueDetail(issue.id);
-    toast('工作项已重新打开，可以再次触发 SOP');
+    toast(_t('工作项已重新打开，可以再次触发 SOP','Requirement reopened and ready to trigger SOPs again'));
   }catch(err){toast(err.message)}
 }
 function canRerunFromNode(r){
@@ -926,25 +944,26 @@ function runNodeChoices(r){
 }
 function runNodeAllowsContext(node){return !!node?.type&&!isScriptWorkflowNode(node)}
 function afRerunFromNode(run,nodeId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const fields=$('#rerunFromNodeFields');
   const context=$('#rerunFromNodeContext');
   const contextFields=$('#rerunFromNodeContextFields');
   const hint=$('#rerunFromNodeHint');
   if(!$('#confirmModal')||!fields||!context||!contextFields||!hint)return Promise.resolve(null);
   const node=runNodeChoices(run).find(n=>n.id===nodeId);
-  if(!node){toast('这个节点现在不能从这里重跑');return Promise.resolve(null)}
+  if(!node){toast(_t('这个节点现在不能从这里重跑','This step cannot be rerun from here right now'));return Promise.resolve(null)}
   return afOpenDialog(()=>{
-    $('#confirmTitle').textContent='从这里重跑';
-    $('#confirmMessage').textContent=`从「${node.name}」及其下游重跑，上游已完成的步骤会保留。${run.workspaceCleanedAt&&!String(run.workspaceCleanedAt).startsWith('0001-')?'工作区已回收：优先恢复已有快照；没有快照时重新准备仓库和已归档的上游产物，未保存的历史文件无法恢复。':''}`;
+    $('#confirmTitle').textContent=_t('从这里重跑','Rerun from here');
+    $('#confirmMessage').textContent=_t(`从「${node.name}」及其下游重跑，上游已完成的步骤会保留。${run.workspaceCleanedAt&&!String(run.workspaceCleanedAt).startsWith('0001-')?'工作区已回收：优先恢复已有快照；没有快照时重新准备仓库和已归档的上游产物，未保存的历史文件无法恢复。':''}`,`Rerun from “${node.name}” and its downstream steps while keeping completed upstream steps.${run.workspaceCleanedAt&&!String(run.workspaceCleanedAt).startsWith('0001-')?' Workspace cleaned: existing snapshots are restored first; otherwise repositories and archived upstream artifacts are re-prepared, and unsaved historical files cannot be recovered.':''}`);
     fields.hidden=false;
     context.value='';
     const allowsContext=runNodeAllowsContext(node);
     contextFields.hidden=!allowsContext;
-    hint.textContent=allowsContext?'补充说明会写进这次执行的上下文。':'脚本节点不接收补充上下文。';
+    hint.textContent=allowsContext?_t('补充说明会写进这次执行的上下文。','Additional notes will be written into this run’s context.'):_t('脚本节点不接收补充上下文。','Script steps do not accept additional context.');
     const okBtn=$('#confirmOkBtn');
-    okBtn.textContent='开始重跑';
+    okBtn.textContent=_t('开始重跑','Start rerun');
     okBtn.className='button primary';
-    $('#confirmCancelBtn').textContent='取消';
+    $('#confirmCancelBtn').textContent=_t('取消','Cancel');
     setConfirmIcon('info','refresh');
     return {
       focus:allowsContext?context:okBtn,
@@ -956,19 +975,20 @@ function afRerunFromNode(run,nodeId){
   });
 }
 async function openRerunFromNode(run,nodeId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!run?.id)return;
-  if(!canRerunFromHere(run,nodeId))return toast('这个节点现在不能从这里重跑');
+  if(!canRerunFromHere(run,nodeId))return toast(_t('这个节点现在不能从这里重跑','This step cannot be rerun from here right now'));
   const choice=await afRerunFromNode(run,nodeId);
   if(!choice?.nodeId)return;
   const issueId=run.executionContext?.issueId||issueIdForRun(run.id);
   const issue=(state.data.issues||[]).find(i=>i.id===issueId);
-  if(issueTrackerClosed(issue))return toast('外部工作项已关闭，请先在外部系统重新打开');
-  if(issueManuallyClosed(issue))return toast('请先重新打开该需求，再从这里重跑');
+  if(issueTrackerClosed(issue))return toast(_t('外部工作项已关闭，请先在外部系统重新打开','External ticket is closed; reopen it in the external system first'));
+  if(issueManuallyClosed(issue))return toast(_t('请先重新打开该需求，再从这里重跑','Reopen this requirement before rerunning from here'));
   try{
     if(deliveryLocked(issue))await reopenDeliveredIssueSilent(issue.id);
-    await requestRunActivation(run.id,'retry',{nodeId:choice.nodeId,reason:'从指定节点重跑',context:choice.context||''});
+    await requestRunActivation(run.id,'retry',{nodeId:choice.nodeId,reason:_t('从指定节点重跑','Rerun from specified step'),context:choice.context||''});
     const next=await syncRunControlState(run.id);
-    toast(runControlToast(next,'已从该节点重跑，上游完成步骤会保留'));
+    toast(runControlToast(next,_t('已从该节点重跑，上游完成步骤会保留','Rerun started from this step; completed upstream steps are kept')));
     Promise.all([refreshIssues(),refreshRuns(true)]).catch(()=>{});
 
   }catch(err){toast(err.message,'err')}

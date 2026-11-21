@@ -324,13 +324,15 @@ function restoreRequirementComposer(){
   return true;
 }
 async function closeRequirementComposer(){
-  if(requirementComposerBusy())return toast('正在建单，请稍候');
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(requirementComposerBusy())return toast(_t('正在建单，请稍候','Creating requirement, please wait'));
   $('#requirementModal').classList.remove('open');
   resetRequirementComposer();
   clearRequirementComposer();
 }
 function openRequirementWizard(){
-  if(!(state.data.projects||[]).length){switchView('projects');return toast('请先创建项目')}
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(!(state.data.projects||[]).length){switchView('projects');return toast(_t('请先创建项目','Create a project first'))}
   if(requirementComposerOpen()){
     setTimeout(()=>$('#chatInput')?.focus(),0);
     return;
@@ -360,8 +362,9 @@ function normalizeClarifyParsed(parsed){
   return {...src, questions};
 }
 function clarifyToolLabel(tool){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const name=String(tool||'').replace(/^mcp__agentflow_session__/,'');
-  return ({Read:'读取',Grep:'搜索',Glob:'查找',MCP:'MCP',submit_clarification:'提交结论',submit_assistant_reply:'提交回复'})[name]||name||'操作';
+  return ({Read:_t('读取','Read'),Grep:_t('搜索','Grep'),Glob:_t('查找','Glob'),MCP:'MCP',submit_clarification:_t('提交结论','Submit clarification'),submit_assistant_reply:_t('提交回复','Submit reply')})[name]||name||_t('操作','Action');
 }
 function collectRequirementDraft(){
   const description=reqDescription();

@@ -204,7 +204,7 @@ function openGitSSHKeys(remote = '') {
     if (!dialog.open) return;
     keys = items;
     add.disabled = false;
-    setStatus(keys.length ? '' : '还没有配置 Git SSH 密钥');
+    setStatus(keys.length ? '' : (typeof lfT === 'function' ? lfT('还没有配置 Git SSH 密钥', 'No Git SSH keys configured yet') : '还没有配置 Git SSH 密钥'));
     renderList();
     if (repository) {
       const existing = keys.find(key => globalThis.LoopForgeGitSSHHost(key.host) === repository.host);

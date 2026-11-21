@@ -70,7 +70,8 @@
   }
   function modelMeta(id) {
     const value = id || DEFAULT_MODEL;
-    return catalog.models.find(m => m.id === value) || {id: value, family: familyOf(value), name: value === DEFAULT_MODEL ? '默认' : value};
+    const _t = (z, e) => typeof lfT === 'function' ? lfT(z, e) : z;
+    return catalog.models.find(m => m.id === value) || {id: value, family: familyOf(value), name: value === DEFAULT_MODEL ? _t('默认', 'Default') : value};
   }
   function fillModelIcon(el, family, id) {
     if (!el) return;
@@ -107,7 +108,7 @@
     const icon = toggle.querySelector('.ai-model-icon');
     if (icon) fillModelIcon(icon, item?.family || familyOf(id), id);
     const label = toggle.querySelector('[data-model-label]');
-    if (label) label.textContent = item?.name || id || '选择模型';
+    if (label) label.textContent = item?.name || id || (typeof lfT === 'function' ? lfT('选择模型', 'Select model') : '选择模型');
     const credits = creditLabel(item);
     toggle.title = credits ? `${item?.name || id} ${credits}` : (item?.name || id || '');
   }

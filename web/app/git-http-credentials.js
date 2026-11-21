@@ -220,7 +220,7 @@ function openGitHTTPCredentials() {
     if (!dialog.open) return;
     creds = Array.isArray(items) ? items : [];
     add.disabled = false;
-    setStatus(creds.length ? '' : '还没有配置 Git 访问令牌');
+    setStatus(creds.length ? '' : (typeof lfT === 'function' ? lfT('还没有配置 Git 访问令牌', 'No Git access tokens configured yet') : '还没有配置 Git 访问令牌'));
     renderList();
   }).catch(error => setStatus(error.message, true));
 }
