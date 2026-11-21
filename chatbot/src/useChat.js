@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { listSeparator, t } from "./i18n.js";
 import {
   api,
   write,
@@ -69,7 +70,7 @@ function preferredModel(list, executor, ...preferences) {
 // Mirrors errAssistantSponsoredModel in internal/httpapi/assistant_sponsor.go;
 // credentialHint turns it into a "去配置" button.
 export function sponsoredModelMessage(models = []) {
-  return `未配置个人 CodeBuddy API Key 时只能使用平台管理员允许的模型（${models.join("、")}）。要使用其他模型，请先在个人配置中配置自己的 CodeBuddy API Key`;
+  return t("chat.sponsoredModelsLimit", { models: models.join(listSeparator()) });
 }
 
 // The models a user without their own key may chat with, the default first.
@@ -318,7 +319,7 @@ export function useChat() {
       } catch (e) {
         if (!current) return;
         const retry = !e.status || e.status >= 500;
-        connectionError = retry ? "连接暂时中断，正在重连…" : e.message;
+        connectionError = retry ? t("chat.reconnecting") : e.message;
         setError(connectionError);
         if (retry) timer = setTimeout(load, 2000);
       }
@@ -347,7 +348,7 @@ export function useChat() {
       } catch (e) {
         if (!current || currentId.current !== activeId || sessionRef.current?.id === activeId) return;
         const retry = !e.status || e.status >= 500;
-        connectionError = retry ? "连接暂时中断，正在重连…" : e.message;
+        connectionError = retry ? t("chat.reconnecting") : e.message;
         setError(connectionError);
         if (retry) timer = setTimeout(load, 2000);
       }
@@ -529,7 +530,7 @@ export function useChat() {
         // No reply was ever started here: nothing can be running.
         if (e.status === 404 && !generationFound) setGenerationKnown(activeId);
         else {
-          connectionError = e.status ? e.message : "连接暂时中断，正在重连…";
+          connectionError = e.status ? e.message : t("chat.reconnecting");
           setError(connectionError);
         }
         schedulePoll(2000);
@@ -549,7 +550,7 @@ export function useChat() {
       setError("");
       if (strategy === "bind") {
         if (generation?.status === "running" || submittingRef.current) {
-          setError("请先停止当前生成，再绑定项目。");
+          setError(t("chat.stopBeforeBindProject"));
           return;
         }
         try {
@@ -710,7 +711,7 @@ export function useChat() {
     const loading = request
       .then((catalog) => {
         if (catalogRequests.current.get(key) !== loading)
-          throw new ComposerModelError("模型目录已更新，请重新发送。");
+          throw new ComposerModelError(t("chat.catalogUpdated"));
         if (catalog.error) throw new Error(catalog.error);
         const result = runnerId ? {
           models: (catalog.models || []).filter((model) => concreteModel(model, "agy")).map((model) => ({
@@ -742,8 +743,8 @@ export function useChat() {
   }, [agyAccountKey, catalogToLoad, executor, personalMachineId, providerCatalogs, loadProviderCatalog]);
 
   function composerModelError(resolved) {
-    if (resolved.unavailableAgyVariant) return "当前模型已不在该执行机器的账号目录，请重新选择模型。";
-    if (!resolved.activeModel) return "当前 CLI 暂无可用模型，请在个人配置中获取或添加模型。";
+    if (resolved.unavailableAgyVariant) return t("chat.unavailableAgyVariant");
+    if (!resolved.activeModel) return t("chat.noModelForCli");
     return "";
   }
   async function modelForRequest(selection, conversation, resolved) {
@@ -766,7 +767,7 @@ export function useChat() {
       if (unprefixedModel(selection.executor, catalogModel?.id ?? visibleModel) !==
           unprefixedModel(selection.executor, resolved.activeModel) ||
           (visibleEffort && visibleEffort !== resolved.activeEffort)) {
-        throw new ComposerModelError("当前执行环境不支持所选的模型或思考强度，请重新选择。");
+        throw new ComposerModelError(t("chat.unsupportedModelOrEffort"));
       }
     }
     const error = composerModelError(resolved);
@@ -927,7 +928,7 @@ export function useChat() {
     s.endedAt ||= Date.now();
     if (Date.now() - s.endedAt > 30000) {
       done();
-      setError("插入的消息已记录，但新一轮回复没有开始，请重新发送。");
+      setError(t("chat.steerTimeout"));
     }
   });
   useEffect(() => {
@@ -994,7 +995,7 @@ export function useChat() {
       await write(
         `${sessionPath(id)}/generation/steer?generationId=${encodeURIComponent(from)}`,
         {
-          content: item.text || "请阅读本轮附件并回答。",
+          content: item.text || t("chat.attachmentPrompt"),
           attachments: item.attachments || [],
           references: item.references || [],
           requireExactModel: true,
@@ -1032,7 +1033,7 @@ export function useChat() {
   }) {
     if (!text.trim() && !attachments.length) return false;
     if (sessionLoading() || replyStatePending()) {
-      setError("会话仍在加载，请稍候再发送。");
+      setError(t("chat.sessionLoading"));
       return false;
     }
     const currentProjectId = sessionRef.current?.projectId || "";
@@ -1051,7 +1052,7 @@ export function useChat() {
       }
       // Internal follow-ups (confirmed drafts) never queue or interrupt.
       if (messagesOverride || fromQueue || !currentId.current) {
-        setError("当前回复仍在生成，请稍后再试。");
+        setError(t("chat.replyInProgress"));
         return false;
       }
       const id = currentId.current;
@@ -1068,10 +1069,10 @@ export function useChat() {
       setError("");
       return true;
     }
-    if (sandboxBusyRef.current) { setError("运行环境仍在保存，请稍后发送。"); return false; }
-    if (executionMachines.machineSavingRef.current) { setError("执行机器仍在保存，请稍后发送。"); return false; }
+    if (sandboxBusyRef.current) { setError(t("chat.sandboxSaving")); return false; }
+    if (executionMachines.machineSavingRef.current) { setError(t("chat.machineSaving")); return false; }
     if (!executionLocked(sessionRef.current) && !executionMachines.machinesReady) {
-      setError(executionMachines.machineError || "执行机器仍在加载，请稍后发送。");
+      setError(executionMachines.machineError || t("chat.machineLoading"));
       return false;
     }
     // Claim the send and its target before a credential check can yield.
@@ -1097,12 +1098,12 @@ export function useChat() {
         if (rows) setUsers(rows);
         const fresh = rows?.find((u) => u.id === user.id) ?? account;
         if (!fresh?.codeBuddyApiKeyConfigured) {
-          if (viewingTarget()) setError("请先在个人配置中配置自己的 CodeBuddy API Key");
+          if (viewingTarget()) setError(t("engines.missingCodeBuddyKey"));
           return false;
         }
         requestModelCatalogRefresh((revision) => revision + 1);
         if (!composerModel.activeModel) {
-          if (viewingTarget()) setError("CodeBuddy 凭证已更新，正在刷新模型列表，请稍后重试。");
+          if (viewingTarget()) setError(t("chat.codeBuddyRefreshed"));
           return false;
         }
       }
@@ -1119,7 +1120,7 @@ export function useChat() {
             executionTarget: {pool: executionMachines.defaultRunnerId ? "runner" : "cloud", runnerId: executionMachines.defaultRunnerId || ""},
             ...chosen,
             executor,
-            title: text.trim().slice(0, 36) || "图片与文件",
+            title: text.trim().slice(0, 36) || t("common.imagesAndFiles"),
             approvalUserId: approval.approvalUserId,
             messages: [],
           },
@@ -1134,7 +1135,7 @@ export function useChat() {
           changeURL(s.id);
         }
       }
-      const content = text.trim() || "请阅读本轮附件并回答。";
+      const content = text.trim() || t("chat.attachmentPrompt");
       const pending = {
         role: "user",
         authorId: user?.id,
@@ -1319,7 +1320,7 @@ export function useChat() {
   async function applyDraft(messageIndex, draftIndex, review = {}) {
     const id = activeId;
     const key = `${id}:${messageIndex}:${draftIndex}`;
-    if (applyingRef.current.has(key)) throw Error("这项操作正在执行，请稍候。");
+    if (applyingRef.current.has(key)) throw Error(t("chat.draftApplying"));
     applyingRef.current.add(key);
     let executed = false;
     try {
@@ -1328,7 +1329,7 @@ export function useChat() {
       let draft = reply.drafts[draftIndex];
       if (draft.saved || draft.inherited) return null;
       if (generation?.status === "running")
-        throw Error("请等待回复结束后再确认操作。");
+        throw Error(t("chat.waitReplyBeforeConfirm"));
       if (draft.proposal && !draft.decision) {
         // Accept before running it: once the timeout has handed the work to
         // the assistant, the accept fails and the operation must not run.
@@ -1351,7 +1352,7 @@ export function useChat() {
       }
       if (draft.proposal && draft.decision !== "accepted") {
         if (currentId.current === id) setSession(stored);
-        throw Error("这条建议已经处理过，不能执行。");
+        throw Error(t("chat.proposalAlreadyHandled"));
       }
       try {
         Object.assign(draft, reviewedOperation(draft, review));
@@ -1383,7 +1384,7 @@ export function useChat() {
           operationError(
             result.error?.message ||
               result.result?.content?.[0]?.text ||
-              "操作失败",
+              t("operations.failed"),
           ),
         );
       executed = true;
@@ -1416,9 +1417,7 @@ export function useChat() {
       return draft;
     } catch (e) {
       setError(
-        (executed
-          ? "操作已执行，但回执保存失败，请先核对结果，不要重复执行。"
-          : "") + e.message,
+        (executed ? t("chat.executedButReceiptFailed") : "") + e.message,
       );
       throw Object.assign(e, { executed });
     } finally {
@@ -1430,9 +1429,9 @@ export function useChat() {
   async function decideProposal(messageIndex, draftIndex, decision, approvalMode = "confirm") {
     const id = activeId;
     if (generation?.status === "running")
-      throw Error("请等待回复结束后再处理建议。");
+      throw Error(t("chat.waitReplyBeforeProposal"));
     const key = `${id}:${messageIndex}:${draftIndex}`;
-    if (applyingRef.current.has(key)) throw Error("这条建议正在处理，请稍候。");
+    if (applyingRef.current.has(key)) throw Error(t("chat.proposalHandling"));
     applyingRef.current.add(key);
     try {
       const result = await write(`${sessionPath(id)}/proposals`, {
@@ -1457,12 +1456,12 @@ export function useChat() {
   }
   async function linkIssue(issueId) {
     if (submittingRef.current || generation?.status === "running") {
-      setError("请等待回复结束或停止生成，再关联需求。");
+      setError(t("chat.waitReplyBeforeIssue"));
       return false;
     }
     const s = sessionRef.current;
     if (currentId.current && s?.id !== currentId.current) {
-      setError("会话仍在加载，请稍后关联需求。");
+      setError(t("chat.sessionLoadingIssue"));
       return false;
     }
     setError("");
@@ -1492,15 +1491,15 @@ export function useChat() {
     }
   }
   async function bindExecutionMachine(runnerId) {
-    if (submittingRef.current || executionLocked(sessionRef.current)) throw new Error("会话执行机器已固定，请新建对话。");
-    if (currentId.current && !sessionRef.current) throw new Error("会话仍在加载，请稍后选择。");
+    if (submittingRef.current || executionLocked(sessionRef.current)) throw new Error(t("chat.machineLocked"));
+    if (currentId.current && !sessionRef.current) throw new Error(t("chat.sessionLoadingSelect"));
     return {runnerId};
   }
   async function selectSandbox(id) {
     const current = sessionRef.current;
     if (submittingRef.current || sandboxBusyRef.current || generation?.status === "running") return false;
     if (current?.runId) {
-      setError("任务会话使用任务的运行环境，不能切换。"); return false;
+      setError(t("chat.sandboxLockedError")); return false;
     }
     if (!currentId.current) { setSandboxProfileId(id); return true; }
     if (!current || current.id !== currentId.current) return false;
@@ -1526,7 +1525,7 @@ export function useChat() {
         setWorkspaceExecution(run.executionContext || {});
       }
     }).catch(() => {
-      if (current) setWorkspaceExecutionError("无法加载工作区执行机器");
+      if (current) setWorkspaceExecutionError(t("chat.workspaceMachineLoadError"));
     });
     return () => { current = false; };
   }, [session?.workspaceRunId, session?.runId]);
@@ -1591,7 +1590,7 @@ export function useChat() {
     executors: EXECUTORS.map((item) => {
       if (!personalMachine || !["codex", "claude-code", "agy"].includes(item.id)) return item;
       const runtime = personalMachine.runtimes?.find((runtime) => runtime.provider === item.id);
-      return runtime?.authMode === "personal" ? item : { ...item, detail: "使用执行机器上的本机登录态。" };
+      return runtime?.authMode === "personal" ? item : { ...item, detail: t("chat.runnerLocalAuthDetail") };
     }),
     setExecutor: chooseExecutor,
     sessions,

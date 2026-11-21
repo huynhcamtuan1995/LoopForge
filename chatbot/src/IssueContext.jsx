@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import HarnessIcon from "./HarnessIcon";
 import { api } from "./api";
+import { t, useI18n } from "./i18n.js";
 import { Dialog } from "./ui";
 export function issueHref(id, projectId) {
   return `/?projectId=${encodeURIComponent(projectId)}&issueId=${encodeURIComponent(id)}#/issues`;
@@ -11,6 +12,7 @@ export default function IssueContext({
   onClose,
   hideTrigger = false,
 }) {
+  useI18n();
   const [issue, setIssue] = useState(null),
     [internalOpen, setInternalOpen] = useState(false),
     [query, setQuery] = useState(""),
@@ -119,15 +121,15 @@ export default function IssueContext({
             className="context-pill issue-context"
             title={
               chat.session?.shared
-                ? "需求由当前运行关联"
-                : "关联当前会话的主需求；其他 @引用只作用于当前消息"
+                ? t("issue.linkedByRun")
+                : t("issue.linkHint")
             }
             disabled={unavailable}
             onClick={() => setInternalOpen(true)}
           >
             <HarnessIcon name="doc" size={14} />
             <span>
-              {chat.issueId ? issue?.title || chat.issueId : "关联需求"}
+              {chat.issueId ? issue?.title || chat.issueId : t("issue.link")}
             </span>
           </button>
           {chat.issueId ? (
@@ -136,8 +138,8 @@ export default function IssueContext({
               href={issueHref(chat.issueId, chat.projectId)}
               target="_blank"
               rel="noreferrer"
-              title="打开关联需求"
-              aria-label="打开关联需求"
+              title={t("issue.openLinked")}
+              aria-label={t("issue.openLinked")}
             >
               <HarnessIcon name="preview-expand" size={13} />
             </a>
@@ -145,14 +147,12 @@ export default function IssueContext({
         </>
       ) : null}
       {open ? (
-        <Dialog title="会话主需求" onClose={close}>
+        <Dialog title={t("issue.dialogTitle")} onClose={close}>
           <div className="issue-selector">
-            <p>
-              选择此会话持续讨论的主需求。关联后每轮读取最新内容，会话的可见范围不变。
-            </p>
+            <p>{t("issue.dialogDesc")}</p>
             {chat.issueId ? (
               <p>
-                已关联：
+                {t("issue.linkedPrefix")}
                 <a
                   href={issueHref(chat.issueId, chat.projectId)}
                   target="_blank"
@@ -164,8 +164,8 @@ export default function IssueContext({
             ) : null}
             <input
               autoFocus
-              aria-label="搜索关联需求"
-              placeholder="搜索当前项目的需求…"
+              aria-label={t("issue.searchAria")}
+              placeholder={t("issue.searchPlaceholder")}
               value={query}
               disabled={unavailable || saving}
               onChange={(e) => setQuery(e.target.value)}
@@ -177,7 +177,7 @@ export default function IssueContext({
                 disabled={unavailable || saving}
                 onClick={() => choose("")}
               >
-                解除关联
+                {t("issue.unlink")}
               </button>
             ) : null}
             <div className="issue-options">
@@ -194,13 +194,13 @@ export default function IssueContext({
                     {row.name}
                     <small>{row.id}</small>
                   </span>
-                  {chat.issueId === row.id ? "已关联" : ""}
+                  {chat.issueId === row.id ? t("issue.linked") : ""}
                 </button>
               ))}
             </div>
-            {loading ? <p role="status">正在查找…</p> : null}
+            {loading ? <p role="status">{t("common.searching")}</p> : null}
             {!loading && !rows.length && !error ? (
-              <p>没有匹配的需求；可先在聊天中创建或导入。</p>
+              <p>{t("issue.empty")}</p>
             ) : null}
             {error ? <p role="alert">{error}</p> : null}
             {next ? (
@@ -209,7 +209,7 @@ export default function IssueContext({
                 disabled={loading || unavailable || saving}
                 onClick={more}
               >
-                加载更多
+                {t("common.loadMore")}
               </button>
             ) : null}
           </div>

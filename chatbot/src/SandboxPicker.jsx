@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { t, useI18n } from "./i18n.js";
 import { SelectMenu } from "./ui";
 import HarnessIcon from "./HarnessIcon";
 import "./sandbox-picker.css";
@@ -8,13 +9,13 @@ export function conversationSandboxOptions(sandboxes, project, selected = "") {
     (s) => s.driver === "docker" && (s.projectId === project?.id || s.shared),
   );
   const options = [
-    { value: "", label: "由 Agent 选择" },
+    { value: "", label: t("sandbox.agentChoice") },
     ...available.map((s) => ({ value: s.id, label: s.name || s.id })),
   ];
   if (selected && !available.some((s) => s.id === selected)) {
     options.push({
       value: selected,
-      label: `环境已不可用 · ${selected}`,
+      label: t("sandbox.unavailable", { id: selected }),
       disabled: true,
     });
   }
@@ -22,6 +23,7 @@ export function conversationSandboxOptions(sandboxes, project, selected = "") {
 }
 
 export default function SandboxPicker({ chat, onCreate }) {
+  useI18n();
   const trigger = useRef(null);
   const [open, setOpen] = useState(false);
   const disabled = !!(
@@ -37,10 +39,10 @@ export default function SandboxPicker({ chat, onCreate }) {
     return (
       <span
         className="sandbox-context sandbox-fixed"
-        title="任务会话使用任务的运行环境。"
+        title={t("sandbox.lockedTitle")}
       >
         <HarnessIcon name="lock" size={12} interactive={false} />
-        <span>{chat.workspaceSandbox?.name || "任务运行环境"}</span>
+        <span>{chat.workspaceSandbox?.name || t("sandbox.lockedFallback")}</span>
       </span>
     );
   }
@@ -58,7 +60,7 @@ export default function SandboxPicker({ chat, onCreate }) {
     .map((o) => ({
       id: o.value,
       label: o.label,
-      description: o.value ? "" : "按要改的代码自动选择，拿不准时用平台通用 Docker",
+      description: o.value ? "" : t("sandbox.autoDesc"),
       icon: o.value ? "terminal" : "folder",
     }));
   return (
@@ -67,7 +69,7 @@ export default function SandboxPicker({ chat, onCreate }) {
         ref={trigger}
         type="button"
         className="context-pill sandbox-picker"
-        aria-label={`运行环境：${label}`}
+        aria-label={t("sandbox.pickerAria", { label })}
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}
@@ -79,7 +81,7 @@ export default function SandboxPicker({ chat, onCreate }) {
       </button>
       <SelectMenu
         open={open}
-        label="沙箱"
+        label={t("sandbox.menuLabel")}
         value={chat.sandboxProfileId || ""}
         options={menuOptions}
         onSelect={(id) => void chat.selectSandbox(id)}
@@ -91,7 +93,7 @@ export default function SandboxPicker({ chat, onCreate }) {
             ? [
                 {
                   id: "new-sandbox",
-                  label: "新增沙箱",
+                  label: t("sandbox.create"),
                   icon: "plus",
                   onSelect: onCreate,
                 },

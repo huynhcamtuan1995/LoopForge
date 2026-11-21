@@ -1,5 +1,6 @@
 import React from "react";
 import HarnessIcon from "./HarnessIcon";
+import { useI18n } from "./i18n.js";
 
 export function SidebarSection({
   title,
@@ -10,10 +11,11 @@ export function SidebarSection({
   onToggle,
   className = "",
 }) {
+  const { t } = useI18n();
   return (
     <section
       className={`sidebar-project-section ${className}`.trim()}
-      aria-label={`${title}的会话`}
+      aria-label={t("sidebar.sectionAria", { title })}
     >
       <button
         type="button"

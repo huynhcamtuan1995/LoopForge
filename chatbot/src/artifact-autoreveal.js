@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 // The artifact drawer shares the conversation column on wide layouts and turns
 // into an overlay that covers the chat below 800px (see
 // useArtifactPanelLayout's compact mode), so auto-revealing it there would hide
@@ -20,7 +22,7 @@ export function panelFitsBesideConversation({
 }
 
 export function isGeneratedArtifact(artifact) {
-  return Boolean(artifact) && artifact.source !== USER_UPLOAD_SOURCE;
+  return Boolean(artifact) && !artifact.isUserUpload && artifact.source !== USER_UPLOAD_SOURCE && artifact.source !== t("api.artifact.uploadedFile");
 }
 
 /**

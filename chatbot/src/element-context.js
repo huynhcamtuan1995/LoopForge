@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 // Element context: what the user points at in a native preview, described so
 // the Agent can find it in code (component and source file when the dev build
 // exposes them) and in its own browser (a unique selector).
@@ -221,7 +223,7 @@ export function inspectionReference(inspection) {
   return {
     type: "element",
     id: `el-${Date.now().toString(36)}-${sequence}`,
-    name: inspection.label || inspection.element?.tag || "元素",
+    name: inspection.label || inspection.element?.tag || t("element.fallback"),
     element: inspection.element,
   };
 }

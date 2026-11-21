@@ -1,19 +1,21 @@
-// CLIs that AI 对话 can run on. The list comes from GET /api/assistant/models
+import { t } from "./i18n.js";
+
+// CLIs that AI chat can run on. The list comes from GET /api/assistant/models
 // (`engines`); models without `engine` run on CodeBuddy.
 export const defaultEngine = "codebuddy";
 
 // Main Bot can run on any configured agent CLI; CodeBuddy stays the default.
 export const EXECUTORS = [
-  { id: "codebuddy", icon: "sparkles", label: "CodeBuddy", detail: "使用 CodeBuddy 模型与个人 API Key。" },
-  { id: "codex", icon: "terminal", label: "Codex", detail: "使用 Codex CLI 与个人 Codex API Key。" },
-  { id: "claude-code", icon: "brain", label: "Claude Code", detail: "使用 Claude Code CLI 与个人 Claude Code API Key。" },
-  { id: "opencode", icon: "terminal", label: "OpenCode", detail: "使用 OpenCode 与个人 API Key。" },
-  { id: "cursor", icon: "terminal", label: "Cursor", detail: "使用 Cursor CLI 与个人 API Key。" },
-  { id: "agy", icon: "sparkles", label: "Antigravity", detail: "使用 Antigravity 与个人 API Key。" },
-  { id: "kimi", icon: "sparkles", label: "Kimi Code", detail: "使用 Kimi Code 与个人 API Key。" },
-  { id: "pi", icon: "terminal", label: "Pi", detail: "使用 Pi 与个人 API Key。" },
-  { id: "dsh", icon: "terminal", label: "DeepSeek Harness", detail: "使用 DeepSeek Harness 与个人 API Key。" },
-  { id: "zcode", icon: "terminal", label: "ZCode", detail: "使用 ZCode 与个人 API Key。" },
+  { id: "codebuddy", icon: "sparkles", label: "CodeBuddy", get detail() { return t("engines.codebuddy.detail"); } },
+  { id: "codex", icon: "terminal", label: "Codex", get detail() { return t("engines.codex.detail"); } },
+  { id: "claude-code", icon: "brain", label: "Claude Code", get detail() { return t("engines.claude.detail"); } },
+  { id: "opencode", icon: "terminal", label: "OpenCode", get detail() { return t("engines.opencode.detail"); } },
+  { id: "cursor", icon: "terminal", label: "Cursor", get detail() { return t("engines.cursor.detail"); } },
+  { id: "agy", icon: "sparkles", label: "Antigravity", get detail() { return t("engines.agy.detail"); } },
+  { id: "kimi", icon: "sparkles", label: "Kimi Code", get detail() { return t("engines.kimi.detail"); } },
+  { id: "pi", icon: "terminal", label: "Pi", get detail() { return t("engines.pi.detail"); } },
+  { id: "dsh", icon: "terminal", label: "DeepSeek Harness", get detail() { return t("engines.dsh.detail"); } },
+  { id: "zcode", icon: "terminal", label: "ZCode", get detail() { return t("engines.zcode.detail"); } },
 ];
 
 // Bundled logo per CLI; an unknown CLI falls back to its model's brand.
@@ -44,8 +46,8 @@ export const engineModels = (models, engine) =>
 // Mirrors assistantEngineMissingKey in internal/httpapi/assistant_engines.go;
 // credentialHint turns it into a "去配置" button.
 export function engineMissingKeyMessage(engine) {
-  if (engine.id === defaultEngine) return "请先在个人配置中配置自己的 CodeBuddy API Key";
-  return `请先在个人配置中配置 ${engine.name} API Key 后再使用 ${engine.name} 模型`;
+  if (engine.id === defaultEngine) return t("engines.missingCodeBuddyKey");
+  return t("engines.missingEngineKey", { name: engine.name });
 }
 
 const executorLabels = new Map(EXECUTORS.map(({ id, label }) => [id, label]));
@@ -83,7 +85,7 @@ export function conversationEngine(messages, models = [], legacyExecutor = "") {
 }
 
 export function engineDetail(engine, models) {
-  if (!engine.configured) return `未配置 ${engine.name} API Key，选择后去个人配置填写`;
+  if (!engine.configured) return t("engines.notConfiguredDetail", { name: engine.name });
   const count = engineModels(models, engine.id).length;
-  return count ? `${count} 个可用模型` : "暂无可用模型";
+  return count ? t("engines.availableModels", { count }) : t("engines.noModels");
 }

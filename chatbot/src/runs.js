@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, parseReply } from "./api.js";
+import { getLang, listSeparator, t } from "./i18n.js";
 
 // runProblems lists what a person has to act on: failed nodes with their
 // error and human gates with what they wait for. Mirrors assistantRunProblems
@@ -29,19 +30,19 @@ export function runProblems(run) {
       reason =
         (node.error || "").trim() ||
         (gate.reason || "").trim() ||
-        "节点失败但没有记录错误，可以打开节点查看执行过程";
+        t("runs.noErrorRecorded");
     else
       reason =
         [gate.reason, gate.actionRequired]
           .map((s) => (s || "").trim())
           .filter(Boolean)
-          .join("；需要处理：") ||
+          .join(t("runs.actionJoiner")) ||
         (node.error || "")
           .replace(/^\s*agent requested human confirmation:\s*/i, "")
           .trim() ||
         (def.type === "approval"
           ? approvalWaitReason(run, id)
-          : "等待人工确认");
+          : t("runs.waitingApproval"));
     const waiting = node.status === "waiting_approval";
     out.push({
       key: [run.id, id, node.attempt, node.reworkCount, node.status].join(":"),
@@ -70,9 +71,10 @@ export function approvalWaitReason(run, nodeId) {
   const nodes = wf.nodes || [];
   const edges = wf.edges || [];
   const index = nodes.findIndex((n) => n.id === nodeId);
-  if (index < 0) return "等待人工确认";
+  if (index < 0) return t("runs.waitingApproval");
   const node = nodes[index];
-  const name = (id) => `「${nodes.find((n) => n.id === id)?.name || id}」`;
+  const quote = (s) => (getLang() === "zh" ? `「${s}」` : `"${s}"`);
+  const name = (id) => quote(nodes.find((n) => n.id === id)?.name || id);
   let upstream = edges
     .filter((e) => e.target === nodeId && e.source)
     .map((e) => name(e.source));
@@ -83,18 +85,18 @@ export function approvalWaitReason(run, nodeId) {
     upstream = index > 0 ? [name(nodes[index - 1].id)] : [];
     downstream = index + 1 < nodes.length ? [name(nodes[index + 1].id)] : [];
   }
-  const sop = (wf.name || "").trim() ? `SOP「${wf.name.trim()}」` : "该 SOP";
-  let text = `${sop}在这一步设置了人工门禁`;
+  const sop = (wf.name || "").trim() ? t("runs.sopNamed", { name: wf.name.trim() }) : t("runs.sopFallback");
+  let text = t("runs.approvalHeader", { sop });
   text += upstream.length
-    ? `：${upstream.join("、")}已完成，需要有权限的成员检查结果后确认`
-    : "，需要有权限的成员确认";
+    ? t("runs.approvalUpstream", { nodes: upstream.join(listSeparator()) })
+    : t("runs.approvalNoUpstream");
   text += downstream.length
-    ? `，确认后继续${downstream.join("、")}`
-    : "，确认后运行结束";
-  if (node.rejectTo) text += `；不通过可打回到${name(node.rejectTo)}重做`;
-  text += "。";
+    ? t("runs.approvalDownstream", { nodes: downstream.join(listSeparator()) })
+    : t("runs.approvalEnd");
+  if (node.rejectTo) text += t("runs.approvalRejectTo", { node: name(node.rejectTo) });
+  text += getLang() === "zh" ? "。" : ".";
   const instructions = (node.taskPrompt || "").trim();
-  if (instructions) text += `确认要求：${instructions}`;
+  if (instructions) text += (getLang() === "zh" ? "" : " ") + t("runs.approvalInstructions", { instructions });
   return text;
 }
 export function conversationRunIDs(session) {

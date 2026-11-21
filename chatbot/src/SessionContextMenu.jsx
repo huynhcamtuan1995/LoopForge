@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "./i18n.js";
 import "./session-context-menu.css";
 
 export default function SessionContextMenu({
@@ -16,6 +17,7 @@ export default function SessionContextMenu({
   onClose,
   children,
 }) {
+  const { t } = useI18n();
   const root = useRef(null);
   const closeTimer = useRef();
   const closing = useRef(false);
@@ -134,7 +136,7 @@ export default function SessionContextMenu({
       id="session-context-menu"
       className="session-context-menu"
       role="menu"
-      aria-label="会话操作"
+      aria-label={t("sessionMenu.aria")}
       data-visible={visible}
       style={position}
       onContextMenu={(event) => {

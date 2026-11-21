@@ -1,7 +1,9 @@
 import { elapsedSeconds, formatElapsed } from "./api.js";
 import { replyEngineLabel } from "./engines.js";
+import { t } from "./i18n.js";
 
 export const NOT_REPORTED = "未上报";
+export const notReportedLabel = () => t("common.notReported");
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -16,7 +18,7 @@ export function fullTime(value) {
   const date = validDate(value);
   return date
     ? `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-    : NOT_REPORTED;
+    : notReportedLabel();
 }
 
 /**
@@ -53,44 +55,45 @@ export const formatTokens = (n) =>
   Math.max(0, Number(n) || 0).toLocaleString("en-US");
 
 const tokenParts = [
-  ["input", "输入", "inputTokens"],
-  ["output", "输出", "outputTokens"],
-  ["cacheRead", "缓存读", "cacheReadTokens"],
-  ["cacheWrite", "缓存写", "cacheWriteTokens"],
+  ["input", "messageInfo.tokens.input", "inputTokens"],
+  ["output", "messageInfo.tokens.output", "outputTokens"],
+  ["cacheRead", "messageInfo.tokens.cacheRead", "cacheReadTokens"],
+  ["cacheWrite", "messageInfo.tokens.cacheWrite", "cacheWriteTokens"],
 ];
 
 /** Card fields for one saved assistant reply; missing data reads 「未上报」. */
 export function messageInfo(message = {}, sessionExecutor = "") {
+  const missingLabel = notReportedLabel();
   const seconds = elapsedSeconds(message.startedAt, message.createdAt);
   const model = String(message.model || "").trim();
   const tool = replyEngineLabel(model, sessionExecutor, message.speakerAgentId);
   const rows = [
     {
       key: "time",
-      label: "时间",
+      label: t("messageInfo.time"),
       value: fullTime(message.startedAt || message.createdAt),
     },
     {
       key: "agent",
-      label: "Agent",
-      value: String(message.speakerName || "").trim() || "主 Bot",
+      label: t("messageInfo.agent"),
+      value: String(message.speakerName || "").trim() || t("messageInfo.mainBot"),
     },
-    { key: "tool", label: "编码工具", value: tool || NOT_REPORTED },
-    { key: "model", label: "模型", value: model || NOT_REPORTED },
+    { key: "tool", label: t("messageInfo.tool"), value: tool || missingLabel },
+    { key: "model", label: t("messageInfo.model"), value: model || missingLabel },
     {
       key: "elapsed",
-      label: "用时",
-      value: seconds === null ? NOT_REPORTED : formatElapsed(seconds),
+      label: t("messageInfo.elapsed"),
+      value: seconds === null ? missingLabel : formatElapsed(seconds),
     },
-  ].map((row) => ({ ...row, missing: row.value === NOT_REPORTED }));
+  ].map((row) => ({ ...row, missing: row.value === missingLabel }));
   const usage =
     message.usage && typeof message.usage === "object" ? message.usage : null;
   const tokens = usage
-    ? tokenParts.map(([key, label, field]) => {
+    ? tokenParts.map(([key, labelKey, field]) => {
         const value = Math.max(0, Number(usage[field]) || 0);
         return {
           key,
-          label,
+          label: t(labelKey),
           value,
           text: formatTokens(value),
           zero: value === 0,

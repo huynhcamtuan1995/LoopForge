@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import ModelProviderIcon from "./ModelProviderIcon";
 import { usePanelPresence } from "./usePanelPresence";
 import "./model-picker.css";
@@ -9,6 +10,7 @@ const unavailable = (model) => !!(model.disabled || model.unavailable);
 const menuWidth = 240;
 
 export default function ModelPicker({ models, value, label, open: requestedOpen, disabled = false, onOpenChange, onSelect }) {
+  useI18n();
   const open = requestedOpen && !disabled;
   const trigger = useRef(null);
   const panel = useRef(null);
@@ -158,7 +160,7 @@ export default function ModelPicker({ models, value, label, open: requestedOpen,
         ref={trigger}
         type="button"
         className="model-picker grasp-model-picker"
-        aria-label="选择模型"
+        aria-label={t("modelPicker.selectAria")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={presence.mounted ? identity : undefined}
@@ -172,7 +174,7 @@ export default function ModelPicker({ models, value, label, open: requestedOpen,
         }}
       >
         <ModelProviderIcon model={current || value} size={20} />
-        <span className="model-picker-label">{label || current?.name || "模型"}</span>
+        <span className="model-picker-label">{label || current?.name || t("common.model")}</span>
         <HarnessIcon name="chevron-down" size={12} />
       </button>
       {presence.mounted ? createPortal(
@@ -181,7 +183,7 @@ export default function ModelPicker({ models, value, label, open: requestedOpen,
           id={identity}
           className="grasp-model-menu"
           role="menu"
-          aria-label="模型"
+          aria-label={t("common.model")}
           aria-hidden={!open || undefined}
           inert={!open}
           data-phase={presence.phase}
@@ -191,8 +193,8 @@ export default function ModelPicker({ models, value, label, open: requestedOpen,
         >
           <label className="grasp-model-search" data-icon-motion-host="">
             <HarnessIcon name="search" size={16} />
-            <input ref={search} type="text" aria-label="搜索模型" placeholder="搜索模型" value={query} onChange={(event) => setQuery(event.target.value)} />
-            {query ? <button type="button" className="model-search-clear" aria-label="清空搜索" onClick={() => { setQuery(""); search.current?.focus(); }}><HarnessIcon name="close" size={13} /></button> : null}
+            <input ref={search} type="text" aria-label={t("modelPicker.searchAria")} placeholder={t("modelPicker.searchAria")} value={query} onChange={(event) => setQuery(event.target.value)} />
+            {query ? <button type="button" className="model-search-clear" aria-label={t("modelPicker.clearSearch")} onClick={() => { setQuery(""); search.current?.focus(); }}><HarnessIcon name="close" size={13} /></button> : null}
           </label>
           <div className="grasp-model-options">
             {filtered.length ? filtered.map((model) => (
@@ -213,7 +215,7 @@ export default function ModelPicker({ models, value, label, open: requestedOpen,
                 </span>
                 <span className="model-option-check">{model.id === value ? <HarnessIcon name="check" size={14} motion="once" /> : null}</span>
               </button>
-            )) : <p className="model-picker-empty" role="status">没有匹配的模型</p>}
+            )) : <p className="model-picker-empty" role="status">{t("modelPicker.empty")}</p>}
           </div>
         </div>, document.body,
       ) : null}

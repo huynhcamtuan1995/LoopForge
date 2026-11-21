@@ -1,5 +1,7 @@
 // Both the live stream and saved message metadata use this reducer. Tool updates
 // retain their original position; completion events never create duplicate rows.
+import { getLang, listSeparator, t } from "./i18n.js";
+
 export function mergeActivity(previous = [], events = []) {
   const steps = previous.map((step) => ({ ...step }));
   const closeThinking = (at) => {
@@ -140,8 +142,8 @@ export function mergeActivity(previous = [], events = []) {
         steps.push({
           id: event.id,
           kind: "tool",
-          tool: "工具调用",
-          text: "工具调用失败",
+          tool: t("activity.toolCall"),
+          text: t("activity.toolCallFailed"),
           failed: true,
           finishedAt: at || "done",
         });
@@ -311,11 +313,20 @@ export function collectSubagents(messages = [], liveSteps = [], liveModel = "") 
     for (const child of step.children || []) {
       if (child.kind !== "tool" || !child.detail) continue;
       let item = null;
-      if (child.tool === "发布产物" && !child.failed) item = { title: child.detail, source: "已发布" };
+      if (child.tool === "发布产物" && !child.failed)
+        item = { kind: "published", title: child.detail, source: t("activity.publishedSource") };
       if (child.tool === "交付物")
-        item = { title: child.detail, source: "交付物", missing: !!child.failed, messageIndex };
+        item = {
+          kind: "deliverable",
+          title: child.detail,
+          source: t("activity.deliverableSource"),
+          missing: !!child.failed,
+          messageIndex,
+        };
       if (!item) continue;
-      agent.published = agent.published.filter((old) => old.source !== item.source || old.title !== item.title);
+      agent.published = agent.published.filter(
+        (old) => (old.kind ? old.kind !== item.kind : old.source !== item.source) || old.title !== item.title,
+      );
       agent.published.push(item);
     }
   };
@@ -363,26 +374,30 @@ export function traceBlocks(steps = [], { live = false } = {}) {
 // One folded line for a round of tool calls, like Codex: the kinds of work
 // in order, without counts, e.g. "已运行命令、读取文件". Thinking is named only
 // when the round did nothing else.
-const groupNouns = {
-  运行: "运行命令",
-  读取: "读取文件",
-  编辑: "编辑文件",
-  搜索: "搜索代码",
-  浏览: "浏览网页",
-  查看: "查看文件",
-};
+function groupNounForDone(done) {
+  const clean = done.replace(/^(?:已|Done:\s*)/i, "");
+  const nouns = {
+    [t("activity.command.done").replace(/^已/, "")]: t("activity.group.run"),
+    [t("activity.read.done").replace(/^已/, "")]: t("activity.group.read"),
+    [t("activity.edit.done").replace(/^已/, "")]: t("activity.group.edit"),
+    [t("activity.search.done").replace(/^已/, "")]: t("activity.group.search"),
+    [t("activity.web.done").replace(/^已/, "")]: t("activity.group.browse"),
+    [t("activity.view.done").replace(/^已/, "")]: t("activity.group.view"),
+  };
+  return nouns[clean] || clean;
+}
+
 export function activityGroupSummary(steps = [], { active = false } = {}) {
   const parts = [];
   for (const step of steps) {
     if (step.kind === "thinking" || step.kind === "status") continue;
-    const label = activityFace(step).done.replace(/^已/, "");
-    const part = groupNouns[label] || label;
+    const part = groupNounForDone(activityFace(step).done);
     if (!parts.includes(part)) parts.push(part);
   }
-  if (!parts.length) return active ? "正在思考" : "已思考";
-  const text =
-    parts.length > 3 ? `${parts.slice(0, 3).join("、")}等` : parts.join("、");
-  return active ? `正在${text}` : `已${text}`;
+  if (!parts.length) return active ? t("activity.thinkingBusy") : t("activity.thinkingDone");
+  const joined = parts.slice(0, 3).join(listSeparator());
+  const text = parts.length > 3 ? t("activity.group.more", { items: joined }) : parts.join(listSeparator());
+  return active ? t("activity.group.busy", { text }) : t("activity.group.done", { text });
 }
 // The icon of the most frequent kind in a group.
 export function activityGroupKind(steps = []) {
@@ -454,7 +469,7 @@ export function activityForReply(message, generation, liveSteps = []) {
 }
 export function activityFace(step) {
   if (step.kind === "thinking")
-    return { kind: "thinking", busy: "正在思考", done: "已思考" };
+    return { kind: "thinking", busy: t("activity.thinkingBusy"), done: t("activity.thinkingDone") };
   if (step.kind === "status")
     return { kind: "status", busy: step.text, done: step.text };
   const tool = (step.tool || "")
@@ -462,50 +477,44 @@ export function activityFace(step) {
     .replace(/^agentflow__/, "");
   const name = tool.toLowerCase();
   if (name === "verification")
-    return { kind: "verify", busy: "正在验证", done: "已验证" };
+    return { kind: "verify", busy: t("activity.verify.busy"), done: t("activity.verify.done") };
   if (/submit_gate_result/.test(name))
-    return { kind: "verify", busy: "正在提交节点结果", done: "已提交节点结果" };
+    return { kind: "verify", busy: t("activity.gate.busy"), done: t("activity.gate.done") };
   if (/workbench_workspace_open/.test(name))
-    return { kind: "workflow", busy: "正在打开工作区", done: "已打开工作区" };
+    return { kind: "workflow", busy: t("activity.workspace.busy"), done: t("activity.workspace.done") };
   if (name === "workspace_docker_build")
-    return { kind: "workflow", busy: "正在构建 Docker 镜像", done: "已构建 Docker 镜像" };
+    return { kind: "workflow", busy: t("activity.docker.busy"), done: t("activity.docker.done") };
   if (/workbench_delivery_register/.test(name))
-    return { kind: "workflow", busy: "正在登记交付", done: "已登记交付" };
+    return { kind: "workflow", busy: t("activity.delivery.busy"), done: t("activity.delivery.done") };
   if (/workbench_publish_artifact/.test(name))
-    return { kind: "tool", busy: "正在发布产物", done: "已发布产物" };
+    return { kind: "tool", busy: t("activity.publish.busy"), done: t("activity.publish.done") };
   if (/todo/.test(name))
-    return { kind: "plan", busy: "正在更新计划", done: "已更新计划" };
+    return { kind: "plan", busy: t("activity.plan.busy"), done: t("activity.plan.done") };
   if (/^(task|agent)$/.test(name)) {
     const who = step.role || step.subagent;
     return who
-      ? { kind: "role", busy: `「${who}」正在处理`, done: `「${who}」已完成` }
-      : { kind: "role", busy: "正在委派子任务", done: "已委派子任务" };
+      ? {
+          kind: "role",
+          busy: t("activity.roleNamed.busy", { who }),
+          done: t("activity.roleNamed.done", { who }),
+        }
+      : { kind: "role", busy: t("activity.role.busy"), done: t("activity.role.done") };
   }
   if (/toolsearch|search_tools|tools_search/.test(name))
-    return { kind: "search", busy: "正在查找工具", done: "已查找工具" };
+    return { kind: "search", busy: t("activity.toolSearch.busy"), done: t("activity.toolSearch.done") };
   if (/tool_schema|lookup_tool_param_schema/.test(name))
-    return { kind: "search", busy: "正在查看工具说明", done: "已查看工具说明" };
+    return { kind: "search", busy: t("activity.toolSchema.busy"), done: t("activity.toolSchema.done") };
   const platform = name.match(
     /^(workflows|agents|issues|runs|repositories|rules|skills)_(list|get|save|clone|publish)$/,
   );
   if (platform) {
     const [, type, action] = platform;
-    const noun = {
-      workflows: "SOP",
-      agents: "角色",
-      issues: "需求",
-      runs: "运行",
-      repositories: "仓库",
-      rules: "规则",
-      skills: "技能",
-    }[type];
-    const verb = {
-      list: ["查看", `${noun}${type === "workflows" ? " " : ""}列表`],
-      get: ["读取", noun],
-      save: ["保存", noun],
-      clone: ["复制", noun],
-      publish: ["发布", noun],
-    }[action];
+    const noun = t(`activity.noun.${type}`);
+    const verb = t(`activity.verb.${action}`);
+    const target =
+      action === "list"
+        ? t("activity.platformListTarget", { noun })
+        : noun;
     return {
       kind:
         type === "workflows"
@@ -517,30 +526,36 @@ export function activityFace(step) {
               : action === "list"
                 ? "search"
                 : "tool",
-      busy: `正在${verb[0]}${type === "workflows" ? " " : ""}${verb[1]}`,
-      done: `已${verb[0]}${type === "workflows" ? " " : ""}${verb[1]}`,
+      busy: t("activity.platform.busy", {
+        verb,
+        target: type === "workflows" && getLang() === "zh" ? ` ${target}` : target,
+      }),
+      done: t("activity.platform.done", {
+        verb,
+        target: type === "workflows" && getLang() === "zh" ? ` ${target}` : target,
+      }),
     };
   }
   if (/bash|shell|command|terminal|^exec/.test(name))
-    return { kind: "command", busy: "正在运行", done: "已运行" };
+    return { kind: "command", busy: t("activity.command.busy"), done: t("activity.command.done") };
   if (/imagegen|generate.?image|生图|画图/.test(name))
-    return { kind: "image", busy: "正在生成图片", done: "已生成图片" };
+    return { kind: "image", busy: t("activity.image.busy"), done: t("activity.image.done") };
   if (/browser|fetch|web.?search|navigate/.test(name))
-    return { kind: "web", busy: "正在浏览", done: "已浏览" };
+    return { kind: "web", busy: t("activity.web.busy"), done: t("activity.web.done") };
   if (/write|edit|patch/.test(name))
-    return { kind: "edit", busy: "正在编辑", done: "已编辑" };
+    return { kind: "edit", busy: t("activity.edit.busy"), done: t("activity.edit.done") };
   if (/read|attachment/.test(name))
-    return { kind: "read", busy: "正在读取", done: "已读取" };
+    return { kind: "read", busy: t("activity.read.busy"), done: t("activity.read.done") };
   if (/search|grep|glob|find/.test(name))
-    return { kind: "search", busy: "正在搜索", done: "已搜索" };
+    return { kind: "search", busy: t("activity.search.busy"), done: t("activity.search.done") };
   if (/workflow|sop/.test(name))
-    return { kind: "workflow", busy: "正在处理 SOP", done: "已处理 SOP" };
+    return { kind: "workflow", busy: t("activity.sop.busy"), done: t("activity.sop.done") };
   if (/list|tree/.test(name))
-    return { kind: "search", busy: "正在查看", done: "已查看" };
+    return { kind: "search", busy: t("activity.view.busy"), done: t("activity.view.done") };
   return {
     kind: "tool",
-    busy: "正在调用工具",
-    done: "已调用工具",
+    busy: t("activity.generic.busy"),
+    done: t("activity.generic.done"),
   };
 }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { confirmationCaption } from "./api";
+import { listSeparator, t, useI18n } from "./i18n.js";
 const MAX_FACES = 3;
 export function authorFor(message, session, users = []) {
   const id = message.authorId || (!session?.shared ? session?.userId : 0);
@@ -8,14 +9,16 @@ export function authorFor(message, session, users = []) {
     id,
     loginName:
       user?.loginName ||
-      (message.authorName && !message.authorName.startsWith("用户 ")
+      (message.authorName &&
+      !message.authorName.startsWith("用户 ") &&
+      !message.authorName.startsWith("User ")
         ? message.authorName
         : ""),
     name:
       user?.chineseName ||
       user?.loginName ||
       message.authorName ||
-      (id ? `用户 ${id}` : "历史发言人未记录"),
+      (id ? t("participants.userFallback", { id }) : t("participants.unknownSpeaker")),
   };
 }
 export function Avatar({ person, className = "" }) {
@@ -56,6 +59,7 @@ export function peopleFor(session, users = []) {
   );
 }
 export default function Participants({ session, users, compact = false }) {
+  useI18n();
   const popover = useRef(null);
   const people = peopleFor(session, users);
   const unknown = session?.unknownParticipants;
@@ -98,7 +102,9 @@ export default function Participants({ session, users, compact = false }) {
     };
   }, [compact, session?.id, hasPeople]);
   if (!hasPeople) return null;
-  const label = `${people.length} 人发过言${unknown ? "，部分历史发言人未记录" : ""}`;
+  const label = unknown
+    ? t("participants.countLabelUnknown", { count: people.length })
+    : t("participants.countLabel", { count: people.length });
   const shown = people.length
     ? people.slice(0, MAX_FACES)
     : [{ id: 0, name: "?" }];
@@ -117,19 +123,20 @@ export default function Participants({ session, users, compact = false }) {
       ) : null}
     </>
   );
+  const names = people.map((p) => p.name).join(listSeparator());
   if (compact)
     return (
       <span
         className="session-people"
-        title={`${label}：${people.map((p) => p.name).join("、")}`}
-        aria-label={`${label}：${people.map((p) => p.name).join("、")}`}
+        title={`${label}：${names}`}
+        aria-label={`${label}：${names}`}
       >
         {faces}
       </span>
     );
   return (
     <details ref={popover} className="conversation-people">
-      <summary aria-label={`查看会话参与人，${label}`} title={label}>
+      <summary aria-label={t("participants.viewAria", { label })} title={label}>
         {faces}
       </summary>
       <div className="people-popover">
@@ -145,7 +152,7 @@ export default function Participants({ session, users, compact = false }) {
             </span>
           </div>
         ))}
-        {unknown ? <p>部分历史消息没有记录发言人。</p> : null}
+        {unknown ? <p>{t("participants.unknownNote")}</p> : null}
       </div>
     </details>
   );

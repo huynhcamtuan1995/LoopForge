@@ -8,6 +8,7 @@ import React, {
 import { createPortal } from "react-dom";
 import HarnessIcon from "./HarnessIcon";
 import { messageInfo } from "./message-info.js";
+import { useI18n } from "./i18n.js";
 import "./message-info.css";
 
 const CLOSE_DELAY = 120;
@@ -33,6 +34,7 @@ function placeCard(trigger, card) {
 }
 
 function InfoCard({ id, message, sessionExecutor, cardRef, onPointerEnter, onPointerLeave }) {
+  const { t } = useI18n();
   const info = messageInfo(message, sessionExecutor);
   return (
     <section
@@ -43,7 +45,7 @@ function InfoCard({ id, message, sessionExecutor, cardRef, onPointerEnter, onPoi
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
     >
-      <strong className="message-info-title">统计信息</strong>
+      <strong className="message-info-title">{t("messageInfo.title")}</strong>
       <dl className="message-info-rows">
         {info.rows.map((row) => (
           <div key={row.key} data-key={row.key}>
@@ -80,6 +82,7 @@ function InfoCard({ id, message, sessionExecutor, cardRef, onPointerEnter, onPoi
 }
 
 export default function MessageInfo({ message, sessionExecutor }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const trigger = useRef(null);
@@ -154,7 +157,7 @@ export default function MessageInfo({ message, sessionExecutor }) {
         ref={trigger}
         type="button"
         className="icon-button message-info-trigger"
-        aria-label="统计信息"
+        aria-label={t("messageInfo.title")}
         aria-expanded={open}
         aria-describedby={open ? id.current : undefined}
         onPointerEnter={(e) => {

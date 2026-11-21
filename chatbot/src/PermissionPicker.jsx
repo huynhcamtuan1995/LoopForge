@@ -1,13 +1,42 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import { usePanelPresence } from "./usePanelPresence";
 import "./permission-picker.css";
 
 const modes = [
-  { id: "confirm", icon: "gate", label: "请求批准", detail: "工作区文件和命令自动执行；平台写入由你确认，外部工具写入需要授权。" },
-  { id: "assisted", icon: "confirmation-check", label: "帮我批准", detail: "工作区文件和命令自动执行；git push 等外部写入命令由 AI 审查直接批准或拒绝；平台写入未通过审查时交给你确认。" },
-  { id: "auto", icon: "priority-bolt", label: "完全权限", tone: "danger", detail: "工作区文件和命令自动执行；平台及外部操作使用当前账号权限直接执行。" },
+  {
+    id: "confirm",
+    icon: "gate",
+    get label() {
+      return t("permission.confirm.label");
+    },
+    get detail() {
+      return t("permission.confirm.detail");
+    },
+  },
+  {
+    id: "assisted",
+    icon: "confirmation-check",
+    get label() {
+      return t("permission.assisted.label");
+    },
+    get detail() {
+      return t("permission.assisted.detail");
+    },
+  },
+  {
+    id: "auto",
+    icon: "priority-bolt",
+    tone: "danger",
+    get label() {
+      return t("permission.auto.label");
+    },
+    get detail() {
+      return t("permission.auto.detail");
+    },
+  },
 ];
 
 export function normalizeApprovalMode(value) {
@@ -15,7 +44,9 @@ export function normalizeApprovalMode(value) {
 }
 
 // `glyph` is a rendered brand mark. Options that only set `icon` keep the Harness icon.
-export default function PermissionPicker({ value, onSelect, open: requestedOpen, disabled = false, onOpenChange, label = "操作确认方式", icon, options = modes }) {
+export default function PermissionPicker({ value, onSelect, open: requestedOpen, disabled = false, onOpenChange, label, icon, options = modes }) {
+  useI18n();
+  const resolvedLabel = label ?? t("permission.defaultLabel");
   const open = requestedOpen && !disabled;
   const trigger = useRef(null);
   const panel = useRef(null);
@@ -161,7 +192,7 @@ export default function PermissionPicker({ value, onSelect, open: requestedOpen,
         disabled={disabled}
         className="permission-selector"
         data-tone={current.tone}
-        aria-label={label}
+        aria-label={resolvedLabel}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={identity}
@@ -187,7 +218,7 @@ export default function PermissionPicker({ value, onSelect, open: requestedOpen,
           id={identity}
           className="permission-menu"
           role="menu"
-          aria-label={label}
+          aria-label={resolvedLabel}
           aria-hidden={!open || undefined}
           inert={!open}
           data-phase={presence.phase}

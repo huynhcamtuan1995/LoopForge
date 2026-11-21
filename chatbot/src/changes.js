@@ -6,15 +6,17 @@
 // that payload into file rows and line-by-line hunks so the panel can render
 // the same changes the agent made without re-reading tool arguments.
 
+import { t } from "./i18n.js";
+
 const HUNK = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)$/;
 
 const STATUS = {
-  A: { code: "A", label: "新增" },
-  M: { code: "M", label: "修改" },
-  D: { code: "D", label: "删除" },
-  R: { code: "R", label: "重命名" },
-  C: { code: "C", label: "复制" },
-  U: { code: "U", label: "冲突" },
+  A: { code: "A", get label() { return t("changes.status.A"); } },
+  M: { code: "M", get label() { return t("changes.status.M"); } },
+  D: { code: "D", get label() { return t("changes.status.D"); } },
+  R: { code: "R", get label() { return t("changes.status.R"); } },
+  C: { code: "C", get label() { return t("changes.status.C"); } },
+  U: { code: "U", get label() { return t("changes.status.U"); } },
 };
 
 export function statusLabel(code) {

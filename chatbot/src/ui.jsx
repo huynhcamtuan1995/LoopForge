@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { credentialHint, openCredentialSettings } from "./credentials";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import {
   MENU_WIDTH,
   anchorVisible,
@@ -12,15 +13,16 @@ import "./controls-motion.css";
 // CredentialAction adds a one-click link to personal settings when an error
 // was caused by a missing or rejected personal credential.
 export function CredentialAction({ text }) {
+  useI18n();
   const hint = credentialHint(text);
   if (!hint) return null;
   return (
     <span className="credential-action">
       <button type="button" onClick={() => openCredentialSettings(hint.field)}>
         <HarnessIcon name="key" size={13} />
-        去配置 {hint.label}
+        {t("common.configureTarget", { label: hint.label })}
       </button>
-      {hint.owner ? <small>需由责任人本人在个人配置中配置</small> : null}
+      {hint.owner ? <small>{t("common.configureByOwner")}</small> : null}
     </span>
   );
 }
@@ -152,7 +154,7 @@ export function Dialog({ title, children, onClose, footer }) {
       >
         <header>
           <h2>{title}</h2>
-          <IconButton label="关闭" onClick={onClose}>
+          <IconButton label={t("common.close")} onClick={onClose}>
             <HarnessIcon name="close" size={18} />
           </IconButton>
         </header>
@@ -228,7 +230,7 @@ function SelectPopover({
   anchorRef,
   searchable = false,
   actions = [],
-  emptyText = "没有匹配的选项",
+  emptyText = t("common.noMatchingOptions"),
 }) {
   const id = React.useId();
   const root = useRef(null);
@@ -569,7 +571,7 @@ function SelectPopover({
         <label className="menu-search" ref={search}>
           <HarnessIcon name="search" size={15} interactive={false} />
           <input
-            placeholder={`搜索${label}`}
+            placeholder={t("common.searchField", { label })}
             value={query}
             role="combobox"
             aria-expanded={open}

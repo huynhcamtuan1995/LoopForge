@@ -9,6 +9,7 @@ import {
   processBlocks,
 } from "./activity";
 import { elapsedSeconds, formatElapsed } from "./api";
+import { t, useI18n } from "./i18n.js";
 import { RichContent } from "./RichContent";
 import { CredentialAction } from "./ui";
 
@@ -46,6 +47,7 @@ const icons = {
   plan: ListTodo,
 };
 function Step({ step, live, interrupted }) {
+  useI18n();
   const [expanded, setExpanded] = useState(false);
   const face = activityFace(step);
   const target = activityTarget(step);
@@ -55,13 +57,13 @@ function Step({ step, live, interrupted }) {
   const stopped = interrupted && !step.finishedAt;
   // Like Codex, a command that took a while says so in its row.
   const label = step.failed
-    ? "执行失败"
+    ? t("trace.failed")
     : stopped
-      ? "已中断"
+      ? t("trace.interrupted")
       : pending
         ? face.busy
         : face.kind === "command" && duration >= 1
-          ? `已在${formatElapsed(duration)}内运行`
+          ? t("trace.ranIn", { elapsed: formatElapsed(duration) })
           : face.done;
   return (
     <div
@@ -99,14 +101,14 @@ function Step({ step, live, interrupted }) {
                 {target}
               </span>
             ) : null}
-            {step.failed ? <AlertCircle size={13} aria-label="失败" /> : null}
+            {step.failed ? <AlertCircle size={13} aria-label={t("trace.failedIcon")} /> : null}
             <ChevronRight className="execution-item-chevron" size={13} />
           </summary>
           {expanded ? (
             <div className="execution-item-expanded">
               {duration !== null ? (
                 <small className="execution-duration">
-                  耗时 {formatElapsed(duration)}
+                  {t("trace.elapsed", { elapsed: formatElapsed(duration) })}
                 </small>
               ) : null}
               {step.kind === "thinking" && step.text ? (
@@ -121,7 +123,7 @@ function Step({ step, live, interrupted }) {
                     <div className="execution-tool-name">{step.tool}</div>
                   ) : null}
                   <pre className="execution-detail">
-                    {step.detail || step.text || "未返回更多详情"}
+                    {step.detail || step.text || t("trace.noDetail")}
                   </pre>
                   {step.output ? (
                     <pre className="execution-detail execution-output">
@@ -145,9 +147,10 @@ function Step({ step, live, interrupted }) {
 // A dispatched subagent's own thoughts, tool calls and report, listed under
 // its dispatch like a nested trace.
 export function SubagentProcess({ step, live = false, interrupted = false }) {
+  useI18n();
   const blocks = processBlocks(step.children || [], { live });
   if (!blocks.length)
-    return <p className="execution-empty">子 Agent 还没有产生过程。</p>;
+    return <p className="execution-empty">{t("trace.subagentEmpty")}</p>;
   return (
     <div className="execution-subagent">
       <Narration blocks={blocks} live={live} interrupted={interrupted} expandAll={!live} />
@@ -209,6 +212,7 @@ function ScrollList({ steps, live, interrupted, follow = false }) {
 // Opening a finished reply's process shows every round in full. Failed steps
 // stay visible under the fold.
 function ActivityGroup({ block, live, interrupted, expandAll }) {
+  useI18n();
   const active = live && !!block.active;
   const [open, setOpen] = useState(active || expandAll);
   useEffect(() => {
@@ -253,7 +257,7 @@ function ActivityGroup({ block, live, interrupted, expandAll }) {
           </span>
           {failed.length ? (
             <span className="execution-group-failed-count">
-              {failed.length} 步失败
+              {t("trace.failedSteps", { count: failed.length })}
             </span>
           ) : null}
           <ChevronRight className="execution-group-chevron" size={13} />
@@ -322,6 +326,7 @@ export default function ActivityTrace({
   interrupted = false,
   narration = null,
 }) {
+  useI18n();
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(Date.now);
   // Fold the trace once its turn finishes (an SOP node keeps this instance).
@@ -341,24 +346,24 @@ export default function ActivityTrace({
   const elapsed = seconds !== null ? ` ${formatElapsed(seconds)}` : "";
   const blocks = narration || traceBlocks(steps, { live });
   const divider = (
-    <span className="reply-divider" role="separator" aria-label="回复正文分隔线" />
+    <span className="reply-divider" role="separator" aria-label={t("trace.replyDivider")} />
   );
   if (live) {
     const status = steps.filter((step) => step.kind === "status").at(-1)?.text;
     return (
       <div className="reply-timing execution-trace is-live">
         <div className="execution-summary-row">
-          <span className="live-elapsed">正在处理{elapsed}</span>
+          <span className="live-elapsed">{t("trace.processing", { elapsed })}</span>
         </div>
         {divider}
-        <div className="execution-body" aria-label="执行过程">
+        <div className="execution-body" aria-label={t("trace.executionProcess")}>
           {blocks.length ? (
             <Narration blocks={blocks} live interrupted={interrupted} />
           ) : (
             <span className="execution-current" data-kind="status">
               <LoaderCircle size={15} strokeWidth={1.7} aria-hidden="true" />
               <span className="execution-current-text">
-                {status || "正在处理…"}
+                {status || t("trace.processingEllipsis")}
               </span>
             </span>
           )}
@@ -376,13 +381,13 @@ export default function ActivityTrace({
     >
       <summary>
         <span className="execution-summary-row">
-          <span className="execution-total">已处理{elapsed}</span>
+          <span className="execution-total">{t("trace.processed", { elapsed })}</span>
           <ChevronRight className="execution-chevron" size={14} />
         </span>
         {divider}
       </summary>
       {expanded ? (
-        <div className="execution-body" aria-label="执行过程">
+        <div className="execution-body" aria-label={t("trace.executionProcess")}>
           {blocks.length ? (
             <Narration
               blocks={blocks}
@@ -391,7 +396,7 @@ export default function ActivityTrace({
               expandAll
             />
           ) : (
-            <p className="execution-empty">这条历史回复未保存执行过程。</p>
+            <p className="execution-empty">{t("trace.noHistoryTrace")}</p>
           )}
         </div>
       ) : null}

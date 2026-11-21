@@ -1,3 +1,5 @@
+import { getLang, t } from "./i18n.js";
+
 // The source remains editable Markdown; export produces a real OOXML deck.
 export function presentationPages(source) {
   return source
@@ -11,22 +13,23 @@ const plain = (s) =>
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
 export function presentationTitle(source) {
-  return plain(source.match(/^#{1,6}\s+(.+)$/m)?.[1] || "演示文稿")
+  return plain(source.match(/^#{1,6}\s+(.+)$/m)?.[1] || t("presentation.defaultTitle"))
     .replace(/[\\/:*?"<>|]/g, " ")
     .slice(0, 80);
 }
 export async function createPresentation(source) {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const pptx = new PptxGenJS();
+  const pptxLang = getLang() === "en" ? "en-US" : "zh-CN";
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "LoopForge";
-  pptx.subject = "会话生成的演示文稿";
+  pptx.subject = t("presentation.subject");
   pptx.title = presentationTitle(source);
-  pptx.lang = "zh-CN";
+  pptx.lang = pptxLang;
   pptx.theme = {
     headFontFace: "Microsoft YaHei",
     bodyFontFace: "Microsoft YaHei",
-    lang: "zh-CN",
+    lang: pptxLang,
   };
   const pages = presentationPages(source);
   pages.forEach((page, index) => {
@@ -48,7 +51,7 @@ export async function createPresentation(source) {
     const title = plain(
       titleIndex >= 0
         ? lines.splice(titleIndex, 1)[0].replace(/^#{1,6}\s+/, "")
-        : `第 ${index + 1} 页`,
+        : t("presentation.pageTitle", { page: index + 1 }),
     );
     const color = index === 0 ? "FFFFFF" : "142B45";
     slide.addText(title, {

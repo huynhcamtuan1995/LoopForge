@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, write, sessionPath } from "./api";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import "./native-approval.css";
 
 // External commands and external MCP writes can wait here for the speaker
@@ -13,6 +14,7 @@ function commandText(input) {
 }
 
 export default function NativeApprovalPanel({ chat, onChange }) {
+  useI18n();
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState("");
@@ -56,21 +58,25 @@ export default function NativeApprovalPanel({ chat, onChange }) {
   }, [pendingIds]);
   if (!mine.length) return null;
   return (
-    <section className="native-approvals" aria-label="待批准的外部写入" aria-live="polite">
+    <section className="native-approvals" aria-label={t("nativeApproval.aria")} aria-live="polite">
       {mine.map((item) => (
         <div className="native-approval" key={item.id}>
           <div className="native-approval-title">
             <HarnessIcon name="warning" size={15} aria-hidden="true" />
-            <strong>批准外部写入{item.summary ? `：${item.summary}` : ""}</strong>
+            <strong>
+              {item.summary
+                ? t("nativeApproval.titleWithSummary", { summary: item.summary })
+                : t("nativeApproval.title")}
+            </strong>
           </div>
           <pre>{commandText(item.input)}</pre>
-          <p>这项操作会写入外部系统。仅批准这一次。停止回复、调用取消或等待超时后，审批会失效。</p>
+          <p>{t("nativeApproval.desc")}</p>
           <div className="native-approval-actions">
             <button type="button" disabled={!!saving} onClick={() => decide(item, "deny")}>
-              拒绝
+              {t("nativeApproval.deny")}
             </button>
             <button type="button" className="primary" disabled={!!saving} onClick={() => decide(item, "allow")}>
-              批准本次操作
+              {t("nativeApproval.allow")}
             </button>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import SopDesigner from "./SopDesigner";
 import { isDesignerSurface } from "./sop-designer.js";
+import { applyDocumentLang, t } from "./i18n.js";
 import "./styles.css";
 import "./home.css";
 import "./navigation.css";
@@ -14,6 +15,8 @@ import "../../web/app/hui-tooltip.js";
 import "./navigation-motion.css";
 import "./composer-context.css";
 import "../../web/app/sliding-tabs.css";
+applyDocumentLang();
+if (typeof document !== "undefined") document.title = t("app.pageTitle");
 class Boundary extends React.Component {
   state = { error: null };
   static getDerivedStateFromError(error) {
@@ -22,9 +25,9 @@ class Boundary extends React.Component {
   render() {
     return this.state.error ? (
       <div className="fatal-error">
-        <h1>工作台暂时无法打开</h1>
+        <h1>{t("app.fatalError.title")}</h1>
         <p>{this.state.error.message}</p>
-        <button onClick={() => location.reload()}>重新加载</button>
+        <button onClick={() => location.reload()}>{t("app.fatalError.reload")}</button>
       </div>
     ) : (
       this.props.children

@@ -1,8 +1,10 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { useI18n } from "./i18n.js";
 
 const pageSize = 40;
 
 export default function MessageHistory({ messages, renderMessage, scroll, follow, loading, children }) {
+  const { t } = useI18n();
   const [limit, setLimit] = useState(pageSize);
   const [readingFrom, setReadingFrom] = useState(null);
   const anchor = useRef(null);
@@ -40,10 +42,10 @@ export default function MessageHistory({ messages, renderMessage, scroll, follow
   return (
     <div className="message-scroll" ref={scroll} onScroll={onScroll}>
       <div className="message-column">
-        {loading ? <div className="loading-session">正在恢复对话…</div> : null}
+        {loading ? <div className="loading-session">{t("history.restoring")}</div> : null}
         {first > 0 ? (
           <button type="button" className="message-history-more" onClick={showEarlier}>
-            显示更早的消息
+            {t("history.showEarlier")}
           </button>
         ) : null}
         {messages.slice(first).map((message, offset) => renderMessage(message, first + offset))}

@@ -10,6 +10,9 @@
     const current = root.dataset.lang === 'en' ? 'en' : 'zh';
     if (value === current || root.classList.contains('lang-leaving')) return;
     try { localStorage.setItem('loopforge.lang', value); } catch { /* A blocked store keeps the previous language after reload. */ }
+    document.querySelectorAll('iframe').forEach(frame => {
+      try { frame.contentWindow?.postMessage({ type: 'loopforge-lang', lang: value }, location.origin); } catch {}
+    });
     const groups = [...document.querySelectorAll('.lang-switch')];
     for (const group of groups) {
       group.querySelectorAll('[data-lang-value]').forEach(btn => {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import SlidingTabs from "./SlidingTabs";
 import HarnessSelect from "./HarnessSelect";
 import { api } from "./api";
@@ -43,11 +44,12 @@ function runArtifact(run, artifact) {
     kind,
     url: `/api/runs/${encodeURIComponent(run.id)}/artifacts/${encodeURIComponent(artifact.id)}`,
     mimeType: artifact.mediaType,
-    source: "节点产物",
+    source: t("sopRun.nodeArtifactSource"),
   };
 }
 
 function NodeArtifact({ run, artifact, onPreview }) {
+  useI18n();
   const file = runArtifact(run, artifact);
   const image = file.mimeType?.startsWith("image/");
   const [zoom, setZoom] = useState(false);
@@ -64,8 +66,8 @@ function NodeArtifact({ run, artifact, onPreview }) {
         className="node-artifact-open"
         onClick={() => onPreview(file)}
         onDoubleClick={image ? () => setZoom(true) : undefined}
-        title={image ? "单击预览，双击查看大图" : undefined}
-        aria-label={`预览 ${file.name}`}
+        title={image ? t("sopRun.imageTitle") : undefined}
+        aria-label={t("sopRun.previewAria", { name: file.name })}
       >
         {image ? <img src={file.url} alt={file.name} loading="lazy" /> : null}
         <span className="node-artifact-file">
@@ -73,7 +75,7 @@ function NodeArtifact({ run, artifact, onPreview }) {
           <span>
             <strong>{file.name}</strong>
             <small>
-              {image ? "图片" : "文件"}
+              {image ? t("richContent.image") : t("artifactPanel.filter.files")}
               {file.size
                 ? ` · ${file.size < 1024 ? `${file.size} B` : `${Math.ceil(file.size / 1024)} KB`}`
                 : ""}
@@ -86,7 +88,7 @@ function NodeArtifact({ run, artifact, onPreview }) {
         className="icon-button node-artifact-download"
         href={file.url}
         download={file.name}
-        aria-label={`下载 ${file.name}`}
+        aria-label={t("sopRun.downloadAria", { name: file.name })}
       >
         <Download size={15} />
       </a>
@@ -95,17 +97,17 @@ function NodeArtifact({ run, artifact, onPreview }) {
 }
 
 export const runStatus = {
-  succeeded: "已完成",
-  running: "运行中",
-  waiting: "等待审批",
-  waiting_approval: "等待审批",
-  pending: "待执行",
-  queued: "排队中",
-  failed: "失败",
-  canceled: "已取消",
-  cancelled: "已取消",
-  skipped: "已跳过",
-  paused: "已暂停",
+  get succeeded() { return t("sopRun.status.succeeded"); },
+  get running() { return t("sopRun.status.running"); },
+  get waiting() { return t("sopRun.status.waiting"); },
+  get waiting_approval() { return t("sopRun.status.waiting_approval"); },
+  get pending() { return t("sopRun.status.pending"); },
+  get queued() { return t("sopRun.status.queued"); },
+  get failed() { return t("sopRun.status.failed"); },
+  get canceled() { return t("sopRun.status.canceled"); },
+  get cancelled() { return t("sopRun.status.cancelled"); },
+  get skipped() { return t("sopRun.status.skipped"); },
+  get paused() { return t("sopRun.status.paused"); },
 };
 const statusIcon = (status) =>
   status === "succeeded"
@@ -119,6 +121,7 @@ const statusIcon = (status) =>
           : Circle;
 
 function NodeConversation({ run, node, definition, onPreview }) {
+  useI18n();
   const [events, setEvents] = useState([]),
     [more, setMore] = useState(false),
     [loading, setLoading] = useState(false),
@@ -208,7 +211,7 @@ function NodeConversation({ run, node, definition, onPreview }) {
       {opening || handoffs.length ? (
         <article
           className="node-message node-message-user"
-          aria-label="收到的消息"
+          aria-label={t("sopRun.receivedAria")}
         >
           {opening ? <RichContent message={opening} /> : null}
           {handoffs.map((source) => (
@@ -237,7 +240,7 @@ function NodeConversation({ run, node, definition, onPreview }) {
         ) : item.type === "reply" ? (
           <article
             className="node-message node-message-assistant node-result"
-            aria-label="节点回复"
+            aria-label={t("sopRun.nodeReplyAria")}
             key={item.key}
           >
             <RichContent message={item.message} />
@@ -258,26 +261,26 @@ function NodeConversation({ run, node, definition, onPreview }) {
           disabled={loading}
           onClick={() => void loadRef.current?.()}
         >
-          {loading ? "正在读取完整会话…" : "加载更多执行记录"}
+          {loading ? t("sopRun.loadingHistory") : t("sopRun.loadMoreHistory")}
         </button>
       ) : null}
       {definition?.type === "approval" && node.status !== "pending" ? (
         <article
           className="node-message node-message-assistant node-approval-reason"
-          aria-label="人工门禁说明"
+          aria-label={t("sopRun.approvalAria")}
         >
           <strong>
             {node.status === "waiting_approval"
-              ? "为什么需要人工确认"
-              : "人工门禁"}
+              ? t("sopRun.whyApproval")
+              : t("sopRun.approvalGate")}
           </strong>
           <p>{approvalWaitReason(run, node.nodeId || definition.id)}</p>
         </article>
       ) : !items.length && !loading ? (
         <p className="muted">
           {node.status === "pending"
-            ? "节点尚未开始。"
-            : "暂无可读取的执行记录。"}
+            ? t("sopRun.nodeNotStarted")
+            : t("sopRun.noLogs")}
         </p>
       ) : null}
       {node.error ? (
@@ -296,6 +299,7 @@ export default function SopRunPanel({
   selectedNodeId,
   onSelectNode,
 }) {
+  useI18n();
   const [runId, setRunId] = useState(runs[0]?.id),
     [localNodeId, setLocalNodeId] = useState(null),
     [tab, setTab] = useState("conversation"),
@@ -322,20 +326,20 @@ export default function SopRunPanel({
   const artifacts = (run.artifacts || []).filter(
     (a) => !nodeId || a.nodeId === nodeId,
   );
-  const title = run.workflowSnapshot?.name || "SOP 运行";
+  const title = run.workflowSnapshot?.name || t("common.sopRun");
   const Container = embedded ? "section" : "aside";
   return (
     <Container
       className={`${embedded ? "sop-run-embedded" : "side-panel"} sop-run-panel ${nodeId ? "node-conversation-view" : ""}`}
-      aria-label="SOP 运行过程"
+      aria-label={t("sopRun.panelAria")}
     >
       {!embedded ? (
         <header className="sop-panel-header">
           <span>
             <GitBranch size={16} />
-            SOP 运行
+            {t("common.sopRun")}
           </span>
-          <IconButton label="关闭运行侧边栏" onClick={onClose}>
+          <IconButton label={t("sopRun.closePanel")} onClick={onClose}>
             <X size={16} />
           </IconButton>
         </header>
@@ -343,7 +347,7 @@ export default function SopRunPanel({
       <div className="sop-panel-scroll">
         {runs.length > 1 ? (
           <HarnessSelect
-            ariaLabel="选择会话关联运行"
+            ariaLabel={t("sopRun.selectRunAria")}
             value={run.id}
             onChange={(e) => setRunId(e.target.value)}
             options={runs.map((r) => ({ value: r.id, label: r.workflowSnapshot?.name || r.id }))}
@@ -356,7 +360,7 @@ export default function SopRunPanel({
               {runStatus[run.status] || run.status}
             </span>
             <small>
-              {completed} / {nodes.length} 个节点已完成
+              {t("sopRun.nodesCompleted", { completed, total: nodes.length })}
             </small>
             <div className="sop-progress">
               <i
@@ -371,7 +375,7 @@ export default function SopRunPanel({
           <>
             <button className="back-link" onClick={() => setArtifact(null)}>
               <ChevronLeft size={14} />
-              {tab === "conversation" ? "返回会话" : "返回节点产物"}
+              {tab === "conversation" ? t("sopRun.backToConversation") : t("sopRun.backToNodeArtifacts")}
             </button>
             <ArtifactPreview artifact={artifact} />
           </>
@@ -380,17 +384,17 @@ export default function SopRunPanel({
             {!embedded ? (
               <button className="back-link" onClick={() => setNodeId(null)}>
                 <ChevronLeft size={14} />
-                全部流程节点
+                {t("sopRun.allNodes")}
               </button>
             ) : null}
-            <SlidingTabs className="node-tabs" aria-label="节点详情">
+            <SlidingTabs className="node-tabs" aria-label={t("sopRun.nodeDetailsAria")}>
               <button
                 role="tab"
                 aria-selected={tab === "conversation"}
                 onClick={() => setTab("conversation")}
               >
                 <MessageSquare size={14} />
-                会话过程
+                {t("sopRun.tabConversation")}
               </button>
               <button
                 role="tab"
@@ -398,7 +402,7 @@ export default function SopRunPanel({
                 onClick={() => setTab("artifacts")}
               >
                 <FileText size={14} />
-                产物 {artifacts.length || ""}
+                {t("sopRun.tabArtifacts")} {artifacts.length || ""}
               </button>
             </SlidingTabs>
             {tab === "conversation" ? (
@@ -421,14 +425,14 @@ export default function SopRunPanel({
                     <span>
                       <strong>{a.path || a.name}</strong>
                       <small>
-                        第 {a.attempt} 次执行 · {a.size} 字节
+                        {t("sopRun.attemptSize", { attempt: a.attempt, size: a.size })}
                       </small>
                     </span>
                     <ChevronRight size={14} />
                   </button>
                 ))}
                 {!artifacts.length ? (
-                  <p className="muted">这个节点尚未生成产物。</p>
+                  <p className="muted">{t("sopRun.noNodeArtifacts")}</p>
                 ) : null}
               </div>
             )}

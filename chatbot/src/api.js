@@ -1,4 +1,5 @@
 import { mergeActivity } from "./activity.js";
+import { t } from "./i18n.js";
 import { actionName } from "./platform.js";
 export async function api(path, options = {}) {
   const headers = { accept: "application/json", ...options.headers };
@@ -13,7 +14,7 @@ export async function api(path, options = {}) {
     response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok)
     throw Object.assign(
-      new Error(data?.error || `请求失败（${response.status}）`),
+      new Error(data?.error || t("api.requestFailed", { status: response.status })),
       { status: response.status },
     );
   return data;
@@ -35,11 +36,11 @@ export function elapsedSeconds(startedAt, finishedAt) {
   return Math.floor((end - start) / 1000);
 }
 export function formatElapsed(seconds) {
-  if (seconds < 1) return "不到1秒";
+  if (seconds < 1) return t("api.lessThan1s");
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const rest = seconds % 60;
-  return `${hours ? `${hours}小时` : ""}${minutes ? `${minutes}分钟` : ""}${rest || (!hours && !minutes) ? `${rest}秒` : ""}`;
+  return `${hours ? t("api.hours", { n: hours }) : ""}${minutes ? t("api.minutes", { n: minutes }) : ""}${rest || (!hours && !minutes) ? t("api.seconds", { n: rest }) : ""}`;
 }
 export const attachmentURL = (attachment, sessionId) =>
   attachment.id?.startsWith("local-attachment-") &&
@@ -92,7 +93,11 @@ export function collectArtifacts(session) {
       artifacts.push({
         ...attachment,
         kind: "attachment",
-        source: message.role === "assistant" ? "AI 生成" : "上传的文件",
+        isUserUpload: message.role !== "assistant",
+        source:
+          message.role === "assistant"
+            ? t("api.artifact.aiGenerated")
+            : t("api.artifact.uploadedFile"),
         url: attachmentURL(attachment, session.id),
         messageIndex,
       });
@@ -106,7 +111,10 @@ export function collectArtifacts(session) {
         kind: asset.kind,
         asset,
         resourceKey: `${asset.kind}:${asset.id}`,
-        source: asset.status === "published" ? "已发布" : "已保存",
+        source:
+          asset.status === "published"
+            ? t("api.artifact.published")
+            : t("api.artifact.saved"),
         mimeType: "application/json",
       });
     }
@@ -140,7 +148,9 @@ export function collectArtifacts(session) {
         draft,
         messageIndex,
         draftIndex: index,
-        source: draft.saved ? "已执行" : "待确认",
+        source: draft.saved
+          ? t("api.artifact.executed")
+          : t("api.artifact.pending"),
       });
     }
     // PR/MR links the agent opened with its own git only appear in the reply
@@ -198,13 +208,21 @@ export function collectArtifacts(session) {
         id: `block-${messageIndex}-${index}`,
         name:
           named ||
-          `${{ svg: "图像", mermaid: "流程图", html: "网页", slides: "演示文稿", ppt: "演示文稿" }[language] || "代码"}-${messageIndex + 1}-${index + 1}.${extension}`,
+          `${
+            {
+              svg: t("api.artifact.svg"),
+              mermaid: t("api.artifact.mermaid"),
+              html: t("api.artifact.html"),
+              slides: t("api.artifact.slides"),
+              ppt: t("api.artifact.slides"),
+            }[language] || t("api.artifact.code")
+          }-${messageIndex + 1}-${index + 1}.${extension}`,
         kind: type,
         content: match[2],
         language,
         mimeType: type === "svg" ? "image/svg+xml" : "text/plain",
         messageIndex,
-        source: "AI 生成",
+        source: t("api.artifact.aiGenerated"),
       });
     }
   });
@@ -268,8 +286,8 @@ export function projectPickerOptions(projects, user, session) {
   const available = [];
   const unjoined = [];
   const effect = {
-    bind: "绑定当前会话到此项目",
-    new: "在此项目新开对话",
+    bind: t("api.projectBindCurrent"),
+    new: t("api.projectOpenNew"),
   };
   for (const p of projects || []) {
     if (canChatInProject(p, user)) {
@@ -284,13 +302,18 @@ export function projectPickerOptions(projects, user, session) {
         id: p.id,
         label: p.name,
         icon: "folder",
-        section: UNJOINED_PROJECTS_SECTION,
+        section: t("api.unjoinedProjects"),
         unavailable: true,
       });
     }
   }
   return [
-    { id: "", label: "个人对话", description: "不绑定项目", icon: "user" },
+    {
+      id: "",
+      label: t("common.personalChat"),
+      description: t("api.personalDesc"),
+      icon: "user",
+    },
     ...available,
     ...unjoined,
   ];
@@ -415,7 +438,7 @@ export function confirmationCaption(message, previous) {
     return (parseReply(previous).drafts || []).some(
       (d) => d.proposal && ["declined", "muted"].includes(d.decision),
     )
-      ? "不走 SOP，让 AI 助手自己做"
+      ? t("api.proposalDeclinedCaption")
       : "";
   const match =
     /^已确认并执行 ([a-z_]+)。请核对这条草稿的保存回执，继续完成原始请求；不要重复刚才的写入，下一项需要确认时提交草稿，全部完成时总结实际结果。$/.exec(
@@ -426,5 +449,5 @@ export function confirmationCaption(message, previous) {
     !parseReply(previous).drafts?.some((d) => d.saved && d.tool === match[1])
   )
     return "";
-  return `已确认${actionName(match[1])}，继续处理`;
+  return t("api.confirmedContinue", { action: actionName(match[1]) });
 }

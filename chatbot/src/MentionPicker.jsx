@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import HarnessIcon from "./HarnessIcon";
 import { api } from "./api";
+import { t, useI18n } from "./i18n.js";
 import { referenceTypes } from "./mentions.js";
 import { usePanelPresence } from "./usePanelPresence";
 import "./mention-context.css";
@@ -194,12 +195,13 @@ export default forwardRef(function MentionPicker(
     };
   }, [open, presence.phase, options.length, categories]);
   if (!presence.mounted) return null;
+  useI18n();
   return (
     <div
       className="mention-picker"
       ref={root}
       role="dialog"
-      aria-label="引用平台对象"
+      aria-label={t("mentions.aria")}
       aria-hidden={!open || undefined}
       inert={!open}
       data-phase={presence.phase}
@@ -208,7 +210,7 @@ export default forwardRef(function MentionPicker(
       <header>
         <button
           type="button"
-          aria-label="返回所有引用类别"
+          aria-label={t("mentions.backCategories")}
           onClick={() => {
             setType("");
             setQuery("");
@@ -218,17 +220,19 @@ export default forwardRef(function MentionPicker(
         </button>
         <HarnessIcon name="search" size={16} />
         <input
-          aria-label="搜索引用对象"
+          aria-label={t("mentions.searchAria")}
           placeholder={
             type
-              ? `搜索${referenceTypes.find((x) => x.type === type)?.label}…`
-              : "搜索所有对象…"
+              ? t("mentions.searchType", {
+                  label: referenceTypes.find((x) => x.type === type)?.label || "",
+                })
+              : t("mentions.searchAll")
           }
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <button type="button" onClick={() => { onClose(); editor.current?.focus({ preventScroll: true }); }} className="mention-close">
-          关闭
+          {t("common.close")}
         </button>
       </header>
       {onManageIssue && (type === "issue" || issueId) ? (
@@ -240,14 +244,16 @@ export default forwardRef(function MentionPicker(
           aria-haspopup="dialog"
         >
           <HarnessIcon name="doc" size={16} />
-          <span>会话主需求</span>
+          <span>{t("issue.dialogTitle")}</span>
           <small>
-            {issueId ? `已关联 · ${currentIssue?.name || issueId}` : "未关联"}
+            {issueId
+              ? t("mentions.linkedValue", { name: currentIssue?.name || issueId })
+              : t("mentions.unlinked")}
           </small>
           <HarnessIcon name="chevron-right" size={14} />
         </button>
       ) : null}
-      <div role="listbox" aria-label="平台对象" className="mention-options">
+      <div role="listbox" aria-label={t("mentions.listAria")} className="mention-options">
         {options.map((option, index) => {
           const icon = icons[option.type] || "doc";
           return (
@@ -271,7 +277,7 @@ export default forwardRef(function MentionPicker(
                     : [
                         referenceTypes.find((x) => x.type === option.type)
                           ?.label,
-                        option.projectName || "共享",
+                        option.projectName || t("common.shared"),
                         option.id,
                       ].join(" · ")}
                 </small>
@@ -284,19 +290,19 @@ export default forwardRef(function MentionPicker(
         })}
         {loading ? (
           <p className="end-label" role="status">
-            正在查找…
+            {t("common.searching")}
           </p>
         ) : null}
         {error ? (
           <p className="error" role="alert">
             {error}
             <button className="quiet-button" onClick={() => void load()}>
-              重试
+              {t("common.retry")}
             </button>
           </p>
         ) : null}
         {!categories && !loading && !error && !rows.length ? (
-          <p className="end-label">没有匹配的对象</p>
+          <p className="end-label">{t("mentions.empty")}</p>
         ) : null}
         {next ? (
           <button
@@ -304,7 +310,7 @@ export default forwardRef(function MentionPicker(
             disabled={loading}
             onClick={() => void load(next)}
           >
-            加载更多
+            {t("common.loadMore")}
           </button>
         ) : null}
       </div>

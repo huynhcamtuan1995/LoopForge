@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
+import { t } from "./i18n.js";
 import {
   addedFileDiff,
   diffTotals,
@@ -50,7 +51,7 @@ export function useWorkspaceChanges(runId, { active = false, interval = 6000 } =
           setState({
             ...IDLE,
             status: "unavailable",
-            reason: info.reason || "工作区不可用",
+            reason: info.reason || t("changes.unavailable").replace(/\.$/, ""),
             // A reclaimed workspace is the usual state once the work is
             // pushed; the branch on the code host is still where its changes live.
             repositories: info.repositoryDetails || [],

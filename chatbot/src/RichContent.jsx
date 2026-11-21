@@ -12,6 +12,7 @@ import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import SlidingTabs from "./SlidingTabs";
 import { attachmentURL, visibleText } from "./api";
 import { definitionTarget } from "./platform.js";
@@ -58,7 +59,9 @@ export function download(name, content, type = "text/plain") {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export function CopyButton({ value, label = "复制", className = "" }) {
+export function CopyButton({ value, label, className = "" }) {
+  useI18n();
+  const resolvedLabel = label ?? t("common.copy");
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -82,8 +85,8 @@ export function CopyButton({ value, label = "复制", className = "" }) {
     <button
       className={`icon-button ${className}`}
       type="button"
-      aria-label={copied ? "已复制" : label}
-      title={copied ? "已复制" : label}
+      aria-label={copied ? t("common.copied") : resolvedLabel}
+      title={copied ? t("common.copied") : resolvedLabel}
       onClick={copy}
     >
       {copied ? <Check size={15} /> : <Copy size={15} />}
@@ -91,7 +94,8 @@ export function CopyButton({ value, label = "复制", className = "" }) {
   );
 }
 export function Diagram({ source }) {
-  const [result, setResult] = useState({ svg: "", error: "" });
+  useI18n();
+  const [result, setResult] = useState({ svg: "", failed: false });
   const id = useId().replace(/[^a-z0-9]/gi, "");
   useEffect(() => {
     let current = true;
@@ -116,13 +120,13 @@ export function Diagram({ source }) {
               USE_PROFILES: { svg: true },
               FORBID_TAGS: ["script", "foreignObject"],
             }),
-            error: "",
+            failed: false,
           });
       } catch {
         if (current)
           setResult({
             svg: "",
-            error: "图表语法需要调整，原始定义保留在下方。",
+            failed: true,
           });
       }
     })();
@@ -134,22 +138,23 @@ export function Diagram({ source }) {
     <div className="diagram" dangerouslySetInnerHTML={{ __html: result.svg }} />
   ) : (
     <div className="diagram-loading">
-      {result.error || "正在绘制图表…"}
-      {result.error ? <pre>{source}</pre> : null}
+      {result.failed ? t("richContent.diagramError") : t("richContent.diagramLoading")}
+      {result.failed ? <pre>{source}</pre> : null}
     </div>
   );
 }
 export function Slides({ source }) {
+  useI18n();
   const [page, setPage] = useState(0);
   const [exporting, setExporting] = useState(false),
-    [error, setError] = useState("");
+    [exportFailed, setExportFailed] = useState(false);
   const slides = presentationPages(source);
   const currentPage = Math.min(page, Math.max(0, slides.length - 1));
   return (
     <div className="slides">
       <div
         className={`slide ${currentPage === 0 ? "slide-cover" : ""}`}
-        aria-label={`幻灯片 ${currentPage + 1}`}
+        aria-label={t("richContent.slideAria", { page: currentPage + 1 })}
       >
         <div className="slide-eyebrow">{presentationTitle(source)}</div>
         <Markdown remarkPlugins={[remarkGfm]}>{slides[currentPage]}</Markdown>
@@ -162,7 +167,7 @@ export function Slides({ source }) {
           disabled={!currentPage}
           onClick={() => setPage(currentPage - 1)}
         >
-          上一页
+          {t("richContent.prevSlide")}
         </button>
         <span>
           {currentPage + 1} / {slides.length}
@@ -171,36 +176,37 @@ export function Slides({ source }) {
           disabled={currentPage === slides.length - 1}
           onClick={() => setPage(currentPage + 1)}
         >
-          下一页
+          {t("richContent.nextSlide")}
         </button>
         <button
           className="slide-export"
           disabled={exporting}
           onClick={async () => {
             setExporting(true);
-            setError("");
+            setExportFailed(false);
             try {
               await exportPresentation(source);
             } catch {
-              setError("PPT 导出失败，请重试；内容已保留。");
+              setExportFailed(true);
             } finally {
               setExporting(false);
             }
           }}
         >
           <Download size={14} />
-          {exporting ? "正在导出…" : "下载 PowerPoint"}
+          {exporting ? t("richContent.exportingPpt") : t("richContent.downloadPpt")}
         </button>
       </div>
-      {error ? (
+      {exportFailed ? (
         <p role="alert" className="error">
-          {error}
+          {t("richContent.pptExportFailed")}
         </p>
       ) : null}
     </div>
   );
 }
 export function CodeBlock({ language, source }) {
+  useI18n();
   const [preview, setPreview] = useState(
     ["svg", "mermaid", "html", "slides", "ppt"].includes(language),
   );
@@ -208,14 +214,14 @@ export function CodeBlock({ language, source }) {
   return (
     <div className="code-block">
       <div className="code-toolbar">
-        <span>{language || "文本"}</span>
+        <span>{language || t("richContent.plainText")}</span>
         <div>
           {visual ? (
             <button onClick={() => setPreview(!preview)}>
-              {preview ? "查看源码" : "预览"}
+              {preview ? t("richContent.viewSource") : t("richContent.preview")}
             </button>
           ) : null}
-          <CopyButton value={source} label="复制代码" />
+          <CopyButton value={source} label={t("richContent.copyCode")} />
         </div>
       </div>
       {preview && language === "svg" ? (
@@ -227,7 +233,7 @@ export function CodeBlock({ language, source }) {
         <Diagram source={source} />
       ) : preview && language === "html" ? (
         <iframe
-          title="HTML 产物预览"
+          title={t("richContent.htmlPreviewTitle")}
           className="html-preview"
           sandbox="allow-scripts"
           key={source}
@@ -262,7 +268,7 @@ function AgentBrowserLink({ target, open, children }) {
       <button
         type="button"
         className="agent-browser-link"
-        title={`在 Agent 浏览器中打开 ${target}`}
+        title={t("richContent.openInAgentBrowser", { target })}
         onClick={() => open(target)}
       >
         {children}
@@ -337,10 +343,10 @@ const markdownComponents = {
   },
   img: ({ src, alt }) =>
     src?.startsWith("/api/assistant/attachments/") ? (
-      <ZoomableImage src={src} alt={alt || "图片"} />
+      <ZoomableImage src={src} alt={alt || t("richContent.image")} />
     ) : (
       <span className="unavailable-image">
-        {alt || "图片"} · 请在产物中查看
+        {t("richContent.imageInArtifacts", { alt: alt || t("richContent.image") })}
       </span>
     ),
   table: ({ children }) => (
@@ -351,6 +357,7 @@ const markdownComponents = {
 };
 const emptyAssets = [];
 export function RichContent({ message, assets = emptyAssets, projectId = "" }) {
+  const { lang } = useI18n();
   const text = typeof message === "string" ? message : visibleText(message);
   const context = useMemo(() => ({ assets, projectId }), [assets, projectId]);
   const markdown = useMemo(() => (
@@ -361,7 +368,7 @@ export function RichContent({ message, assets = emptyAssets, projectId = "" }) {
     >
       {text}
     </Markdown>
-  ), [text]);
+  ), [text, lang]);
   return (
     <MarkdownAssets.Provider value={context}>
       <div className="markdown">{markdown}</div>
@@ -372,6 +379,7 @@ export function RichContent({ message, assets = emptyAssets, projectId = "" }) {
 // Full-window viewer shared by chat images, artifact previews and SOP node
 // files. Double-click an image to open; Esc closes.
 export function ImageLightbox({ src, alt, onClose }) {
+  useI18n();
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -382,14 +390,14 @@ export function ImageLightbox({ src, alt, onClose }) {
       className="image-lightbox"
       role="dialog"
       aria-modal="true"
-      aria-label={`查看大图 ${alt || ""}`}
+      aria-label={t("richContent.lightboxAria", { alt: alt || "" })}
       onClick={onClose}
     >
       <img src={src} alt={alt} onClick={(e) => e.stopPropagation()} />
       <button
         type="button"
         className="icon-button image-lightbox-close"
-        aria-label="关闭大图"
+        aria-label={t("richContent.closeLightbox")}
         onClick={onClose}
       >
         <X size={18} />
@@ -400,6 +408,7 @@ export function ImageLightbox({ src, alt, onClose }) {
 }
 
 export function ZoomableImage({ src, alt, className }) {
+  useI18n();
   const [zoom, setZoom] = useState(false);
   return (
     <>
@@ -407,7 +416,7 @@ export function ZoomableImage({ src, alt, className }) {
         className={className}
         src={src}
         alt={alt}
-        title="双击查看大图"
+        title={t("richContent.zoomTitle")}
         onDoubleClick={() => setZoom(true)}
       />
       {zoom ? (
@@ -418,6 +427,7 @@ export function ZoomableImage({ src, alt, className }) {
 }
 
 export function Attachment({ attachment, sessionId, onOpen }) {
+  useI18n();
   const image = attachment.mimeType?.startsWith("image/");
   const [zoom, setZoom] = useState(false);
   const [status, setStatus] = useState("loading");
@@ -463,7 +473,7 @@ export function Attachment({ attachment, sessionId, onOpen }) {
         // The card shows no caption, so the hover title names the file.
         title={
           image
-            ? `${attachment.name}\n${failed ? "单击在产物栏打开" : "单击查看大图"}`
+            ? `${attachment.name}\n${failed ? t("richContent.clickOpenArtifacts") : t("richContent.clickViewLarge")}`
             : undefined
         }
         onClick={(e) => {
@@ -476,7 +486,7 @@ export function Attachment({ attachment, sessionId, onOpen }) {
             ...attachment,
             url,
             kind: "attachment",
-            source: "会话附件",
+            source: t("richContent.sessionAttachment"),
           });
         }}
       >
@@ -497,18 +507,18 @@ export function Attachment({ attachment, sessionId, onOpen }) {
             {shown === "loading" ? (
               <span className="message-image-placeholder">
                 <Spinner size={22} motion="busy" />
-                <span className="message-image-hidden-label">图片加载中</span>
+                <span className="message-image-hidden-label">{t("richContent.imageLoading")}</span>
               </span>
             ) : null}
             {failed ? (
               <span className="message-image-placeholder">
                 <ImageOff size={22} />
-                <span>图片加载失败</span>
+                <span>{t("richContent.imageLoadFailed")}</span>
                 <span
                   className="message-image-retry"
                   role="button"
                   tabIndex={0}
-                  aria-label="重试加载图片"
+                  aria-label={t("richContent.retryLoadImage")}
                   onClick={retry}
                   onDoubleClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
@@ -516,7 +526,7 @@ export function Attachment({ attachment, sessionId, onOpen }) {
                   }}
                 >
                   <Refresh size={14} />
-                  <span>重试</span>
+                  <span>{t("common.retry")}</span>
                 </span>
               </span>
             ) : null}
@@ -571,7 +581,7 @@ export function ArtifactPreview({ artifact }) {
         );
         setText(new TextDecoder().decode(bytes));
       } catch {
-        setError("文件读取失败");
+        setError(t("richContent.fileReadFailed"));
       }
       return () => {
         current = false;
@@ -580,7 +590,7 @@ export function ArtifactPreview({ artifact }) {
     if (artifact?.url && readable)
       fetch(artifact.url)
         .then((r) => {
-          if (!r.ok) throw Error("文件读取失败");
+          if (!r.ok) throw Error(t("richContent.fileReadFailed"));
           return r.text();
         })
         .then((value) => {
@@ -593,6 +603,7 @@ export function ArtifactPreview({ artifact }) {
       current = false;
     };
   }, [artifact?.id, artifact?.url, artifact?.localDataUrl, readable]);
+  useI18n();
   if (!artifact) return null;
   const source = artifact.url ? text : (artifact.content ?? text);
   const hasSource = typeof source === "string" && source.length > 0 && !error;
@@ -616,11 +627,11 @@ export function ArtifactPreview({ artifact }) {
             ) : null}
           </div>
         </div>
-        <div className="artifact-preview-toolbar" aria-label="产物工具栏">
+        <div className="artifact-preview-toolbar" aria-label={t("richContent.artifactToolbarAria")}>
           {canPreview ? (
             <SlidingTabs
               className="artifact-preview-view-options"
-              aria-label="产物显示方式"
+              aria-label={t("richContent.artifactViewModeAria")}
             >
               <button
                 type="button"
@@ -629,7 +640,7 @@ export function ArtifactPreview({ artifact }) {
                 aria-selected={mode === "preview"}
                 onClick={() => setMode("preview")}
               >
-                预览
+                {t("richContent.preview")}
               </button>
               <button
                 type="button"
@@ -638,27 +649,27 @@ export function ArtifactPreview({ artifact }) {
                 aria-selected={mode === "source"}
                 onClick={() => setMode("source")}
               >
-                源码
+                {t("richContent.source")}
               </button>
             </SlidingTabs>
           ) : null}
           <div
             className="artifact-preview-actions"
             role="group"
-            aria-label="产物操作"
+            aria-label={t("richContent.artifactActionsAria")}
           >
             {hasSource ? (
               <CopyButton
                 className="artifact-preview-icon-action"
                 value={source}
-                label="复制正文"
+                label={t("richContent.copyContent")}
               />
             ) : null}
             {artifact.url ? (
               <a
                 className="icon-button artifact-preview-icon-action"
-                aria-label="下载文件"
-                title="下载文件"
+                aria-label={t("richContent.downloadFile")}
+                title={t("richContent.downloadFile")}
                 href={artifact.url}
                 download={artifact.name}
               >
@@ -668,8 +679,8 @@ export function ArtifactPreview({ artifact }) {
               <button
                 type="button"
                 className="icon-button artifact-preview-icon-action"
-                aria-label="下载文件"
-                title="下载文件"
+                aria-label={t("richContent.downloadFile")}
+                title={t("richContent.downloadFile")}
                 onClick={() =>
                   ["slides", "ppt"].includes(artifact.kind)
                     ? exportPresentation(source)
@@ -708,7 +719,7 @@ export function ArtifactPreview({ artifact }) {
           <Diagram source={source} />
         ) : kind === "html" ? (
           <iframe
-            title="HTML 产物预览"
+            title={t("richContent.htmlPreviewTitle")}
             className="html-preview"
             sandbox="allow-scripts"
             key={source}
@@ -723,11 +734,11 @@ export function ArtifactPreview({ artifact }) {
         ) : ["slides", "ppt"].includes(artifact.kind) ? (
           <Slides source={source} />
         ) : artifact.url && !readable ? (
-          <p className="muted">此类型文件可通过右上角下载查看。</p>
+          <p className="muted">{t("richContent.binaryHint")}</p>
         ) : isMarkdown ? (
           <RichContent message={source} />
         ) : (
-          <pre className="artifact-source">{source || "正在加载…"}</pre>
+          <pre className="artifact-source">{source || t("common.loading")}</pre>
         )}
       </div>
     </article>

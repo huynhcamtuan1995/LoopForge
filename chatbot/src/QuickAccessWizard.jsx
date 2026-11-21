@@ -10,6 +10,7 @@ import React, {
 import { createPortal } from "react-dom";
 import "../../web/app/git-ssh.js";
 import HarnessIcon from "./HarnessIcon";
+import { listSeparator, t, useI18n } from "./i18n.js";
 import SlidingTabs from "./SlidingTabs";
 import { api, canChatInProject, canManageProjectRepos, write } from "./api";
 import { usePanelPresence } from "./usePanelPresence";
@@ -31,7 +32,7 @@ export function sharedModelNames(models, fallback = "") {
   const list = Array.isArray(models) && models.length ? models : fallback ? [fallback] : [];
   return list
     .map((id) => (id === "deepseek-v4.1-flash" ? "Deepseek-V4.1-Flash" : id))
-    .join("、");
+    .join(listSeparator());
 }
 
 // The users API omits an empty (国际站) environment, so a full user response
@@ -47,100 +48,100 @@ export function mergeFreshUser(prev, fresh) {
 const STEPS = [
   {
     id: "auth",
-    title: "凭据与授权",
-    desc: "GitHub 访问与模型密钥",
+    get title() { return t("wizard.step.auth.title"); },
+    get desc() { return t("wizard.step.auth.desc"); },
   },
   {
     id: "project",
-    title: "项目与仓库",
-    desc: "选择或新建项目，绑定 GitHub 仓库",
+    get title() { return t("wizard.step.project.title"); },
+    get desc() { return t("wizard.step.project.desc"); },
   },
   {
     id: "workflow",
-    title: "默认角色与 SOP",
-    desc: "使用平台默认角色与通用交付流程",
+    get title() { return t("wizard.step.workflow.title"); },
+    get desc() { return t("wizard.step.workflow.desc"); },
   },
   {
     id: "done",
-    title: "完成",
-    desc: "保存配置，直接开始使用",
+    get title() { return t("wizard.step.done.title"); },
+    get desc() { return t("wizard.step.done.desc"); },
   },
 ];
 
-const FALLBACK_ROLES = [
+const getFallbackRoles = () => [
   {
     id: "loopforge-requirement",
-    name: "需求定型",
-    description: "澄清需求边界与验收标准",
-    prompt: "根据需求输入与代码库现状，确认目标、范围、排除项与验收标准，产出结构化需求说明与执行计划。\n\n任务输入：{{input}}",
+    name: t("wizard.role.requirement.name"),
+    description: t("wizard.role.requirement.desc"),
+    prompt: t("wizard.role.requirement.prompt"),
     artifactId: "requirement-report",
     artifactPath: "requirement-report.md",
   },
   {
     id: "loopforge-design",
-    name: "方案设计",
-    description: "产出技术方案与实现计划",
-    prompt: "分析受影响模块与调用链，设计接口、数据模型与最小改动方案，明确风险与验证范围。\n\n任务输入：{{input}}",
+    name: t("wizard.role.design.name"),
+    description: t("wizard.role.design.desc"),
+    prompt: t("wizard.role.design.prompt"),
     artifactId: "tech-design",
     artifactPath: "tech-design.md",
   },
   {
     id: "loopforge-implement",
-    name: "代码实现",
-    description: "在工作分支实现并自测",
-    prompt: "按方案与计划完成代码实现，运行受影响模块的单元测试并记录变更报告。\n\n任务输入：{{input}}",
+    name: t("wizard.role.implement.name"),
+    description: t("wizard.role.implement.desc"),
+    prompt: t("wizard.role.implement.prompt"),
     artifactId: "change-report",
     artifactPath: "change-report.md",
   },
   {
     id: "loopforge-review",
-    name: "独立评审",
-    description: "审查改动质量与规范",
-    prompt: "独立审查代码改动的正确性、回归风险、安全边界与测试证据，给出评审结论。\n\n任务输入：{{input}}",
+    name: t("wizard.role.review.name"),
+    description: t("wizard.role.review.desc"),
+    prompt: t("wizard.role.review.prompt"),
     artifactId: "review-report",
     artifactPath: "review-report.md",
   },
   {
     id: "loopforge-test",
-    name: "测试验证",
-    description: "运行测试并给出验收结论",
-    prompt: "按验收标准执行自动化或回归测试，核对每条验收项并输出测试报告。\n\n任务输入：{{input}}",
+    name: t("wizard.role.test.name"),
+    description: t("wizard.role.test.desc"),
+    prompt: t("wizard.role.test.prompt"),
     artifactId: "test-report",
     artifactPath: "test-report.md",
   },
   {
     id: "loopforge-mr",
-    name: "发起 MR",
-    description: "推送分支并创建合并请求",
-    prompt: "将工作分支推送到代码仓库，创建或更新 Pull Request 并整理变更摘要。\n\n任务输入：{{input}}",
+    name: t("wizard.role.mr.name"),
+    description: t("wizard.role.mr.desc"),
+    prompt: t("wizard.role.mr.prompt"),
     artifactId: "mr-body",
     artifactPath: "mr-body.md",
   },
   {
     id: "loopforge-summary",
-    name: "交付汇总",
-    description: "汇总产物与沉淀知识",
-    prompt: "汇总本次交付的改动、验证结果与 MR 链接，提炼可复用的项目经验。\n\n任务输入：{{input}}",
+    name: t("wizard.role.summary.name"),
+    description: t("wizard.role.summary.desc"),
+    prompt: t("wizard.role.summary.prompt"),
     artifactId: "summary-report",
     artifactPath: "summary-report.md",
   },
 ];
 
 const FALLBACK_NODES = [
-  { id: "requirement", name: "需求定型", type: "agent", agentId: "loopforge-requirement", metricStage: "clarification" },
-  { id: "design", name: "方案设计", type: "agent", agentId: "loopforge-design", metricStage: "development" },
-  { id: "implement", name: "代码实现", type: "agent", agentId: "loopforge-implement", metricStage: "development" },
-  { id: "review", name: "独立评审", type: "agent", agentId: "loopforge-review", metricStage: "testing" },
-  { id: "test", name: "测试验证", type: "agent", agentId: "loopforge-test", metricStage: "testing" },
-  { id: "mr", name: "发起 MR", type: "agent", agentId: "loopforge-mr", metricStage: "development" },
-  { id: "summary", name: "交付汇总", type: "agent", agentId: "loopforge-summary", metricStage: "none" },
+  { id: "requirement", get name() { return t("wizard.role.requirement.name"); }, type: "agent", agentId: "loopforge-requirement", metricStage: "clarification" },
+  { id: "design", get name() { return t("wizard.role.design.name"); }, type: "agent", agentId: "loopforge-design", metricStage: "development" },
+  { id: "implement", get name() { return t("wizard.role.implement.name"); }, type: "agent", agentId: "loopforge-implement", metricStage: "development" },
+  { id: "review", get name() { return t("wizard.role.review.name"); }, type: "agent", agentId: "loopforge-review", metricStage: "testing" },
+  { id: "test", get name() { return t("wizard.role.test.name"); }, type: "agent", agentId: "loopforge-test", metricStage: "testing" },
+  { id: "mr", get name() { return t("wizard.role.mr.name"); }, type: "agent", agentId: "loopforge-mr", metricStage: "development" },
+  { id: "summary", get name() { return t("wizard.role.summary.name"); }, type: "agent", agentId: "loopforge-summary", metricStage: "none" },
 ];
 
 const BRANCH_OPTIONS = [
-  { value: "main", label: "main", hint: "GitHub 默认主分支" },
-  { value: "master", label: "master", hint: "传统主分支" },
-  { value: "preview", label: "preview", hint: "预发验证分支" },
-  { value: "develop", label: "develop", hint: "开发集成分支" },
+  { value: "main", label: "main", get hint() { return t("wizard.branch.main"); } },
+  { value: "master", label: "master", get hint() { return t("wizard.branch.master"); } },
+  { value: "preview", label: "preview", get hint() { return t("wizard.branch.preview"); } },
+  { value: "develop", label: "develop", get hint() { return t("wizard.branch.develop"); } },
 ];
 
 let closeActiveSelect = null;
@@ -154,13 +155,16 @@ export function HarnessSelect({
   value,
   options = [],
   onChange,
-  placeholder = "请选择",
+  placeholder,
   ariaLabel,
   searchable = false,
-  searchPlaceholder = "搜索选项…",
+  searchPlaceholder,
   allowCustom = false,
   disabled = false,
 }) {
+  useI18n();
+  const resolvedPlaceholder = placeholder ?? t("common.pleaseSelect");
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t("wizard.searchPlaceholder");
   const selectId = `qa-select-${useId().replaceAll(":", "")}`;
   const listboxId = `${selectId}-listbox`;
   const [open, setOpen] = useState(false);
@@ -186,7 +190,7 @@ export function HarnessSelect({
     ? matched.label
     : allowCustom && value
       ? value
-      : placeholder;
+      : resolvedPlaceholder;
   const isPlaceholder = !matched && !(allowCustom && value);
 
   const rows = useMemo(() => {
@@ -210,8 +214,8 @@ export function HarnessSelect({
       ? [
           {
             value: trimmed,
-            label: `使用 "${trimmed}"`,
-            hint: "自定义",
+            label: t("wizard.useCustom", { value: trimmed }),
+            hint: t("wizard.customHint"),
             custom: true,
           },
         ]
@@ -400,8 +404,8 @@ export function HarnessSelect({
                     ref={searchRef}
                     type="search"
                     value={query}
-                    placeholder={searchPlaceholder}
-                    aria-label={searchPlaceholder}
+                    placeholder={resolvedSearchPlaceholder}
+                    aria-label={resolvedSearchPlaceholder}
                     onChange={(event) => {
                       setQuery(event.target.value);
                       setActiveIndex(0);
@@ -455,7 +459,7 @@ export function HarnessSelect({
                     );
                   })
                 ) : (
-                  <p className="qa-select-empty">没有匹配的选项</p>
+                  <p className="qa-select-empty">{t("common.noMatchingOptions")}</p>
                 )}
               </div>
             </div>,
@@ -486,7 +490,10 @@ export function HarnessSwitch({ checked, onChange, disabled = false, label }) {
 }
 
 /** Pill whose dot pops once each time `ok` flips; alternating keyframe names restart it. */
-function StatusPill({ ok, okLabel = "已就绪", needLabel = "待配置" }) {
+function StatusPill({ ok, okLabel, needLabel }) {
+  useI18n();
+  const resolvedOk = okLabel ?? t("wizard.statusReady");
+  const resolvedNeed = needLabel ?? t("wizard.statusNeed");
   const previous = useRef(ok);
   const [pops, setPops] = useState(0);
   useEffect(() => {
@@ -499,15 +506,16 @@ function StatusPill({ ok, okLabel = "已就绪", needLabel = "待配置" }) {
       className={`qa-status-pill ${ok ? "is-ok" : "is-need"}`}
       data-pop={pops ? (pops % 2 ? "a" : "b") : undefined}
     >
-      {ok ? okLabel : needLabel}
+      {ok ? resolvedOk : resolvedNeed}
     </span>
   );
 }
 
 function VerifyMessage({ result, okText }) {
+  useI18n();
   const text = result.valid
     ? okText
-    : result.error || `缺少权限：${(result.missing || []).join("、")}`;
+    : result.error || t("wizard.missingScopes", { scopes: (result.missing || []).join(listSeparator()) });
   return (
     <p
       key={text}
@@ -681,7 +689,7 @@ async function provisionFallbackProjectSOP(projectId, workflowId, owner) {
     "/api/sandboxes",
     {
       id: sandboxId,
-      name: "本地开发沙箱",
+      name: t("wizard.localSandboxName"),
       projectId,
       driver: "local",
       shared: false,
@@ -690,7 +698,7 @@ async function provisionFallbackProjectSOP(projectId, workflowId, owner) {
   );
 
   const agentIdMap = {};
-  for (const role of FALLBACK_ROLES) {
+  for (const role of getFallbackRoles()) {
     const agentId = `${role.id}-${projectId}`.slice(0, 60);
     agentIdMap[role.id] = agentId;
     await write(
@@ -746,7 +754,7 @@ async function provisionFallbackProjectSOP(projectId, workflowId, owner) {
     "/api/workflows",
     {
       id: workflowId,
-      name: "后端交付 SOP",
+      name: t("wizard.backendSopName"),
       projectId,
       owner,
       status: "draft",
@@ -754,9 +762,8 @@ async function provisionFallbackProjectSOP(projectId, workflowId, owner) {
       revision: 0,
       sopLane: "backend",
       sandboxProfileId: sandboxId,
-      tags: ["快速接入", `generic-source:${DEFAULT_SOP_ID}`],
-      description:
-        "从需求定型、方案设计、代码实现、独立评审、测试验证到发起 MR 的标准交付流程。",
+      tags: [t("wizard.title"), `generic-source:${DEFAULT_SOP_ID}`],
+      description: t("wizard.backendSopDesc"),
       nodes,
       edges,
     },
@@ -780,6 +787,7 @@ export default function QuickAccessWizard({
   onCredentialsSaved,
   onOpenView,
 }) {
+  useI18n();
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState("wizard");
   const [storedUser, setStoredUser] = useState(user);
@@ -845,9 +853,8 @@ export default function QuickAccessWizard({
       : [
           {
             id: DEFAULT_SOP_ID,
-            name: "通用后端交付 SOP",
-            description:
-              "从需求定型、方案设计、代码实现、独立评审、测试验证到发起 MR 的标准交付链路。",
+            name: t("operations.genericBackendSop"),
+            description: t("wizard.genericSopDesc"),
             generic: true,
             nodes: FALLBACK_NODES,
           },
@@ -914,15 +921,15 @@ export default function QuickAccessWizard({
           (n) => n.type === "agent",
         ).length;
         const scopeLabel = workflow.generic
-          ? "平台默认模板"
+          ? t("wizard.scopePlatform")
           : projectMode === "existing" &&
               workflow.projectId === currentProject?.id
-            ? "本项目已有 SOP（直接复用）"
-            : "共享 SOP";
+            ? t("wizard.scopeProject")
+            : t("wizard.scopeShared");
         return {
           value: workflow.id,
           label: workflow.name,
-          hint: `${stageCount} 个阶段 · ${scopeLabel}`,
+          hint: t("wizard.sopHint", { count: stageCount, scope: scopeLabel }),
         };
       }),
     [availableWorkflows, currentProject, projectMode],
@@ -1029,7 +1036,9 @@ export default function QuickAccessWizard({
         } else {
           setProjectMode("create");
           const login = freshUser?.loginName || "team";
-          const suggestedName = `${freshUser?.chineseName || login} 的项目`;
+          const suggestedName = t("wizard.suggestedProjectName", {
+            name: freshUser?.chineseName || login,
+          });
           setNewProjectName(suggestedName);
           setNewProjectId(slugifyProjectId(`${login}-project`) || "my-project");
           setNewProjectKey(deriveProjectKey(login));
@@ -1176,7 +1185,7 @@ export default function QuickAccessWizard({
       );
       if (matched.length) return matched;
     }
-    return templateAgents.length ? templateAgents : FALLBACK_ROLES;
+    return templateAgents.length ? templateAgents : getFallbackRoles();
   }, [activeWorkflow, projectAgents, currentProject?.id, templateAgents]);
 
   if (!presence.mounted) return null;
@@ -1288,7 +1297,7 @@ export default function QuickAccessWizard({
     setError("");
     if (activeStep.id === "auth") {
       if (!gitReady && !hasSSHKeys && !codeBuddyReady && !sponsoredModel) {
-        setError("请先配置 GitHub Git Token、Git SSH 密钥或 CodeBuddy API Key。");
+        setError(t("wizard.errMissingCreds"));
         return;
       }
       setSaving(true);
@@ -1306,31 +1315,29 @@ export default function QuickAccessWizard({
       if (projectMode === "create") {
         const id = slugifyProjectId(newProjectId || newProjectName);
         if (!id || !newProjectName.trim()) {
-          setError("请填写项目名称和项目标识。");
+          setError(t("wizard.errMissingProjectFields"));
           return;
         }
         // Saving a project with an existing id replaces it (members, TAPD
         // settings), so "new project" must never land on an existing one.
         if (catalogProjects.some((item) => item.id === id)) {
-          setError(
-            `项目标识「${id}」已被现有项目使用。请换一个标识，或切换到「选择已有项目」。`,
-          );
+          setError(t("wizard.errProjectIdExistsSwitch", { id }));
           return;
         }
       } else if (!currentProject) {
-        setError("请选择一个项目，或切换到新建项目。");
+        setError(t("wizard.errSelectProject"));
         return;
       }
       if (bindRepoNow && repoUrl.trim() && repoBindBlocked) {
         setError(
-          `你不是「${currentProject?.name || "该项目"}」的 Owner，不能为它绑定仓库。请新建自己的项目并绑定，或关闭「绑定仓库」继续体验。`,
+          t("wizard.errNotProjectOwner", {
+            name: currentProject?.name || t("wizard.thisProject"),
+          }),
         );
         return;
       }
       if (bindRepoNow && repoUrl.trim() && !parsedRepo) {
-        setError(
-          "请输入 Git HTTPS 仓库链接或 Git SSH 克隆地址。",
-        );
+        setError(t("wizard.errInvalidRepoUrl"));
         return;
       }
       goToStep(2);
@@ -1354,9 +1361,7 @@ export default function QuickAccessWizard({
         const id = slugifyProjectId(newProjectId || newProjectName);
         const key = deriveProjectKey(newProjectKey || id);
         if (catalogProjects.some((item) => item.id === id))
-          throw new Error(
-            `项目标识「${id}」已被现有项目使用，请换一个标识。`,
-          );
+          throw new Error(t("wizard.errProjectIdExists", { id }));
         targetProject = await write(
           "/api/projects",
           {
@@ -1435,7 +1440,7 @@ export default function QuickAccessWizard({
               item.projectId === targetProject.id &&
               ((item.tags || []).includes(`generic-source:${sopId}`) ||
                 item.id === `${sopId}-${targetProject.id}` ||
-                item.name === (activeWorkflow?.name || "通用后端交付 SOP")),
+                item.name === (activeWorkflow?.name || t("operations.genericBackendSop"))),
           );
         if (existingProjectSop) {
           provisionedWorkflow = existingProjectSop;
@@ -1445,15 +1450,15 @@ export default function QuickAccessWizard({
           );
           const cloneId = `${sopId}-${targetProject.id}`.slice(0, 60);
           const ownerName =
-            user?.chineseName || user?.loginName || "平台";
+            user?.chineseName || user?.loginName || t("wizard.platformOwner");
           if (hasStoredGeneric) {
             try {
               const cloned = await write(
                 `/api/workflows/${encodeURIComponent(sopId)}/clone`,
                 {
                   id: cloneId,
-                  name: (activeWorkflow?.name || "通用后端交付 SOP").replace(
-                    /^通用/,
+                  name: (activeWorkflow?.name || t("operations.genericBackendSop")).replace(
+                    /^(?:通用|Generic\s*)/i,
                     "",
                   ),
                   owner: ownerName,
@@ -1527,7 +1532,7 @@ export default function QuickAccessWizard({
       setPhase("success");
       await onCompleted?.(targetProject?.id || "");
     } catch (err) {
-      setError(err.message || "保存快速接入配置失败");
+      setError(err.message || t("wizard.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -1551,13 +1556,13 @@ export default function QuickAccessWizard({
         aria-modal="true"
         aria-labelledby="qa-wizard-title"
       >
-        <aside className="qa-rail" aria-label="快速接入步骤">
+        <aside className="qa-rail" aria-label={t("wizard.railAria")}>
           <div className="qa-rail-head">
             <div className="qa-brand-mark">
               <HarnessIcon name="sparkles" size={20} />
             </div>
-            <h2 id="qa-wizard-title">快速接入</h2>
-            <p>提供最低限度的鉴权与仓库，直接使用默认角色和 SOP。</p>
+            <h2 id="qa-wizard-title">{t("wizard.title")}</h2>
+            <p>{t("wizard.subtitle")}</p>
           </div>
           <ol className="qa-steps">
             {STEPS.map((item, index) => {
@@ -1598,14 +1603,14 @@ export default function QuickAccessWizard({
               );
             })}
           </ol>
-          <p className="qa-rail-foot">所有配置之后都能在个人配置与项目配置里修改。</p>
+          <p className="qa-rail-foot">{t("wizard.railFoot")}</p>
         </aside>
 
         <div className="qa-main">
           <button
             type="button"
             className="qa-close"
-            aria-label="关闭快速接入"
+            aria-label={t("wizard.closeAria")}
             disabled={saving}
             onClick={onClose}
           >
@@ -1639,12 +1644,12 @@ export default function QuickAccessWizard({
                       className="qa-title qa-success-item"
                       style={{ "--i": 0 }}
                     >
-                      快速接入已完成
+                      {t("wizard.successTitle")}
                     </h3>
                     <p className="qa-lede qa-success-item" style={{ "--i": 1 }}>
-                      已关联默认角色与「
-                      {completedSummary?.workflow?.name || "通用后端交付 SOP"}
-                      」，现在可以直接在工作台对话或派发需求。
+                      {t("wizard.successDesc", {
+                        name: completedSummary?.workflow?.name || t("operations.genericBackendSop"),
+                      })}
                     </p>
                   </div>
 
@@ -1653,15 +1658,15 @@ export default function QuickAccessWizard({
                       className="qa-card qa-success-item"
                       style={{ "--i": 2 }}
                     >
-                      <div className="qa-card-title">默认角色与流程</div>
+                      <div className="qa-card-title">{t("wizard.defaultRolesAndSop")}</div>
                       <ul className="qa-role-list">
                         {roles.slice(0, 6).map((role) => (
                           <li key={role.id}>
                             <span className="qa-avatar">
-                              {(role.name || "角").slice(0, 1)}
+                              {(role.name || t("wizard.roleFallbackChar")).slice(0, 1)}
                             </span>
                             <span>{role.name}</span>
-                            <small>默认角色</small>
+                            <small>{t("wizard.defaultRole")}</small>
                           </li>
                         ))}
                         <li>
@@ -1670,9 +1675,9 @@ export default function QuickAccessWizard({
                           </span>
                           <span>
                             {completedSummary?.workflow?.name ||
-                              "通用后端交付 SOP"}
+                              t("operations.genericBackendSop")}
                           </span>
-                          <small>已绑定</small>
+                          <small>{t("wizard.bound")}</small>
                         </li>
                       </ul>
                     </section>
@@ -1681,7 +1686,7 @@ export default function QuickAccessWizard({
                       className="qa-card qa-success-item"
                       style={{ "--i": 3 }}
                     >
-                      <div className="qa-card-title">已生效配置</div>
+                      <div className="qa-card-title">{t("wizard.effectiveConfig")}</div>
                       <ul className="qa-status-list">
                         <li
                           className={
@@ -1693,10 +1698,10 @@ export default function QuickAccessWizard({
                             size={14}
                           />
                           <span>
-                            {completedSummary?.repository?.provider === "ssh" ? "Git SSH 访问：" : "GitHub 访问："}
+                            {completedSummary?.repository?.provider === "ssh" ? t("wizard.gitSshPrefix") : t("wizard.githubPrefix")}
                             {completedSummary?.gitReady
-                              ? "已就绪"
-                              : "未配置，克隆/推送私有仓库前可在个人配置补齐"}
+                              ? t("wizard.statusReady")
+                              : t("wizard.gitNotConfigured")}
                           </span>
                         </li>
                         <li
@@ -1717,20 +1722,22 @@ export default function QuickAccessWizard({
                           <span>
                             CodeBuddy API Key：
                             {completedSummary?.codeBuddyReady
-                              ? "已配置"
+                              ? t("wizard.configured")
                               : sponsoredModel
-                                ? `未配置。对话和 SOP 都会使用平台共享 Key（可用模型：${sharedModelNames(sponsoredModels, sponsoredModel)}），可以直接开始；配置自己的 Key 后可选用任意模型`
-                                : "未配置。对话可用平台默认模型，但运行 SOP 时节点需要它调模型，请先在个人配置补齐"}
+                                ? t("wizard.codeBuddySponsored", {
+                                    models: sharedModelNames(sponsoredModels, sponsoredModel),
+                                  })
+                                : t("wizard.codeBuddyMissing")}
                           </span>
                         </li>
                         <li className="is-ok">
                           <HarnessIcon name="check" size={14} />
                           <span>
-                            项目：
-                            {completedSummary?.project?.name || "当前项目"}
+                            {t("wizard.projectPrefix")}
+                            {completedSummary?.project?.name || t("wizard.currentProject")}
                             {completedSummary?.repository?.name
-                              ? ` · 仓库 ${completedSummary.repository.name}`
-                              : " · 仓库可在运行时指定"}
+                              ? t("wizard.repoNameSuffix", { name: completedSummary.repository.name })
+                              : t("wizard.repoRuntimeSuffix")}
                           </span>
                         </li>
                       </ul>
@@ -1748,10 +1755,8 @@ export default function QuickAccessWizard({
                         <HarnessIcon name="play" size={16} />
                       </span>
                       <span className="qa-action-copy">
-                        <strong>开始第一条需求</strong>
-                        <small>
-                          回到工作台输入框，直接描述要做的需求或问题
-                        </small>
+                        <strong>{t("wizard.startFirstReqTitle")}</strong>
+                        <small>{t("wizard.startFirstReqDesc")}</small>
                       </span>
                       <HarnessIcon
                         name="chevron-right"
@@ -1773,10 +1778,8 @@ export default function QuickAccessWizard({
                         <HarnessIcon name="workflow" size={16} />
                       </span>
                       <span className="qa-action-copy">
-                        <strong>查看或修改 SOP</strong>
-                        <small>
-                          在流程模板里查看默认 SOP，或复制到项目自由调整
-                        </small>
+                        <strong>{t("wizard.editSopTitle")}</strong>
+                        <small>{t("wizard.editSopDesc")}</small>
                       </span>
                       <HarnessIcon
                         name="chevron-right"
@@ -1795,7 +1798,7 @@ export default function QuickAccessWizard({
                   data-hover-ink-control=""
                   onClick={onClose}
                 >
-                  关闭
+                  {t("common.close")}
                 </button>
               </footer>
             </>
@@ -1808,7 +1811,7 @@ export default function QuickAccessWizard({
                   data-direction={direction}
                 >
                   <div className="qa-kicker">
-                    第 {activeStepIndex + 1} 步，共 {wizardStepCount} 步
+                    {t("wizard.stepProgress", { current: activeStepIndex + 1, total: wizardStepCount })}
                   </div>
                   <h3 ref={headingRef} tabIndex={-1} className="qa-title">
                     {activeStep.title}
@@ -1826,22 +1829,20 @@ export default function QuickAccessWizard({
                       <section className="qa-cred-card">
                         <header className="qa-cred-head">
                           <div>
-                            <strong>GitHub 代码仓库授权</strong>
-                            <span>
-                              用于克隆私有仓库、创建分支、推送代码与发起 PR
-                            </span>
+                            <strong>{t("wizard.githubAuthTitle")}</strong>
+                            <span>{t("wizard.githubAuthDesc")}</span>
                           </div>
                           <StatusPill ok={gitReady} />
                         </header>
                         <div className="qa-cred-body">
                           <button type="button" className="qa-btn qa-btn-primary qa-btn-sm" onClick={() => openCredentialSettings("gitToken")}>
-                            {storedUser?.gitHubCredentialConfigured ? "管理 GitHub 授权" : "连接 GitHub"}
+                            {storedUser?.gitHubCredentialConfigured ? t("wizard.manageGithub") : t("wizard.connectGithub")}
                           </button>
-                          <p className="qa-hint">在个人配置中完成授权，返回后继续；无需手动复制令牌。</p>
-                          <p className="qa-hint">GitLab 等 SSH 仓库：<button type="button" className="qa-link-btn" onClick={() => openCredentialSettings("gitSshKey")}>{hasSSHKeys ? "管理 Git SSH 密钥" : "配置 Git SSH 密钥"}</button></p>
-                          <p className="qa-hint">工作区访问 GitLab、GitHub Enterprise 等 HTTPS 主机：<button type="button" className="qa-link-btn" onClick={() => openCredentialSettings("gitHttpCredentials")}>{storedUser?.gitHttpCredentialsConfigured ? "管理 Git 访问令牌" : "配置 Git 访问令牌"}</button></p>
+                          <p className="qa-hint">{t("wizard.oauthHint")}</p>
+                          <p className="qa-hint">{t("wizard.sshHintPrefix")}<button type="button" className="qa-link-btn" onClick={() => openCredentialSettings("gitSshKey")}>{hasSSHKeys ? t("wizard.manageSsh") : t("wizard.configureSsh")}</button></p>
+                          <p className="qa-hint">{t("wizard.httpHintPrefix")}<button type="button" className="qa-link-btn" onClick={() => openCredentialSettings("gitHttpCredentials")}>{storedUser?.gitHttpCredentialsConfigured ? t("wizard.manageHttp") : t("wizard.configureHttp")}</button></p>
                           <details>
-                            <summary>使用访问令牌（高级）</summary>
+                            <summary>{t("wizard.usePatSummary")}</summary>
                           <div className="qa-input-row">
                             <input
                               type="password"
@@ -1850,8 +1851,8 @@ export default function QuickAccessWizard({
                               onChange={(e) => setGitToken(e.target.value)}
                               placeholder={
                                 storedUser?.gitHubCredentialConfigured
-                                  ? "已配置，留空保持不变"
-                                  : "GitHub personal access token（授予 Contents 与 Pull requests 读写权限）"
+                                  ? t("wizard.patKeepPlaceholder")
+                                  : t("wizard.patPlaceholder")
                               }
                               autoComplete="new-password"
                             />
@@ -1869,9 +1870,9 @@ export default function QuickAccessWizard({
                             >
                               <BusyLabel
                                 busy={verifyingGit}
-                                busyLabel="校验中…"
+                                busyLabel={t("wizard.verifying")}
                               >
-                                校验
+                                {t("wizard.verify")}
                               </BusyLabel>
                             </button>
                             <a
@@ -1881,13 +1882,13 @@ export default function QuickAccessWizard({
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              申请令牌 ↗
+                              {t("wizard.createToken")}
                             </a>
                           </div>
                           {gitVerify ? (
                             <VerifyMessage
                               result={gitVerify}
-                              okText={`令牌有效${gitVerify.login ? `（${gitVerify.login}）` : ""}`}
+                              okText={gitVerify.login ? t("wizard.tokenValidLogin", { login: gitVerify.login }) : t("wizard.tokenValid")}
                             />
                           ) : null}
                           </details>
@@ -1900,15 +1901,15 @@ export default function QuickAccessWizard({
                             <strong>CodeBuddy API Key</strong>
                             <span>
                               {sponsoredModel
-                                ? "可选：未配置时对话和 SOP 使用平台共享模型，配置后可选用其他模型"
-                                : "AI 对话与 SOP 节点调用模型时使用"}
+                                ? t("wizard.codeBuddySponsoredHint")
+                                : t("wizard.codeBuddyHint")}
                             </span>
                           </div>
                           <StatusPill ok={codeBuddyReady} />
                         </header>
                         <div className="qa-cred-body">
                           <div className="qa-field">
-                            <span className="qa-label">网络环境</span>
+                            <span className="qa-label">{t("wizard.networkEnv")}</span>
                             <HarnessSelect
                               value={codeBuddyEnv}
                               options={CODEBUDDY_ENVIRONMENTS.map((env) => ({
@@ -1917,7 +1918,7 @@ export default function QuickAccessWizard({
                                 hint: env.site,
                               }))}
                               onChange={setCodeBuddyEnvChoice}
-                              ariaLabel="CodeBuddy 网络环境"
+                              ariaLabel={t("wizard.codeBuddyEnvAria")}
                             />
                           </div>
                           <div className="qa-input-row">
@@ -1930,8 +1931,8 @@ export default function QuickAccessWizard({
                               }
                               placeholder={
                                 storedUser?.codeBuddyApiKeyConfigured
-                                  ? "已配置，留空保持不变"
-                                  : "粘贴 CodeBuddy API Key"
+                                  ? t("wizard.patKeepPlaceholder")
+                                  : t("wizard.codeBuddyPlaceholder")
                               }
                               aria-label="CodeBuddy API Key"
                               autoComplete="new-password"
@@ -1943,7 +1944,7 @@ export default function QuickAccessWizard({
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              获取 API Key ↗
+                              {t("wizard.getApiKey")}
                             </a>
                           </div>
                           <p
@@ -1951,7 +1952,14 @@ export default function QuickAccessWizard({
                             role="status"
                           >
                             {codeBuddyWarning ||
-                              `${codeBuddyEnvLegacy && codeBuddyEnvChoice === null ? `原来填写的「${storedCodeBuddyEnvRaw}」无法识别，CodeBuddy 实际按国际站连接，点下一步改为当前选择。` : ""}Key 只能在创建它的站点使用：当前选择${codeBuddyEnvInfo.label}（${codeBuddyEnvInfo.site}），「获取 API Key」会打开该站点的密钥页。`}
+                              t("wizard.envSiteHint", {
+                                legacy:
+                                  codeBuddyEnvLegacy && codeBuddyEnvChoice === null
+                                    ? t("wizard.legacyEnvPrefix", { raw: storedCodeBuddyEnvRaw })
+                                    : "",
+                                label: codeBuddyEnvInfo.label,
+                                site: codeBuddyEnvInfo.site,
+                              })}
                           </p>
                         </div>
                       </section>
@@ -1963,7 +1971,7 @@ export default function QuickAccessWizard({
                       {editableProjects.length ? (
                         <SlidingTabs
                           className="qa-sliding-tabs qa-sliding-tabs-inline"
-                          aria-label="项目选择方式"
+                          aria-label={t("wizard.projectModeAria")}
                         >
                           <button
                             type="button"
@@ -1972,7 +1980,7 @@ export default function QuickAccessWizard({
                             onClick={() => setProjectMode("existing")}
                           >
                             <HarnessIcon name="folder" size={14} />
-                            选择已有项目
+                            {t("wizard.existingProject")}
                             <span className="sliding-tab-count">
                               {editableProjects.length}
                             </span>
@@ -1984,7 +1992,7 @@ export default function QuickAccessWizard({
                             onClick={() => setProjectMode("create")}
                           >
                             <HarnessIcon name="sparkles" size={14} />
-                            新建项目
+                            {t("app.newProject")}
                           </button>
                         </SlidingTabs>
                       ) : null}
@@ -1995,14 +2003,14 @@ export default function QuickAccessWizard({
                           className="qa-section qa-fade-in"
                         >
                           <div className="qa-field">
-                            <span className="qa-label">选择项目</span>
+                            <span className="qa-label">{t("wizard.selectProjectLabel")}</span>
                             <HarnessSelect
                               value={currentProject?.id || ""}
                               options={projectSelectOptions}
                               onChange={setSelectedProjectId}
                               searchable={projectSelectOptions.length > 4}
-                              searchPlaceholder="搜索项目名称或 Key…"
-                              ariaLabel="选择项目"
+                              searchPlaceholder={t("wizard.searchProjectsPlaceholder")}
+                              ariaLabel={t("wizard.selectProjectLabel")}
                             />
                           </div>
                           {projectRepos.length ? (
@@ -2017,7 +2025,7 @@ export default function QuickAccessWizard({
                                     <span
                                       className={`qa-status-pill ${isDef ? "is-ok" : ""}`}
                                     >
-                                      {isDef ? "默认仓库" : "已关联仓库"}
+                                      {isDef ? t("wizard.defaultRepoBadge") : t("wizard.linkedRepoBadge")}
                                     </span>
                                     <strong>{repo.name}</strong>
                                     <code>
@@ -2044,7 +2052,7 @@ export default function QuickAccessWizard({
                         >
                           <label className="qa-field">
                             <span className="qa-label">
-                              项目名称 <em>*</em>
+                              {t("wizard.projectNameLabel")} <em>*</em>
                             </span>
                             <input
                               className="qa-input"
@@ -2059,12 +2067,12 @@ export default function QuickAccessWizard({
                                 if (!keyTouched)
                                   setNewProjectKey(deriveProjectKey(value));
                               }}
-                              placeholder="例如：智能网关"
+                              placeholder={t("wizard.projectNamePlaceholder")}
                             />
                           </label>
                           <label className="qa-field">
                             <span className="qa-label">
-                              项目标识 <em>*</em>
+                              {t("wizard.projectIdLabel")} <em>*</em>
                             </span>
                             <input
                               className="qa-input qa-mono"
@@ -2077,7 +2085,7 @@ export default function QuickAccessWizard({
                             />
                           </label>
                           <label className="qa-field">
-                            <span className="qa-label">项目 Key</span>
+                            <span className="qa-label">{t("wizard.projectKeyLabel")}</span>
                             <input
                               className="qa-input qa-mono"
                               value={newProjectKey}
@@ -2098,8 +2106,8 @@ export default function QuickAccessWizard({
                           <div>
                             <strong>
                               {projectMode === "existing" && projectRepos.length
-                                ? "为该项目添加 GitHub 仓库"
-                                : "绑定默认 GitHub 仓库"}
+                                ? t("wizard.addRepoHeading")
+                                : t("wizard.bindRepoHeading")}
                             </strong>
                             <span
                               key={String(bindRepoNow)}
@@ -2107,17 +2115,17 @@ export default function QuickAccessWizard({
                             >
                               {projectMode === "existing" && projectRepos.length
                                 ? bindRepoNow
-                                  ? "旧项目可直接追加新仓库，复用已有流程与角色；留空则沿用现有仓库"
-                                  : "沿用项目现有仓库与流程"
+                                  ? t("wizard.existingRepoOpenHint")
+                                  : t("wizard.existingRepoClosedHint")
                                 : bindRepoNow
-                                  ? "粘贴 Git HTTPS 链接或 Git SSH 地址，自动设为项目默认仓库"
-                                  : "已跳过，可在派发需求或项目配置中再绑定"}
+                                  ? t("wizard.newRepoOpenHint")
+                                  : t("wizard.newRepoClosedHint")}
                             </span>
                           </div>
                           <HarnessSwitch
                             checked={bindRepoNow}
                             onChange={setBindRepoNow}
-                            label="添加或绑定代码仓库"
+                            label={t("wizard.toggleRepoLabel")}
                           />
                         </header>
 
@@ -2134,8 +2142,7 @@ export default function QuickAccessWizard({
                                   role="note"
                                 >
                                   <p>
-                                    「{currentProject?.name}」是已有项目，只有它的
-                                    Owner 或平台管理员可以绑定仓库。你可以：
+                                    {t("wizard.repoBlockedNote", { name: currentProject?.name || "" })}
                                   </p>
                                   <div className="qa-repo-permission-actions">
                                     <button
@@ -2146,7 +2153,7 @@ export default function QuickAccessWizard({
                                         setProjectMode("create");
                                       }}
                                     >
-                                      新建自己的项目并绑定
+                                      {t("wizard.createOwnProject")}
                                     </button>
                                     <button
                                       type="button"
@@ -2156,7 +2163,7 @@ export default function QuickAccessWizard({
                                         setBindRepoNow(false);
                                       }}
                                     >
-                                      跳过绑定，继续体验
+                                      {t("wizard.skipRepoBind")}
                                     </button>
                                   </div>
                                 </div>
@@ -2166,8 +2173,8 @@ export default function QuickAccessWizard({
                                   <span className="qa-label">
                                     {projectMode === "existing" &&
                                     projectRepos.length
-                                      ? "新增仓库地址（可选）"
-                                      : "Git HTTPS 链接或 Git SSH 地址"}
+                                      ? t("wizard.newRepoUrlLabel")
+                                      : t("wizard.repoUrlLabel")}
                                   </span>
                                   <input
                                     className="qa-input qa-mono"
@@ -2177,15 +2184,15 @@ export default function QuickAccessWizard({
                                   />
                                 </label>
                                 <div className="qa-field">
-                                  <span className="qa-label">默认分支</span>
+                                  <span className="qa-label">{t("wizard.defaultBranch")}</span>
                                   <HarnessSelect
                                     value={repoBranch}
                                     options={BRANCH_OPTIONS}
                                     onChange={setRepoBranch}
                                     searchable
                                     allowCustom
-                                    searchPlaceholder="选择或输入分支名…"
-                                    ariaLabel="默认分支"
+                                    searchPlaceholder={t("wizard.branchPlaceholder")}
+                                    ariaLabel={t("wizard.defaultBranch")}
                                   />
                                 </div>
                               </div>
@@ -2194,13 +2201,14 @@ export default function QuickAccessWizard({
                               parsedRepo ? (
                                 <div className="qa-repo-default-row qa-msg-in">
                                   <span>
-                                    已识别 <code>{parsedRepo.project}</code>
-                                    ，同时设为项目默认仓库
+                                    {t("wizard.recognizedAsDefaultPrefix")}
+                                    <code>{parsedRepo.project}</code>
+                                    {t("wizard.recognizedAsDefaultSuffix")}
                                   </span>
                                   <HarnessSwitch
                                     checked={makeDefaultRepo}
                                     onChange={setMakeDefaultRepo}
-                                    label="设为项目默认仓库"
+                                    label={t("wizard.setAsDefaultRepo")}
                                   />
                                 </div>
                               ) : parsedRepo ? (
@@ -2208,18 +2216,20 @@ export default function QuickAccessWizard({
                                   key="recognized"
                                   className="qa-hint is-ok qa-msg-in"
                                 >
-                                  已识别仓库：
+                                  {t("wizard.recognizedRepoPrefix")}
                                   <code>{parsedRepo.project}</code>
-                                  （仓库名 <code>{parsedRepo.name}</code>）
+                                  {t("wizard.recognizedRepoNameOpen")}
+                                  <code>{parsedRepo.name}</code>
+                                  {t("wizard.recognizedRepoNameClose")}
                                 </p>
                               ) : (
                                 <p key="help" className="qa-hint">
-                                  支持 Git HTTPS 链接或 Git SSH 地址，例如 <code>git@gitlab.com:group/repo.git</code>。
+                                  {t("wizard.repoUrlHelpPrefix")}<code>git@gitlab.com:group/repo.git</code>.
                                 </p>
                               )}
                               {selectedSSHRepo?.provider === "ssh" && sshKeysLoaded && !sshReady ? (
                                 <p className="qa-hint is-error" role="alert">
-                                  {sshCredentials.error ? "无法读取 SSH 密钥配置，请稍后重试。" : `尚未配置 ${selectedSSHRepo.host} 的 SSH 密钥，可稍后在「个人配置 → Git SSH 密钥」添加。`}
+                                  {sshCredentials.error ? t("wizard.sshKeysReadError") : t("wizard.sshKeyMissingHost", { host: selectedSSHRepo.host })}
                                 </p>
                               ) : null}
                             </div>
@@ -2232,12 +2242,12 @@ export default function QuickAccessWizard({
                   {activeStep.id === "workflow" ? (
                     <div className="qa-pane">
                       <div className="qa-field">
-                        <span className="qa-label">默认交付 SOP</span>
+                        <span className="qa-label">{t("wizard.defaultSop")}</span>
                         <HarnessSelect
                           value={activeWorkflow?.id || DEFAULT_SOP_ID}
                           options={sopSelectOptions}
                           onChange={setSelectedWorkflowId}
-                          ariaLabel="默认交付 SOP"
+                          ariaLabel={t("wizard.defaultSop")}
                         />
                       </div>
 
@@ -2245,7 +2255,7 @@ export default function QuickAccessWizard({
                         <div className="qa-canvas-head">
                           <SlidingTabs
                             className="qa-sliding-tabs qa-sliding-tabs-inline"
-                            aria-label="流程与角色预览"
+                            aria-label={t("wizard.previewTabsAria")}
                           >
                             <button
                               type="button"
@@ -2254,7 +2264,7 @@ export default function QuickAccessWizard({
                               onClick={() => setPreviewTab("stages")}
                             >
                               <HarnessIcon name="workflow" size={14} />
-                              阶段链路
+                              {t("wizard.stageChain")}
                               <span className="sliding-tab-count">
                                 {nodes.length}
                               </span>
@@ -2266,7 +2276,7 @@ export default function QuickAccessWizard({
                               onClick={() => setPreviewTab("roles")}
                             >
                               <HarnessIcon name="user" size={14} />
-                              默认角色
+                              {t("wizard.defaultRoles")}
                               <span className="sliding-tab-count">
                                 {roles.length}
                               </span>
@@ -2278,14 +2288,14 @@ export default function QuickAccessWizard({
                           <div
                             key="stages"
                             className="qa-flow-track qa-stagger"
-                            aria-label="SOP 阶段预览"
+                            aria-label={t("wizard.stagePreviewAria")}
                           >
                             <div
                               className="qa-flow-node is-edge"
                               style={{ "--i": 0 }}
                             >
-                              <strong>开始</strong>
-                              <span>需求输入</span>
+                              <strong>{t("wizard.startNode")}</strong>
+                              <span>{t("wizard.inputNode")}</span>
                             </div>
                             {nodes.map((node, index) => (
                               <React.Fragment key={node.id || index}>
@@ -2301,7 +2311,7 @@ export default function QuickAccessWizard({
                                   style={{ "--i": index * 2 + 2 }}
                                 >
                                   <strong>{node.name}</strong>
-                                  <span>阶段 {index + 1}</span>
+                                  <span>{t("wizard.stageIndex", { index: index + 1 })}</span>
                                 </div>
                               </React.Fragment>
                             ))}
@@ -2316,8 +2326,8 @@ export default function QuickAccessWizard({
                               className="qa-flow-node is-edge"
                               style={{ "--i": nodes.length * 2 + 2 }}
                             >
-                              <strong>完成</strong>
-                              <span>MR 与产物</span>
+                              <strong>{t("wizard.endNode")}</strong>
+                              <span>{t("wizard.endOutputs")}</span>
                             </div>
                           </div>
                         ) : (
@@ -2328,7 +2338,7 @@ export default function QuickAccessWizard({
                                 className="qa-role-chip"
                                 style={{ "--i": index }}
                               >
-                                <i>{(role.name || "角").slice(0, 1)}</i>
+                                <i>{(role.name || t("wizard.roleFallbackChar")).slice(0, 1)}</i>
                                 <b>{role.name}</b>
                                 {role.description ? (
                                   <small>{role.description}</small>
@@ -2340,47 +2350,47 @@ export default function QuickAccessWizard({
                       </section>
 
                       <section className="qa-card">
-                        <div className="qa-card-title">将要生效的配置</div>
+                        <div className="qa-card-title">{t("wizard.summaryHeading")}</div>
                         <dl className="qa-summary">
                           <div>
-                            <dt>凭据</dt>
+                            <dt>{t("wizard.summaryCreds")}</dt>
                             <dd>
                               <span
                                 className={`qa-dot ${(sshRepository ? sshReady : gitReady) && (codeBuddyReady || sponsoredModel) ? "is-ok" : ""}`}
                               />
                               <span>
-                                {sshRepository ? "Git SSH" : "GitHub"} {(sshRepository ? sshReady : gitReady) ? "已配置" : "未配置"} ·
+                                {sshRepository ? "Git SSH" : "GitHub"} {(sshRepository ? sshReady : gitReady) ? t("wizard.configured") : t("wizard.notConfigured")} ·
                                 CodeBuddy{" "}
                                 {codeBuddyReady
-                                  ? "已配置"
+                                  ? t("wizard.configured")
                                   : sponsoredModel
-                                    ? "使用平台共享模型"
-                                    : "未配置"}
+                                    ? t("wizard.usingSharedModel")
+                                    : t("wizard.notConfigured")}
                               </span>
                             </dd>
                           </div>
                           <div>
-                            <dt>项目与仓库</dt>
+                            <dt>{t("wizard.summaryProjectRepo")}</dt>
                             <dd>
                               <span className="qa-dot is-ok" />
                               <span>
                                 {projectMode === "create"
-                                  ? `新建项目「${newProjectName || "新项目"}」`
-                                  : `使用已有项目「${currentProject?.name || "当前项目"}」`}
+                                  ? t("wizard.summaryCreateProject", { name: newProjectName || t("wizard.newProjectDefault") })
+                                  : t("wizard.summaryUseProject", { name: currentProject?.name || t("wizard.currentProject") })}
                                 {" · "}
                                 {bindRepoNow && parsedRepo && !repoBindBlocked
-                                  ? `绑定 ${parsedRepo.name}`
-                                  : defaultRepo?.name || "运行时指定仓库"}
+                                  ? t("wizard.summaryBindRepo", { name: parsedRepo.name })
+                                  : defaultRepo?.name || t("wizard.summaryRuntimeRepo")}
                               </span>
                             </dd>
                           </div>
                           <div>
-                            <dt>默认 SOP</dt>
+                            <dt>{t("wizard.summaryDefaultSop")}</dt>
                             <dd>
                               <span className="qa-dot is-ok" />
                               <span>
-                                {activeWorkflow?.name || "通用后端交付 SOP"}（
-                                {roles.length} 个默认角色）
+                                {activeWorkflow?.name || t("operations.genericBackendSop")}
+                                {t("wizard.summaryRolesCount", { count: roles.length })}
                               </span>
                             </dd>
                           </div>
@@ -2399,7 +2409,7 @@ export default function QuickAccessWizard({
                   disabled={saving}
                   onClick={onClose}
                 >
-                  稍后再说
+                  {t("wizard.later")}
                 </button>
                 <div className="qa-footer-spacer" />
                 {step > 0 ? (
@@ -2414,7 +2424,7 @@ export default function QuickAccessWizard({
                     }}
                   >
                     <HarnessIcon name="chevron-left" size={14} />
-                    上一步
+                    {t("common.back")}
                   </button>
                 ) : null}
                 <button
@@ -2424,8 +2434,8 @@ export default function QuickAccessWizard({
                   disabled={loading && !saving}
                   onClick={nextStep}
                 >
-                  <BusyLabel busy={saving} busyLabel="正在保存…">
-                    {activeStep.id === "workflow" ? "完成接入" : "下一步"}
+                  <BusyLabel busy={saving} busyLabel={t("wizard.saving")}>
+                    {activeStep.id === "workflow" ? t("wizard.finish") : t("common.next")}
                     <HarnessIcon
                       name={
                         activeStep.id === "workflow"

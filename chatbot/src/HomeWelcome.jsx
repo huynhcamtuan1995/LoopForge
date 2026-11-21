@@ -1,8 +1,7 @@
 import React, { useId } from "react";
 import HomeLogo from "./HomeLogo";
+import { useI18n } from "./i18n.js";
 import "./home-welcome.css";
-
-const subtitle = "把想法，变成下一步。";
 
 function TitleSweep() {
   const identity = useId().replaceAll(":", "");
@@ -44,6 +43,8 @@ function TitleSweep() {
 }
 
 export default function HomeWelcome() {
+  const { t } = useI18n();
+  const subtitle = t("welcome.subtitle");
   return (
     <div className="welcome home-welcome">
       <div className="home-welcome-lockup">

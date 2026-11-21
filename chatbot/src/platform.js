@@ -1,64 +1,37 @@
-export const actionNames = {
-  runs_start: "启动 SOP",
-  runs_approve: "批准节点",
-  runs_reject: "退回节点",
-  runs_retry: "重试节点",
-  runs_cancel: "取消运行",
-  runs_pause: "暂停运行",
-  runs_resume: "继续运行",
-  issues_dispatch: "派发 SOP",
-  issues_save: "保存需求",
-  issues_import_tapd: "导入 TAPD 需求",
-  issues_chat_clarify: "发起 AI 需求澄清",
-  issues_clarification_save: "保存并回写需求澄清",
-  issues_delete: "删除需求",
-  issues_comments_add: "添加需求评论",
-  issues_reopen: "重新打开需求",
-  workflows_save: "保存 SOP",
-  workflows_clone: "复制 SOP",
-  workflows_publish: "发布 SOP",
-  agents_save: "保存角色",
-  assistant_tasks_save: "保存定时任务",
-};
-const entities = {
-  agents: "角色",
-  workflows: "SOP",
-  projects: "项目",
-  repositories: "仓库",
-  rules: "规则",
-  skills: "技能",
-  mcp_servers: "MCP 服务",
-  schedule_jobs: "平台定时任务",
-  assistant_tasks: "助手定时任务",
-  runs: "运行",
-  issues: "需求",
-  environments: "环境",
-  sandboxes: "沙箱",
-  dockerfiles: "Dockerfile",
-  executors: "执行器",
-};
-const verbs = {
-  save: "保存",
-  delete: "删除",
-  publish: "发布",
-  clone: "复制",
-  start: "启动",
-  cancel: "取消",
-  retry: "重试",
-  pause: "暂停",
-  resume: "继续",
-  run: "执行",
-  import: "导入",
-  restore: "恢复",
-};
+import { t } from "./i18n.js";
+
+const actionKeys = [
+  "runs_start", "runs_approve", "runs_reject", "runs_retry", "runs_cancel", "runs_pause", "runs_resume",
+  "issues_dispatch", "issues_save", "issues_import_tapd", "issues_chat_clarify", "issues_clarification_save",
+  "issues_delete", "issues_comments_add", "issues_reopen", "workflows_save", "workflows_clone",
+  "workflows_publish", "agents_save", "assistant_tasks_save",
+];
+export const actionNames = Object.fromEntries(
+  actionKeys.map((key) => [key, undefined]),
+);
+for (const key of actionKeys) {
+  Object.defineProperty(actionNames, key, {
+    enumerable: true,
+    get() { return t(`platform.action.${key}`); },
+  });
+}
+const entityKeys = [
+  "agents", "workflows", "projects", "repositories", "rules", "skills", "mcp_servers",
+  "schedule_jobs", "assistant_tasks", "runs", "issues", "environments", "sandboxes",
+  "dockerfiles", "executors",
+];
+const verbKeys = [
+  "save", "delete", "publish", "clone", "start", "cancel", "retry", "pause", "resume", "run", "import", "restore",
+];
 export const actionName = (tool) => {
-  if (actionNames[tool]) return actionNames[tool];
+  if (tool && Object.hasOwn(actionNames, tool)) return actionNames[tool];
   const match = tool?.match(/^(.*)_([^_]+)$/);
-  return match && entities[match[1]] && verbs[match[2]]
-    ? verbs[match[2]] + entities[match[1]]
-    : tool
-      ? `执行 ${tool}`
-      : "未指定操作";
+  if (match && entityKeys.includes(match[1]) && verbKeys.includes(match[2])) {
+    const verb = t(`platform.verb.${match[2]}`);
+    const entity = t(`platform.entity.${match[1]}`);
+    return `${verb}${verb.match(/[a-zA-Z]$/) ? " " : ""}${entity}`;
+  }
+  return tool ? t("platform.executeTool", { tool }) : t("platform.unspecifiedAction");
 };
 export const visibleSidebarArtifact = (a) =>
   !a.draft ||
@@ -77,7 +50,7 @@ export function definitionTarget(artifact, projectId = "") {
   return {
     id: asset.id,
     href: `/${project ? `?projectId=${encodeURIComponent(project)}` : ""}#/${artifact.kind === "sop" ? "flow" : "agents"}/${encodeURIComponent(asset.id)}`,
-    label: artifact.kind === "sop" ? "打开 SOP 编排" : "打开角色定义",
+    label: artifact.kind === "sop" ? t("platform.openSop") : t("platform.openRole"),
   };
 }
 
@@ -91,7 +64,7 @@ export function projectEntryTarget(draft, currentProjectId = "") {
   if (!id || id === currentProjectId) return null;
   return {
     href: `/?projectId=${encodeURIComponent(id)}#/collaboration`,
-    label: `进入项目「${saved.name || draft.body?.name || id}」继续对话`,
+    label: t("platform.enterProject", { name: saved.name || draft.body?.name || id }),
   };
 }
 
@@ -104,5 +77,5 @@ export function reconcileOperation(artifact, runs) {
   const run = runs.find((r) => r.id === draft.path?.id);
   const node = run?.nodes?.[draft.body?.nodeId];
   if (!["succeeded", "skipped"].includes(node?.status)) return artifact;
-  return { ...artifact, source: "已完成", draft: { ...draft, resolved: true } };
+  return { ...artifact, source: t("platform.completed"), draft: { ...draft, resolved: true } };
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "./i18n.js";
 import { modelEffort } from "./effort.js";
 import { createLocalConversations } from "./local-conversation-fixtures.js";
 import { localId as newLocalId } from "./local-id.js";
@@ -9,13 +10,13 @@ const emptyLive = { answer: "", thinking: "", tools: [], activity: [] };
 const timestamp = () => new Date().toISOString();
 
 function localReply(text, title) {
-  if (/什么模型|哪个模型|什么AI|什么 AI|你是谁/i.test(text))
-    return "这是保存在浏览器里的本地示例会话。这里的回复由前端生成，方便体验完整的会话操作；新建对话会使用你实际选择的模型。";
-  if (/总结|汇总|清单|列出来/.test(text))
-    return `围绕「${title}」，可以把下一步整理成三项：\n\n1. 确认这次补充涉及的范围与目标\n2. 列出具体调整和需要确认的问题\n3. 检查完成标准，保留后续跟进记录\n\n你刚才的补充已保存在这条本地会话中。`;
-  if (/颜色|hover|动效|动画/.test(text))
-    return "可以继续按浅灰、深灰的层级统一交互：悬停用轻微的灰色扩散，选中保持固定浅灰底，图标播放自身动效。\n\n按钮本身保持位置稳定，鼠标移开后颜色自然收回。";
-  return `已记下这条补充。我们继续围绕「${title}」推进：\n\n- 先确认这次调整的具体目标\n- 保留现有流程，列出需要修改的细节\n- 用清晰的验收项检查结果\n\n你可以继续补充要求，或把希望优先处理的部分告诉我。`;
+  if (/什么模型|哪个模型|什么AI|什么 AI|你是谁|what model|which model|who are you/i.test(text))
+    return t("local.reply.model");
+  if (/总结|汇总|清单|列出来|summary|summarize|checklist|list/i.test(text))
+    return t("local.reply.summary", { title });
+  if (/颜色|hover|动效|动画|color|motion|animation/i.test(text))
+    return t("local.reply.style");
+  return t("local.reply.default", { title });
 }
 
 /** Use the normal conversation UI with browser-local fixtures when the server is empty.
@@ -62,7 +63,7 @@ export function useLocalConversations(real) {
     try {
       if (next.key) localStorage.setItem(next.key, JSON.stringify(sessions));
     } catch {
-      setLocalError("浏览器存储空间不足，当前内容仍保留在页面中；移除较大的附件后可以继续保存。");
+      setLocalError(t("local.storageQuotaError"));
     }
     return sessions;
   }, []);
@@ -90,7 +91,7 @@ export function useLocalConversations(real) {
     try {
       localStorage.setItem(key, JSON.stringify(sessions));
     } catch {
-      setLocalError("浏览器存储空间不足，当前内容仍保留在页面中；移除较大的附件后可以继续保存。");
+      setLocalError(t("local.storageQuotaError"));
     }
     if (available) {
       try {
@@ -144,7 +145,7 @@ export function useLocalConversations(real) {
     const id = stored.id;
     const running = generationsRef.current[id];
     if (running?.status === "running") {
-      setLocalError("当前回复仍在生成，可以先停止再发送。");
+      setLocalError(t("local.replyInProgress"));
       return false;
     }
     const startedAt = timestamp();
@@ -155,7 +156,7 @@ export function useLocalConversations(real) {
     const timer = setTimeout(() => {
       timers.current.delete(id);
       const finishedAt = timestamp();
-      const activity = [{ kind: "status", text: "整理当前会话", at: startedAt }];
+      const activity = [{ kind: "status", text: t("local.organizing"), at: startedAt }];
       update(id, (row) => ({ ...row, generationStatus: "completed", messages: [...row.messages, { role: "assistant", content: response, createdAt: finishedAt, startedAt, activity }] }));
       setGeneration(id, { ...generation, status: "completed", updatedAt: finishedAt });
     }, 650);
@@ -233,11 +234,11 @@ export function useLocalConversations(real) {
       if (!current) return isLocalConversation(localIdRef.current) ? false : real.send(options);
       if (!options.text.trim() && !options.attachments?.length) return false;
       if (generationsRef.current[current.id]?.status === "running") {
-        setLocalError("当前回复仍在生成，可以先停止再发送。");
+        setLocalError(t("local.replyInProgress"));
         return false;
       }
       setLocalError("");
-      const message = { role: "user", content: options.text.trim() || "请阅读本轮附件并回答。", authorId: real.user?.id, authorName: real.user?.chineseName || real.user?.loginName, createdAt: timestamp(), ...(options.attachments?.length ? { attachments: options.attachments } : {}), ...(options.references?.length ? { references: options.references } : {}) };
+      const message = { role: "user", content: options.text.trim() || t("chat.attachmentPrompt"), authorId: real.user?.id, authorName: real.user?.chineseName || real.user?.loginName, createdAt: timestamp(), ...(options.attachments?.length ? { attachments: options.attachments } : {}), ...(options.references?.length ? { references: options.references } : {}) };
       const stored = update(current.id, (row) => ({ ...row, messages: [...(options.messagesOverride || row.messages), message] }));
       return complete(stored, message.content);
     },
@@ -275,7 +276,7 @@ export function useLocalConversations(real) {
       const messages = current.messages.slice(0, index + 1).map((message, messageIndex) => messageIndex === index ? { ...message, content: content.trim() } : message);
       if (!fork) return update(current.id, (row) => ({ ...row, messages, generationStatus: "completed" }));
       const id = newLocalId("local-preview");
-      const forked = { ...current, id, title: `${current.title}（分支）`, messages, generationStatus: "completed", createdAt: timestamp(), updatedAt: timestamp() };
+      const forked = { ...current, id, title: t("local.forkSuffix", { title: current.title }), messages, generationStatus: "completed", createdAt: timestamp(), updatedAt: timestamp() };
       save((sessions) => [forked, ...sessions]);
       selectLocal(id);
       return forked;
@@ -299,7 +300,7 @@ export function useLocalConversations(real) {
     },
     async applyDraft(...args) {
       if (!selected() && !isLocalConversation(localIdRef.current)) return real.applyDraft(...args);
-      throw Error("当前本地会话中没有待保存的配置草稿。");
+      throw Error(t("local.noDraftError"));
     },
     async refresh() {
       if (!selected()) return real.refresh();

@@ -1,3 +1,5 @@
+import { getLang, t } from "./i18n.js";
+
 const conversations = [
   {
     id: "home",
@@ -125,6 +127,133 @@ const conversations = [
   },
 ];
 
+const conversationsEn = [
+  {
+    id: "home",
+    title: "Refining the workspace home experience",
+    steps: ["Review workspace hierarchy", "Standardize sidebar sizing", "Complete interaction checklist"],
+    messages: [
+      ["user", "Let's refine the sidebar and button interactions on the home page while keeping all existing business capabilities."],
+      ["assistant", "I have organized the workspace into common entry points, conversation navigation, and the main canvas. The sidebar is 304px wide with clean borders and subtle hover states.\n\nExisting features preserved: project and model pickers, file references, conversation search, archive, and rename."],
+      ["user", "Keep settings and execution machines together so they do not take two separate entry points."],
+      ["assistant", "Merged into Settings—clicking opens Personal settings by default, and Runners remain accessible in the Settings menu. Clicking the gear again returns to Home."],
+    ],
+  },
+  {
+    id: "release",
+    title: "Organize this week's release checklist",
+    steps: ["Summarize weekly changes", "Verify owners and QA status", "List release blockers"],
+    messages: [
+      ["user", "Help me organize this week's release items by owner and verification status."],
+      ["assistant", "This week's release covers three items:\n\n| Item | Owner | Status |\n| --- | --- | --- |\n| Login session recovery | Lin Yue | Desktop passed, mobile pending |\n| Task completion notifications | Chen Mo | Default toggle pending |\n| Project list search | Zhou Ning | Happy & empty paths passed |\n\nWe can draft the release notes now and finalize the release window once the first two items are confirmed."],
+      ["user", "Highlight the blockers and suggest an execution order."],
+      ["assistant", "Two current release blockers:\n\n1. **Mobile login recovery**: complete Safari reload regression.\n2. **Default notification options**: confirm default alerts for new users.\n\nFinish mobile regression first, then finalize notification defaults before running final release verification."],
+    ],
+  },
+  {
+    id: "flow",
+    title: "Design requirement-to-test collaboration workflow",
+    steps: ["Clarify stage inputs & outputs", "Add human approval gate", "Define test rejection loop"],
+    messages: [
+      ["user", "Help me design a workflow connecting requirement analysis, development, and testing."],
+      ["assistant", "Each stage should produce one clear deliverable:\n\n- **Requirement clarification**: goals, scope, and acceptance criteria.\n- **Design review**: technical plan, impact, and key risks.\n- **Implementation**: code changes and self-tests.\n- **QA verification**: regression report and open issues."],
+      ["user", "Add a human approval step before development and loop back when tests fail."],
+      ["assistant", "Here is the workflow with the approval gate right after design review:\n\n```mermaid filename=workflow.mmd\nflowchart TD\n  A[Clarify Requirement] --> B[Design Review]\n  B --> C{Human Approval}\n  C -->|Approved| D[Implement]\n  C -->|Needs info| A\n  D --> E[QA Verification]\n  E -->|Failed| D\n  E -->|Passed| F[Delivery]\n```\n\nRejection reasons and action items are preserved on every retry."],
+    ],
+  },
+  {
+    id: "mobile",
+    title: "Audit mobile layout and responsiveness",
+    steps: ["Check narrow-screen spacing", "Check composer obstruction", "List mobile QA paths"],
+    messages: [
+      ["user", "What still needs polishing on mobile, especially the sidebar and composer?"],
+      ["assistant", "Three priorities on narrow screens:\n\n1. Open sidebar as an overlay and restore full width when closed.\n2. Keep long titles single-line with accessible actions.\n3. Let the composer grow with input while keeping model picker and send controls pinned."],
+      ["user", "Fix the sidebar width first, then check on-screen keyboard handling."],
+      ["assistant", "The sidebar now uses overlay mode on mobile viewports, freeing full reading width when collapsed."],
+    ],
+  },
+  {
+    id: "search",
+    title: "Add search and filters to the project list",
+    messages: [
+      ["user", "As projects grow, add search and a filter for projects I joined."],
+      ["assistant", "Search matches project names and descriptions, while the filter toggles between All Projects and Joined Projects while preserving the query."],
+      ["user", "Trim whitespace and ignore case when matching."],
+      ["assistant", "Whitespace trimming and case-insensitive matching are now enabled without resetting scroll position."],
+    ],
+  },
+  {
+    id: "settings",
+    title: "Consolidate personal & workspace settings",
+    messages: [
+      ["user", "Separate personal and workspace settings feel fragmented; let's unify them."],
+      ["assistant", "Settings now open in one unified panel grouped by Personal, Project & Bot, Workflows/Roles/Skills, and Runners/Environments."],
+      ["user", "Open Personal settings by default and return Home on a second click."],
+      ["assistant", "Updated: first gear click opens Personal settings; clicking it again returns to the Home workspace."],
+    ],
+  },
+  {
+    id: "icons",
+    title: "Refine icon micro-interactions",
+    messages: [
+      ["user", "Avoid shifting buttons vertically on hover; let the icon animate smoothly."],
+      ["assistant", "Removed vertical translate on hover so buttons stay steady while icons play subtle internal transitions."],
+      ["user", "Keep the New Chat button grounded and align nav icon colors."],
+      ["assistant", "All nav controls now share consistent neutral surface tokens with reduced-motion support."],
+    ],
+  },
+  {
+    id: "review",
+    title: "Triage code review feedback",
+    messages: [
+      ["user", "Prioritize functional fixes first and style tweaks afterward."],
+      ["assistant", "Grouped review items by priority:\n\n| Priority | Issue | Action |\n| --- | --- | --- |\n| High | Stale filter state after project switch | Reset filter on switch |\n| Medium | Empty state lacks reset button | Add clear-filters action |\n| Low | Inconsistent list padding | Unify spacing tokens |"],
+      ["user", "Make sure user model preferences are preserved."],
+      ["assistant", "Verified that project switches reset filters without overwriting selected models or theme."],
+    ],
+  },
+  {
+    id: "docs",
+    title: "Write onboarding guide for new teammates",
+    messages: [
+      ["user", "Draft a concise onboarding guide for new teammates."],
+      ["assistant", "Structured around the first end-to-end collaboration: join a project, verify credentials, choose a model, start a chat, and review artifacts."],
+      ["user", "Include a short quickstart checklist and FAQ."],
+      ["assistant", "Here is the guide:\n\n```markdown filename=onboarding-guide.md\n# Onboarding Guide\n\n## Quickstart\n1. Confirm project membership.\n2. Verify API keys in Personal settings.\n3. Select a project and model.\n4. Start a chat with clear acceptance criteria.\n5. Review generated artifacts in the side panel.\n```"],
+    ],
+  },
+  {
+    id: "runners",
+    title: "Check execution machine connectivity",
+    messages: [
+      ["user", "Runners occasionally show offline; outline a troubleshooting checklist."],
+      ["assistant", "Check in four layers:\n\n1. Inspect latest heartbeat.\n2. Verify runner process and network connectivity.\n3. Check credential expiry.\n4. Confirm CLI/agent version compatibility."],
+      ["user", "Clarify the difference between online-idle, busy, and offline."],
+      ["assistant", "- **Online idle**: healthy heartbeat, ready for tasks.\n- **Online busy**: healthy heartbeat, running a task.\n- **Offline**: heartbeat timed out; check service and network."],
+    ],
+  },
+  {
+    id: "notify",
+    title: "Streamline task completion notifications",
+    messages: [
+      ["user", "Separate notifications into routine completion, failures, and approvals needed."],
+      ["assistant", "Done—routine completions stay in the workbench, failures highlight recovery actions, and pending approvals remain pinned until resolved."],
+      ["user", "Keep pending approvals visible even after marking read."],
+      ["assistant", "Confirmed: marking read updates the badge only; items stay in the action list until confirmed."],
+    ],
+  },
+  {
+    id: "summary",
+    title: "Summarize iteration delivery notes",
+    messages: [
+      ["user", "Draft an iteration summary covering changes and remaining follow-ups."],
+      ["assistant", "Organized into Navigation, Interactions, and Collaboration sections with verification results preserved."],
+      ["user", "Keep it concise with owners listed."],
+      ["assistant", "Here is the summary:\n\n```markdown filename=delivery-summary.md\n# Delivery Summary\n\n## Completed\n- Unified navigation sizing and hover states\n- Consolidated personal, workspace, and runner entry points\n- Completed conversation search, archive, and artifact preview flows\n```"],
+    ],
+  },
+];
+
 export function createLocalConversations(user, model) {
   const now = Date.now();
   const today = new Date(now);
@@ -133,8 +262,9 @@ export function createLocalConversations(user, model) {
   yesterday.setDate(yesterday.getDate() - 1);
   const elapsedToday = now - today.getTime();
   const userId = user?.id ?? 0;
-  const authorName = user?.chineseName || user?.loginName || "我";
-  return conversations.map((fixture, index) => {
+  const authorName = user?.chineseName || user?.loginName || t("local.me");
+  const source = getLang() === "en" ? conversationsEn : conversations;
+  return source.map((fixture, index) => {
     const updated = index < 6
       ? today.getTime() + elapsedToday * (12 - index) / 12
       : yesterday.getTime() + (today.getTime() - yesterday.getTime()) * (18 - index) / 24;

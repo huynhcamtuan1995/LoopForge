@@ -1,4 +1,5 @@
 import { actionName } from "./platform.js";
+import { listSeparator, t } from "./i18n.js";
 
 const canonical = (value) =>
   Array.isArray(value)
@@ -23,7 +24,7 @@ export function reviewedOperation(draft, review = {}) {
     JSON.stringify(canonical(actual)) !==
       JSON.stringify(canonical(review.expected))
   )
-    throw Object.assign(Error("操作内容已更新，请重新核对后再确认。"), {
+    throw Object.assign(Error(t("operations.draftChanged")), {
       draftChanged: true,
     });
   const result =
@@ -43,17 +44,17 @@ export function reviewedOperation(draft, review = {}) {
 }
 
 export function operationValidation(draft) {
-  if (!draft?.tool) return "缺少操作名称，无法执行。";
+  if (!draft?.tool) return t("operations.missingTool");
   if (draft.tool === "issues_import_tapd") {
     if (
       typeof draft.body?.projectId !== "string" ||
       !draft.body.projectId.trim()
     )
-      return "请先指定导入的目标项目。";
+      return t("operations.missingProject");
     if (typeof draft.body?.url !== "string" || !draft.body.url.trim())
-      return "缺少 TAPD 需求链接。";
+      return t("operations.missingTapdUrl");
     if (!repositoryIds(draft.body).length)
-      return "请至少选择一个代码仓库后再确认导入。";
+      return t("operations.missingRepo");
   }
   return "";
 }
@@ -96,46 +97,47 @@ export function operationSummary(
   const sop = body.workflowId
     ? named("sop", body.workflowId)
     : draft.tool === "projects_save" && !existingProject
-      ? `${references.find((r) => r.type === "sop" && r.id === DEFAULT_PROJECT_WORKFLOW)?.name || "通用后端交付 SOP"}（默认）`
+      ? t("operations.defaultWorkflow", {
+          name: references.find((r) => r.type === "sop" && r.id === DEFAULT_PROJECT_WORKFLOW)?.name || t("operations.genericBackendSop"),
+        })
       : "";
   const fields = [
     [
-      "项目",
+      t("operations.field.project"),
       project ? projects.find((p) => p.id === project)?.name || project : "",
     ],
-    ["名称", body.name || body.title],
-    ["目标", draft.path?.id || body.id],
-    ["TAPD 链接", body.url],
+    [t("operations.field.name"), body.name || body.title],
+    [t("operations.field.target"), draft.path?.id || body.id],
+    [t("operations.field.tapdUrl"), body.url],
     [
-      "代码仓库",
+      t("operations.field.repositories"),
       repositoryIds(body)
         .map((id) => named("repository", id))
-        .join("、"),
+        .join(listSeparator()),
     ],
     ["SOP", sop],
-    ["节点", body.nodeId],
-    ["说明", body.description || body.reason],
+    [t("operations.field.node"), body.nodeId],
+    [t("operations.field.description"), body.description || body.reason],
   ].filter(
     ([, value]) => value !== undefined && value !== null && value !== "",
   );
   const effect =
     {
-      issues_import_tapd:
-        "从 TAPD 导入需求并关联所选仓库，导入后继续当前对话。",
-      issues_dispatch: "为这条需求派发 SOP，创建新的运行。",
-      runs_start: "启动一次新的 SOP 运行。",
-      runs_approve: "批准此节点，流程将继续执行后续节点。",
-      runs_reject: "退回此节点，流程将按 SOP 的退回路径继续。",
-      issues_clarification_save: "保存澄清结果，并回写需求的外部来源。",
+      issues_import_tapd: t("operations.effect.issues_import_tapd"),
+      issues_dispatch: t("operations.effect.issues_dispatch"),
+      runs_start: t("operations.effect.runs_start"),
+      runs_approve: t("operations.effect.runs_approve"),
+      runs_reject: t("operations.effect.runs_reject"),
+      issues_clarification_save: t("operations.effect.issues_clarification_save"),
       projects_save: existingProject
-        ? "修改这个项目的设置。"
-        : "新建一个独立项目，不归属当前对话所在的项目。",
-    }[draft.tool] || `${actionName(draft.tool)}，使用下方列出的目标与参数。`;
+        ? t("operations.effect.projects_save.edit")
+        : t("operations.effect.projects_save.create"),
+    }[draft.tool] || t("operations.effect.fallback", { action: actionName(draft.tool) });
   return { title: actionName(draft.tool), fields, effect };
 }
 export function operationError(value) {
   const text =
-    value instanceof Error ? value.message : String(value || "操作失败");
+    value instanceof Error ? value.message : String(value || t("operations.failed"));
   try {
     const data = JSON.parse(text);
     if (typeof data.error === "string") return data.error;

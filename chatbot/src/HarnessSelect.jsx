@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import { usePanelPresence } from "./usePanelPresence";
 import {
   filterOptions,
@@ -24,8 +25,10 @@ export default function HarnessSelect({
   ariaLabel,
   className = "",
   searchable,
-  placeholder = "请选择",
+  placeholder,
 }) {
+  useI18n();
+  const resolvedPlaceholder = placeholder ?? t("common.pleaseSelect");
   const trigger = useRef(null);
   const panel = useRef(null);
   const search = useRef(null);
@@ -129,7 +132,7 @@ export default function HarnessSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={presence.mounted ? identity : undefined}
-        aria-label={ariaLabel ? `${ariaLabel}：${current?.label || placeholder}` : undefined}
+        aria-label={ariaLabel ? `${ariaLabel}：${current?.label || resolvedPlaceholder}` : undefined}
         disabled={disabled}
         onClick={() => setOpen(!open)}
         onKeyDown={(event) => {
@@ -139,7 +142,7 @@ export default function HarnessSelect({
           }
         }}
       >
-        <span className={`harness-select-value${current ? "" : " is-placeholder"}`}>{current?.label || placeholder}</span>
+        <span className={`harness-select-value${current ? "" : " is-placeholder"}`}>{current?.label || resolvedPlaceholder}</span>
         <HarnessIcon name="chevron-down" size={14} className="harness-select-chevron" interactive={false} />
       </button>
       {presence.mounted
@@ -163,8 +166,8 @@ export default function HarnessSelect({
                   <input
                     ref={search}
                     type="search"
-                    aria-label="搜索选项"
-                    placeholder="搜索…"
+                    aria-label={t("select.searchAria")}
+                    placeholder={t("common.search")}
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                   />
@@ -192,7 +195,7 @@ export default function HarnessSelect({
                     </button>
                   );
                 })}
-                {!visible.length ? <div className="harness-select-empty">没有匹配的选项</div> : null}
+                {!visible.length ? <div className="harness-select-empty">{t("common.noMatchingOptions")}</div> : null}
               </div>
             </div>,
             document.body,

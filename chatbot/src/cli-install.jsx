@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, write } from "./api.js";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 
 // Keep the sentence in sync with assistantCLIMissingError. The engine id in
 // the parentheses is what the install request sends; it is not a package name.
@@ -14,7 +15,7 @@ export function cliInstallHint(text) {
 }
 
 export function cliInstallNotice(label) {
-  return `${label} 已安装，请重新发送。`;
+  return t("cliInstall.installedNotice", { label });
 }
 
 function installMemory(engine) {
@@ -53,6 +54,7 @@ export function cliFailureSettles(text) {
 // The server keeps the download after a reload, so the button asks for the
 // current status instead of trusting a click that only this page remembers.
 export function CLIInstallAction({ text, onResult }) {
+  const { t } = useI18n();
   const hint = cliInstallHint(text);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
@@ -98,7 +100,7 @@ export function CLIInstallAction({ text, onResult }) {
         }
         pending.current = false;
         rememberInstall(hint.engine, false);
-        if (status.status === "failed") setFailure(status.error || "安装失败");
+        if (status.status === "failed") setFailure(status.error || t("cliInstall.failed"));
         setPhase("ready");
       } catch {
         if (cancelled) return;
@@ -117,7 +119,7 @@ export function CLIInstallAction({ text, onResult }) {
   }, [hint?.engine, hint?.label]);
   if (!hint) return null;
   const installing = phase === "installing";
-  const label = installing ? "自动安装" : `安装 ${hint.label}`;
+  const label = installing ? t("cliInstall.installing") : t("cliInstall.installLabel", { label: hint.label });
   return (
     <span className="credential-action">
       <button
@@ -137,7 +139,7 @@ export function CLIInstallAction({ text, onResult }) {
             .catch((error) => {
               pending.current = false;
               rememberInstall(hint.engine, false);
-              setFailure(error.message || "安装失败");
+              setFailure(error.message || t("cliInstall.failed"));
               setPhase("ready");
             });
         }}
@@ -145,7 +147,7 @@ export function CLIInstallAction({ text, onResult }) {
         <HarnessIcon name="download" size={13} />
         {label}
       </button>
-      <small>安装在服务器上继续，关闭页面也不会中断。</small>
+      <small>{t("cliInstall.backgroundHint")}</small>
       {failure ? <small>{failure}</small> : null}
     </span>
   );

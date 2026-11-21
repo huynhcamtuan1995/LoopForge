@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import { api } from "./api";
 import { devServerAddress, devServerLabel, devServerOrigin, devServerTarget, devServerURL } from "./agent-browser-links.js";
 import { elementLabel, elementReference, inspectionReference } from "./element-context.js";
@@ -10,7 +11,7 @@ const modifiers = (e) =>
 const keyText = { Enter: "\r", Tab: "\t" };
 const buttonName = (b) => (b === 1 ? "middle" : b === 2 ? "right" : "left");
 const deniedError = "无权操作";
-const startingText = "正在启动 Agent 浏览器…";
+const startingOverlay = () => ({ key: "browser.starting", tone: "idle" });
 
 // AgentBrowser is the side panel's 浏览器 tab. Dev server addresses
 // (http://localhost:PORT) and workspace files (file:///workspace/…) open
@@ -78,6 +79,7 @@ export default function AgentBrowser({ runId, request = null, onRequestHandled =
 // served by the platform under /devpreview/: native input, scrolling and
 // devtools.
 function DevServerFrame({ runId, port, path, onOpen, onScreencast, onAddElement = null }) {
+  useI18n();
   const frameRef = useRef(null);
   const addressRef = useRef(null);
   const [address, setAddress] = useState(`${devServerOrigin(port)}${path}`);
@@ -129,9 +131,9 @@ function DevServerFrame({ runId, port, path, onOpen, onScreencast, onAddElement 
   return (
     <div className="agent-browser is-native">
       <div className="agent-browser-bar">
-        {button("arrow-left", "后退", () => history(-1))}
-        {button("arrow-right", "前进", () => history(1))}
-        {button("refresh", "刷新", reload)}
+        {button("arrow-left", t("browser.back"), () => history(-1))}
+        {button("arrow-right", t("browser.forward"), () => history(1))}
+        {button("refresh", t("browser.refresh"), reload)}
         <form
           className="agent-browser-address"
           onSubmit={(event) => {
@@ -151,20 +153,20 @@ function DevServerFrame({ runId, port, path, onOpen, onScreencast, onAddElement 
             ref={addressRef}
             type="text"
             spellCheck={false}
-            aria-label="网址"
+            aria-label={t("browser.addressAria")}
             value={address}
             onChange={(event) => setAddress(event.target.value)}
           />
           {onAddElement ? <AnnotateButton picking={pick.picking} onClick={pick.toggle} /> : null}
         </form>
-        {button("preview-expand", "在新窗口打开", openWindow)}
-        {button("monitor", "切换到 Agent 浏览器画面", onScreencast)}
+        {button("preview-expand", t("browser.openInNewWindow"), openWindow)}
+        {button("monitor", t("browser.switchToAgentBrowser"), onScreencast)}
       </div>
       <div className="agent-browser-stage agent-browser-native">
         <iframe
           ref={frameRef}
           className="agent-browser-frame"
-          title={port === "file" ? "工作区文件" : `开发服务器 localhost:${port}`}
+          title={port === "file" ? t("browserLinks.workspaceFile") : t("browser.devServerTitle", { port })}
           src={src}
           onLoad={() => {
             setLoading(false);
@@ -176,7 +178,7 @@ function DevServerFrame({ runId, port, path, onOpen, onScreencast, onAddElement 
         />
         {loading ? (
           <div className="agent-browser-overlay agent-browser-loading" data-tone="idle">
-            <span>正在打开 {devServerLabel(port)}…</span>
+            <span>{t("browser.opening", { label: devServerLabel(port) })}</span>
           </div>
         ) : null}
         <ElementPickLayer
@@ -190,11 +192,18 @@ function DevServerFrame({ runId, port, path, onOpen, onScreencast, onAddElement 
         />
       </div>
       <div className="agent-browser-foot">
-        <span>原生预览 · {port === "file" ? "工作区文件" : `端口 ${port}`}</span>
+        <span>
+          {t("browser.nativePreview", {
+            target:
+              port === "file"
+                ? t("browserLinks.workspaceFile")
+                : t("browser.portLabel", { port }),
+          })}
+        </span>
         <small role="status">
           {port === "file"
-            ? "页面在你的浏览器里直接渲染；文件改动后点刷新"
-            : "页面在你的浏览器里直接渲染；暂不支持热更新，代码改动后点刷新"}
+            ? t("browser.fileFootNote")
+            : t("browser.serverFootNote")}
         </small>
       </div>
     </div>
@@ -237,7 +246,7 @@ function useElementPicker(frameRef, loads) {
     if (!picking) return undefined;
     const doc = frameDocument();
     if (!doc?.documentElement) {
-      setError("当前页面不支持标记元素");
+      setError(t("browser.pickUnsupported"));
       setPicking(false);
       return undefined;
     }
@@ -336,17 +345,18 @@ const outlineOf = (el, frame) => {
 // AnnotateButton sits at the end of the address bar and turns element
 // marking on and off.
 function AnnotateButton({ picking, disabled = false, onClick }) {
+  useI18n();
   return (
     <button
       type="button"
       className={`agent-browser-annotate${picking ? " is-on" : ""}`}
-      title={picking ? "退出标记（Esc）" : "在页面上标记元素，加入对话框"}
+      title={picking ? t("browser.pickExit") : t("browser.pickStart")}
       aria-pressed={picking}
       disabled={disabled}
       onClick={onClick}
     >
       <HarnessIcon name="crosshair" size={14} />
-      <span>标记元素</span>
+      <span>{t("browser.pickButton")}</span>
     </button>
   );
 }
@@ -398,18 +408,18 @@ function PickOverlay({ stage, hover, picked, picking, error, busy = false, onAdd
     const top = below + 92 <= stage.clientHeight ? below : Math.max(8, picked.top - 92 - 8);
     const left = Math.max(8, Math.min(picked.left, stage.clientWidth - width - 8));
     popover = (
-      <div className="agent-browser-pick-popover" role="dialog" aria-label="选中的元素" style={{ top, left, width }}>
+      <div className="agent-browser-pick-popover" role="dialog" aria-label={t("browser.pickedPopoverAria")} style={{ top, left, width }}>
         <div className="agent-browser-pick-name">{picked.label}</div>
         <div className="agent-browser-pick-actions">
           <button type="button" className="agent-browser-pick-primary" disabled={busy} onClick={onAdd}>
             <HarnessIcon name="chat" size={14} />
-            {busy ? "读取中…" : "加入对话框"}
+            {busy ? t("common.loading") : t("browser.addToChat")}
           </button>
           <button type="button" className="agent-browser-pick-secondary" onClick={onRepick}>
-            重新选择
+            {t("browser.repick")}
           </button>
           <button type="button" className="agent-browser-pick-secondary" onClick={onCancel}>
-            取消
+            {t("common.cancel")}
           </button>
         </div>
       </div>
@@ -422,7 +432,7 @@ function PickOverlay({ stage, hover, picked, picking, error, busy = false, onAdd
       {popover}
       {picking ? (
         <div className="agent-browser-pick-hint" role="status">
-          点击要标记的元素，Esc 退出
+          {t("browser.pickHint")}
         </div>
       ) : null}
       {error ? (
@@ -491,7 +501,7 @@ function useScreencastPicker(runId, stageRef, screenRef) {
       const found = await inspect(point, false);
       if (gen === generation.current) setHover(box(found));
     } catch (err) {
-      if (gen === generation.current) setError(err.message || "无法检查页面元素");
+      if (gen === generation.current) setError(err.message || t("browser.inspectError"));
     } finally {
       inflight.current = false;
       pump();
@@ -571,7 +581,7 @@ function useScreencastPicker(runId, stageRef, screenRef) {
         if (!found?.element) {
           setPicked(null);
           setPicking(true);
-          setError("这个位置没有可选的元素");
+          setError(t("browser.noElementAtPoint"));
         } else {
           setInspection(found);
           setPicked(box(found));
@@ -580,7 +590,7 @@ function useScreencastPicker(runId, stageRef, screenRef) {
         if (gen !== generation.current) return;
         setPicked(null);
         setPicking(true);
-        setError(err.message || "无法检查页面元素");
+        setError(err.message || t("browser.inspectError"));
       } finally {
         if (gen === generation.current) setBusy(false);
       }
@@ -606,9 +616,10 @@ function ScreencastBrowser({
   const imeRef = useRef(null);
   const addressRef = useRef(null);
   const controller = useRef(null);
+  useI18n();
   const [page, setPage] = useState({ available: false, canGoBack: false, canGoForward: false, tabs: [] });
-  const [overlay, setOverlay] = useState({ text: "正在连接 Agent 浏览器…", tone: "idle" });
-  const [status, setStatus] = useState("连接中");
+  const [overlay, setOverlay] = useState({ key: "browser.connecting", tone: "idle" });
+  const [status, setStatus] = useState({ key: "browser.statusConnecting" });
   const [notice, setNotice] = useState("");
   const [address, setAddress] = useState("");
   const [denied, setDenied] = useState(false);
@@ -650,12 +661,12 @@ function ScreencastBrowser({
       if (!alive || !next) return;
       state = next;
       if (!next.available) {
-        if (starting && Date.now() - starting < 240000) setOverlay({ text: startingText, tone: "idle" });
+        if (starting && Date.now() - starting < 240000) setOverlay(startingOverlay());
         else {
           starting = 0;
-          setOverlay({ text: next.reason || "Agent 浏览器尚未启动", tone: "idle", start: !readOnly });
+          setOverlay({ text: next.reason || "", key: "browser.notStarted", tone: "idle", start: !readOnly });
         }
-        setStatus("未连接");
+        setStatus({ key: "browser.statusDisconnected" });
         setPage((p) => ({ ...p, available: false }));
         return;
       }
@@ -668,7 +679,7 @@ function ScreencastBrowser({
         screen.src = `data:image/jpeg;base64,${next.frame}`;
         seq = next.seq;
       }
-      setOverlay(screen.getAttribute("src") ? null : { text: "正在等待第一帧画面…", tone: "idle" });
+      setOverlay(screen.getAttribute("src") ? null : { key: "browser.waitingFirstFrame", tone: "idle" });
       if (document.activeElement !== addressRef.current)
         setAddress(next.url && next.url !== "about:blank" ? next.url : "");
       setPage({
@@ -677,9 +688,7 @@ function ScreencastBrowser({
         canGoForward: !!next.canGoForward,
         tabs: next.tabs || [],
       });
-      setStatus(
-        `${next.kind === "docker" ? "沙箱浏览器" : "本机 Chromium"}${Date.now() - lastInput < 4000 ? " · 你正在操作" : " · 实时"}`,
-      );
+      setStatus({ kind: next.kind, active: Date.now() - lastInput < 4000 });
       if (pendingNavigate) {
         const url = pendingNavigate;
         pendingNavigate = "";
@@ -704,13 +713,13 @@ function ScreencastBrowser({
     async function startBrowser(body = { operation: "start" }) {
       if (readOnly || starting) return;
       starting = Date.now();
-      setOverlay({ text: startingText, tone: "idle" });
+      setOverlay(startingOverlay());
       if (send({ ...body, ensure: true })) return;
       try {
         const next = await call({ ...body, ensure: true, after: seq });
         starting = 0;
         paint(next);
-        if (!next.available) notify(next.reason || "Agent 浏览器未能启动");
+        if (!next.available) notify(next.reason || t("browser.startFailed"));
       } catch (err) {
         starting = 0;
         notify(err.message);
@@ -1059,9 +1068,9 @@ function ScreencastBrowser({
   return (
     <div className="agent-browser">
       <div className="agent-browser-bar">
-        {navButton("arrow-left", "后退", "back", disabled || !page.canGoBack)}
-        {navButton("arrow-right", "前进", "forward", disabled || !page.canGoForward)}
-        {navButton("refresh", "刷新", "reload")}
+        {navButton("arrow-left", t("browser.back"), "back", disabled || !page.canGoBack)}
+        {navButton("arrow-right", t("browser.forward"), "forward", disabled || !page.canGoForward)}
+        {navButton("refresh", t("browser.refresh"), "reload")}
         <form
           className="agent-browser-address"
           onSubmit={(event) => {
@@ -1075,8 +1084,8 @@ function ScreencastBrowser({
             ref={addressRef}
             type="text"
             spellCheck={false}
-            placeholder="输入网址或搜索内容"
-            aria-label="网址"
+            placeholder={t("browser.addressPlaceholder")}
+            aria-label={t("browser.addressAria")}
             value={address}
             readOnly={denied}
             onChange={(event) => setAddress(event.target.value)}
@@ -1085,13 +1094,13 @@ function ScreencastBrowser({
             <AnnotateButton picking={pick.picking} disabled={!page.available} onClick={pick.toggle} />
           ) : null}
         </form>
-        {navButton("plus", "新标签页", "newTab")}
+        {navButton("plus", t("browser.newTab"), "newTab")}
         {devServerTarget(address) ? (
           <button
             type="button"
             className="agent-browser-btn"
-            title="在原生预览中打开（你的浏览器直接渲染，操作更流畅）"
-            aria-label="在原生预览中打开"
+            title={t("browser.openNativeTitle")}
+            aria-label={t("browser.openNativeAria")}
             onClick={() => onNative(devServerTarget(address))}
           >
             <HarnessIcon name="preview-expand" size={15} />
@@ -1099,7 +1108,7 @@ function ScreencastBrowser({
         ) : null}
       </div>
       {page.tabs.length > 1 ? (
-        <div className="agent-browser-tabs" role="tablist" aria-label="浏览器标签页">
+        <div className="agent-browser-tabs" role="tablist" aria-label={t("browser.tabsAria")}>
           {page.tabs.map((tab) => (
             <div
               key={tab.id}
@@ -1113,13 +1122,13 @@ function ScreencastBrowser({
                 disabled={denied}
                 onClick={() => controller.current?.command({ operation: "activate", targetId: tab.id })}
               >
-                {tab.title || tab.url || "新标签页"}
+                {tab.title || tab.url || t("browser.newTab")}
               </button>
               <button
                 type="button"
                 className="agent-browser-tab-close"
-                title="关闭标签页"
-                aria-label="关闭标签页"
+                title={t("browser.closeTab")}
+                aria-label={t("browser.closeTab")}
                 disabled={denied}
                 onClick={() => controller.current?.command({ operation: "closeTab", targetId: tab.id })}
               >
@@ -1133,7 +1142,7 @@ function ScreencastBrowser({
         ref={stageRef}
         className={`agent-browser-stage${page.available ? "" : " is-offline"}`}
         tabIndex={0}
-        aria-label={denied ? "Agent 浏览器画面（只读）" : "Agent 浏览器画面，点击后可直接操作"}
+        aria-label={denied ? t("browser.stageReadOnly") : t("browser.stageInteractive")}
       >
         <img ref={screenRef} className="agent-browser-screen" alt="" draggable={false} />
         <textarea
@@ -1146,11 +1155,11 @@ function ScreencastBrowser({
         />
         {overlay ? (
           <div className="agent-browser-overlay" data-tone={overlay.tone}>
-            <span>{overlay.text}</span>
+            <span>{overlay.text || (overlay.key ? t(overlay.key) : "")}</span>
             {overlay.start && !denied ? (
               <button type="button" className="agent-browser-start" onClick={() => controller.current?.start()}>
                 <HarnessIcon name="globe" size={14} />
-                启动浏览器
+                {t("browser.startButton")}
               </button>
             ) : null}
           </div>
@@ -1183,12 +1192,16 @@ function ScreencastBrowser({
         ) : null}
       </div>
       <div className="agent-browser-foot">
-        <span>{status}</span>
+        <span>
+          {status.key
+            ? t(status.key)
+            : `${status.kind === "docker" ? t("browser.sandboxBrowser") : t("browser.localChromium")}${status.active ? t("browser.controllingSuffix") : t("browser.liveSuffix")}`}
+        </span>
         <small role="status" data-tone={notice ? "error" : undefined}>
           {notice ||
             (denied
-              ? "你没有该项目的编辑权限，只能查看画面"
-              : "与 Agent 用的是同一个浏览器，点击画面即可接管操作")}
+              ? t("browser.readOnlyNote")
+              : t("browser.interactiveNote"))}
         </small>
       </div>
     </div>

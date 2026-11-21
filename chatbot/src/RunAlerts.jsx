@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { api } from "./api";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import {
   credentialGuide,
   credentialHint,
@@ -102,7 +103,7 @@ export default function RunAlerts({
     if (!settled.current.has(item.key) && !slots.current.has(item.key))
       slots.current.set(item.key, entering++);
   return (
-    <div className="run-alerts" aria-label="运行提醒">
+    <div className="run-alerts" aria-label={t("runAlerts.aria")}>
       {items.map((item) => {
         const isSettled = settled.current.has(item.key);
         const order = isSettled ? 0 : (slots.current.get(item.key) ?? 0);
@@ -155,6 +156,7 @@ function RunAlert({
   onAsk,
   onChanged,
 }) {
+  useI18n();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const { run } = item;
@@ -170,7 +172,7 @@ function RunAlert({
       )
     : null;
   const ownerName =
-    owner?.chineseName || owner?.name || owner?.loginName || "运行责任人";
+    owner?.chineseName || owner?.name || owner?.loginName || t("runAlerts.ownerFallback");
   const flag = hint ? `${hint.field}Configured` : "";
   const configured =
     mine && hint && !!(users.find((u) => u.id === user?.id) || user)?.[flag];
@@ -181,12 +183,12 @@ function RunAlert({
   // At most one filled button per card: fixing the credential comes first.
   const retryPrimary = !showFix || fixedSince;
   const tag = busy
-    ? "重试中"
+    ? t("runAlerts.tag.retrying")
     : failed
-      ? "执行失败"
+      ? t("runAlerts.tag.failed")
       : item.gate === "approval"
-        ? "人工门禁"
-        : "待确认";
+        ? t("runAlerts.tag.approval")
+        : t("runAlerts.tag.waiting");
   async function retry() {
     setBusy(true);
     setError("");
@@ -226,11 +228,11 @@ function RunAlert({
             <span className="run-alert-tag">{tag}</span>
           </div>
           <span className="run-alert-meta">
-            {run.workflowSnapshot?.name || "SOP 运行"} · <code>{run.id}</code>
+            {run.workflowSnapshot?.name || t("common.sopRun")} · <code>{run.id}</code>
           </span>
         </div>
         <IconButton
-          label="不再提醒"
+          label={t("runAlerts.dismiss")}
           className="run-alert-close"
           onClick={onDismiss}
         >
@@ -250,12 +252,12 @@ function RunAlert({
               />
               <span>
                 {fixedSince
-                  ? `已检测到你配置了${hint.label}，点「重试节点」继续`
+                  ? t("runAlerts.fixedSince", { label: hint.label })
                   : configured
-                    ? `你的${hint.label}已配置。如果是失败之后才配的，直接点「重试节点」；否则它可能无效、已过期或权限不足，请按下面步骤重新生成`
+                    ? t("runAlerts.configuredHint", { label: hint.label })
                     : mine
-                      ? `原因：你的${hint.label}未配置或无效`
-                      : `原因：${ownerName}的${hint.label}未配置或无效`}
+                      ? t("runAlerts.missingMine", { label: hint.label })
+                      : t("runAlerts.missingOther", { owner: ownerName, label: hint.label })}
               </span>
             </div>
             {!fixedSince ? (
@@ -266,10 +268,7 @@ function RunAlert({
               </ol>
             ) : null}
             {!mine ? (
-              <small>
-                这个运行使用责任人 {ownerName}{" "}
-                的个人凭证，你配置自己的不会生效；请把上面的步骤发给 TA。
-              </small>
+              <small>{t("runAlerts.otherOwnerNote", { owner: ownerName })}</small>
             ) : null}
             {!fixedSince && (mine || guide.url) ? (
               <div className="run-alert-actions">
@@ -280,7 +279,7 @@ function RunAlert({
                     onClick={() => openCredentialSettings(hint.field)}
                   >
                     <HarnessIcon name="key" size={14} aria-hidden="true" />
-                    去配置 {hint.label}
+                    {t("common.configureTarget", { label: hint.label })}
                   </button>
                 ) : null}
                 {guide.url ? (
@@ -311,7 +310,7 @@ function RunAlert({
               onClick={retry}
             >
               <HarnessIcon name="refresh" size={14} aria-hidden="true" />
-              {busy ? "正在重试…" : "重试节点"}
+              {busy ? t("runAlerts.retrying") : t("runAlerts.retryNode")}
             </button>
           ) : null}
           {!failed ? (
@@ -321,7 +320,7 @@ function RunAlert({
               onClick={() => openRunPage(run.id)}
             >
               <HarnessIcon name="arrow-right" size={14} aria-hidden="true" />
-              去确认
+              {t("runAlerts.goApprove")}
             </button>
           ) : null}
           <button
@@ -330,7 +329,7 @@ function RunAlert({
             onClick={() => onOpenNode(run, item.nodeId)}
           >
             <HarnessIcon name="chat-artifacts" size={14} aria-hidden="true" />
-            查看节点
+            {t("runAlerts.viewNode")}
           </button>
           {!readOnly ? (
             <button
@@ -338,7 +337,7 @@ function RunAlert({
               className="run-alert-btn"
               onClick={() => onAsk(item)}
             >
-              <HarnessIcon name="chat" size={14} aria-hidden="true" />让 AI 分析
+              <HarnessIcon name="chat" size={14} aria-hidden="true" />{t("runAlerts.askAI")}
             </button>
           ) : null}
         </div>
@@ -404,7 +403,7 @@ function RunAlertReason({ text }) {
             aria-controls={id}
             onClick={() => setOpen((v) => !v)}
           >
-            <span>{open ? "收起" : "展开完整原因"}</span>
+            <span>{open ? t("app.collapse") : t("runAlerts.expandReason")}</span>
             <HarnessIcon
               name="chevron-down"
               size={12}

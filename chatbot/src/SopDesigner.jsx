@@ -6,6 +6,7 @@ import ModelPicker from "./ModelPicker";
 import PermissionPicker from "./PermissionPicker";
 import ModelProviderIcon, { hasProviderLogo } from "./ModelProviderIcon";
 import HarnessIcon from "./HarnessIcon";
+import { t, useI18n } from "./i18n.js";
 import { readThemePreference, resolveTheme } from "./theme.js";
 import { conversationEngine, defaultEngine, engineBrand, engineModels, engineOfModel } from "./engines.js";
 import {
@@ -51,6 +52,7 @@ function enginesOf(catalog) {
 }
 
 function DraftNote({ draft, onPlace, onConfigureRole }) {
+  useI18n();
   return (
     <div className="sop-designer-draft">
       <div className="sop-designer-draft-title">
@@ -64,12 +66,12 @@ function DraftNote({ draft, onPlace, onConfigureRole }) {
       ) : null}
       {onConfigureRole ? (
         <button type="button" className="sop-designer-place" onClick={() => onConfigureRole(draft)}>
-          配置并创建角色
+          {t("designer.configureRole")}
         </button>
       ) : null}
       {onPlace ? (
         <button type="button" className="sop-designer-place" onClick={() => onPlace(draft)}>
-          重新放到画布
+          {t("designer.placeOnCanvas")}
         </button>
       ) : null}
     </div>
@@ -77,6 +79,7 @@ function DraftNote({ draft, onPlace, onConfigureRole }) {
 }
 
 export default function SopDesigner({ search = location.search, canvas = window.parent }) {
+  useI18n();
   const initial = useMemo(() => designerParams(search), [search]);
   const [context, setContext] = useState({ projectId: initial.projectId, workflowId: initial.workflowId });
   const currentContext = useRef(context);
@@ -229,7 +232,7 @@ export default function SopDesigner({ search = location.search, canvas = window.
       } else {
         const failed = !["canceled", "cancelled"].includes(g.status);
         if (failed && g.error) setError(g.error);
-        postToCanvas(END, { error: failed ? g.error || "生成失败" : "" }, canvas);
+        postToCanvas(END, { error: failed ? g.error || t("designer.generationFailed") : "" }, canvas);
       }
     };
     const connect = () => {
@@ -291,7 +294,7 @@ export default function SopDesigner({ search = location.search, canvas = window.
     const content = value.trim();
     if (!content || busy) return;
     if (!context.projectId) {
-      setError("先在顶栏选择项目");
+      setError(t("designer.selectProjectFirst"));
       return;
     }
     setError("");
@@ -310,7 +313,7 @@ export default function SopDesigner({ search = location.search, canvas = window.
       canvasRequested = true;
       const begun = await beginOnCanvas(canvas);
       if (currentContext.current !== context) return;
-      if (!begun.ok) throw new Error(begun.error || "画布暂时不能编排");
+      if (!begun.ok) throw new Error(begun.error || t("designer.canvasBusy"));
       // A conversation stays on one CLI; another CLI starts a new one and
       // keeps the canvas.
       const locked = stored ? conversationEngine(stored.messages, catalog.models, stored.executor) : "";
@@ -359,11 +362,11 @@ export default function SopDesigner({ search = location.search, canvas = window.
       <div className="sop-designer-scroll" ref={scroll}>
         {!messages.length && !running ? (
           <div className="sop-designer-intro">
-            <h3>您好，我是 <em>AI 编排助手</em></h3>
-            <p>画布是空的，就描述要搭的流程。画布上已经有流程时，直接说改哪一步，我只改你说的地方。</p>
+            <h3>{t("designer.introHello")}<em>{t("designer.introAssistant")}</em></h3>
+            <p>{t("designer.introDesc")}</p>
             <div className="sop-designer-suggest-head">
-              <span>可以试试这些场景：</span>
-              <button type="button" onClick={() => setPage((n) => n + 1)}>换一批</button>
+              <span>{t("designer.tryScenarios")}</span>
+              <button type="button" onClick={() => setPage((n) => n + 1)}>{t("designer.shuffle")}</button>
             </div>
             <div className="sop-designer-suggest">
               {scenarioPage(page).map(([label, prompt]) => (
@@ -403,8 +406,8 @@ export default function SopDesigner({ search = location.search, canvas = window.
             ref={input}
             rows={3}
             maxLength={2000}
-            aria-label="描述要编排的流程"
-            placeholder={messages.length ? "直接说要改哪里，例如：在实现后面加一个人工评审" : "告诉我你的目标，我来搞定…"}
+            aria-label={t("designer.inputAria")}
+            placeholder={messages.length ? t("designer.placeholderEdit") : t("designer.placeholderNew")}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -424,7 +427,7 @@ export default function SopDesigner({ search = location.search, canvas = window.
                   ...item,
                   icon: "terminal",
                   label: item.name,
-                  detail: item.configured === false ? "未配置 API Key，先到个人配置里添加" : disabled ? "暂无可用模型" : `使用 ${item.name} 与个人 API Key`,
+                  detail: item.configured === false ? t("designer.noApiKeyDetail") : disabled ? t("engines.noModels") : t("designer.engineDetail", { name: item.name }),
                   disabled,
                   glyph: hasProviderLogo(brand) ? <ModelProviderIcon brand={brand} size={16} /> : null,
                 };
@@ -440,7 +443,7 @@ export default function SopDesigner({ search = location.search, canvas = window.
             <ModelPicker
               models={models}
               value={model}
-              label={models.find((m) => m.id === model)?.name || model || "模型"}
+              label={models.find((m) => m.id === model)?.name || model || t("common.model")}
               open={menu === "model"}
               onOpenChange={(open) => setMenu(open && !busy ? "model" : null)}
               onSelect={(id) => {
@@ -451,17 +454,17 @@ export default function SopDesigner({ search = location.search, canvas = window.
             />
             <span className="toolbar-spacer" />
             {running ? (
-              <button type="button" className="send-button stop" aria-label="停止生成" disabled={generation.cancelRequested} onClick={stop}>
+              <button type="button" className="send-button stop" aria-label={t("app.stopGeneration")} disabled={generation.cancelRequested} onClick={stop}>
                 <HarnessIcon name="chat-stop" size={14} />
               </button>
             ) : (
-              <button type="submit" className="send-button" aria-label="发送编排要求" disabled={busy || !text.trim()}>
+              <button type="submit" className="send-button" aria-label={t("designer.sendAria")} disabled={busy || !text.trim()}>
                 <HarnessIcon name="chat-send" size={20} />
               </button>
             )}
           </footer>
         </div>
-        <small>仅生成草稿，确认后在画布上保存 · 切换 CLI 会开启新对话，画布保留</small>
+        <small>{t("designer.footerNote")}</small>
       </form>
     </div>
   );
