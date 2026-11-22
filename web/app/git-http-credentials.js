@@ -1,4 +1,4 @@
-const GIT_HTTP_PLATFORMS = [['github', 'GitHub / GitHub Enterprise'], ['gitlab', 'GitLab'], ['other', '其他平台']];
+const GIT_HTTP_PLATFORMS = [['github', 'GitHub / GitHub Enterprise'], ['gitlab', 'GitLab'], ['other', typeof lfT === 'function' ? lfT('其他平台', 'Other') : '其他平台']];
 
 // Mirrors gitwork.HTTPSHostScope closely enough to prefill the form; the server
 // remains the authority on what a host scope is.

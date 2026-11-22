@@ -62,7 +62,7 @@ function normalizeAIWorkflow(raw) {
 
 function normalizeAINode(node, index) {
   const pos = node.position && Number.isFinite(node.position.x) && Number.isFinite(node.position.y) ? {x: node.position.x, y: node.position.y} : undefined;
-  return {...node, id: node.id || uid('node'), name: node.name || node.type || ('步骤 ' + (index + 1)), type: node.type || 'agent', position: pos};
+  return {...node, id: node.id || uid('node'), name: node.name || node.type || ((typeof lfT === 'function' ? lfT('步骤 ', 'Step ') : '步骤 ') + (index + 1)), type: node.type || 'agent', position: pos};
 }
 
 function normalizeAIEdge(edge) {

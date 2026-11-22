@@ -23,46 +23,61 @@ const SCHEDULE_EXEC_DAY=86400000;
 const SCHEDULE_EXEC_PAGE_SIZES=[10,20,50];
 const SCHEDULE_EXEC_SEARCH_DELAY=250;
 const SCHEDULE_EXEC_STATUS={
-  running:{label:'进行中',tone:'info',icon:''},
-  success:{label:'成功',tone:'success',icon:'check'},
-  failed:{label:'失败',tone:'error',icon:'alert'},
-  waiting:{label:'待对齐基线',tone:'warn',icon:'clock'}
+  running:{label:'进行中',en:'Running',tone:'info',icon:''},
+  success:{label:'成功',en:'Succeeded',tone:'success',icon:'check'},
+  failed:{label:'失败',en:'Failed',tone:'error',icon:'alert'},
+  waiting:{label:'待对齐基线',en:'Awaiting baseline',tone:'warn',icon:'clock'}
 };
 // Overridable clock so the time-range filters are testable.
 function scheduleExecNow(){return Date.now()}
-function scheduleExecStatusInfo(status){return SCHEDULE_EXEC_STATUS[status]||{label:status||'未知',tone:'neutral',icon:'circle'}}
+function scheduleExecStatusInfo(status){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  const item=SCHEDULE_EXEC_STATUS[status];
+  return item?{...item,label:_t(item.label,item.en)}:{label:status||_t('未知','Unknown'),tone:'neutral',icon:'circle'};
+}
 function scheduleExecIcon(name,size=14){return `<svg class="agent-icon harness-icon" data-icon="${name}" width="${size}" height="${size}" aria-hidden="true" focusable="false"></svg>`}
 function scheduleExecBadgeHTML(e){
   const info=scheduleExecStatusInfo(e?.status);
   const mark=info.icon?`<span class="hui-badge-glyph" aria-hidden="true">${scheduleExecIcon(info.icon,12)}</span>`:'<span class="hui-lamp" aria-hidden="true"><i></i></span>';
   return `<span class="hui-badge" data-size="sm" data-tone="${info.tone}" data-status="${escapeHTML(e?.status||'')}">${mark}<span class="hui-badge-label">${escapeHTML(info.label)}</span></span>`;
 }
-function scheduleExecTriggerLabel(origin){return origin==='manual_run'?'手动运行':origin==='timer'?'定时触发':(origin||'定时触发')}
+function scheduleExecTriggerLabel(origin){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return origin==='manual_run'?_t('手动运行','Manual run'):origin==='timer'?_t('定时触发','Scheduled'):(origin||_t('定时触发','Scheduled'));
+}
 function scheduleExecDurationLabel(ms){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const n=Number(ms)||0;
   if(n<=0)return '—';
-  if(n<1000)return '<1 秒';
+  if(n<1000)return _t('<1 秒','<1s');
   const s=Math.round(n/1000);
-  if(s<60)return `${s} 秒`;
-  if(s<3600)return `${Math.floor(s/60)} 分 ${s%60} 秒`;
-  return `${Math.floor(s/3600)} 小时 ${Math.floor(s%3600/60)} 分`;
+  if(s<60)return _t(`${s} 秒`,`${s}s`);
+  if(s<3600)return _t(`${Math.floor(s/60)} 分 ${s%60} 秒`,`${Math.floor(s/60)}m ${s%60}s`);
+  return _t(`${Math.floor(s/3600)} 小时 ${Math.floor(s%3600/60)} 分`,`${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`);
 }
 function scheduleExecShortTrace(trace){return String(trace||'').slice(-8)}
 function scheduleExecTokenNumber(value){const n=Number(value);return Number.isFinite(n)&&n>0?Math.floor(n):0}
 function scheduleExecTokenLabel(value){return scheduleExecTokenNumber(value).toLocaleString('zh-CN')}
 function scheduleExecUsageTotal(e){return e?.usage?scheduleExecTokenNumber(e.usage.totalTokens)||scheduleExecTokenNumber(e.usage.inputTokens)+scheduleExecTokenNumber(e.usage.outputTokens):null}
 function scheduleExecTokenCellHTML(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const total=scheduleExecUsageTotal(e);
-  if(total===null)return `<span class="muted">${e.jobKind==='assistant'?(e.status==='running'?'待统计':'未上报'):'—'}</span>`;
+  if(total===null)return `<span class="muted">${e.jobKind==='assistant'?(e.status==='running'?_t('待统计','Pending'):_t('未上报','Not reported')):'—'}</span>`;
   const u=e.usage;
-  const parts=[`输入 ${scheduleExecTokenLabel(u.inputTokens)}`,`输出 ${scheduleExecTokenLabel(u.outputTokens)}`,`缓存读 ${scheduleExecTokenLabel(u.cacheReadTokens)}`,`缓存写 ${scheduleExecTokenLabel(u.cacheWriteTokens)}`];
+  const parts=[
+    _t(`输入 ${scheduleExecTokenLabel(u.inputTokens)}`,`Input ${scheduleExecTokenLabel(u.inputTokens)}`),
+    _t(`输出 ${scheduleExecTokenLabel(u.outputTokens)}`,`Output ${scheduleExecTokenLabel(u.outputTokens)}`),
+    _t(`缓存读 ${scheduleExecTokenLabel(u.cacheReadTokens)}`,`Cache read ${scheduleExecTokenLabel(u.cacheReadTokens)}`),
+    _t(`缓存写 ${scheduleExecTokenLabel(u.cacheWriteTokens)}`,`Cache write ${scheduleExecTokenLabel(u.cacheWriteTokens)}`)
+  ];
   return `<span title="${escapeHTML(parts.join(' · '))}">${scheduleExecTokenLabel(total)}</span>`;
 }
 function scheduleExecUsageDetailHTML(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!e.usage)return '';
   const u=e.usage;
   const field=(label,value)=>`<div><dt>${label}</dt><dd>${scheduleExecTokenLabel(value)}</dd></div>`;
-  return `<div><dt>模型</dt><dd>${escapeHTML(e.model||'未上报')}</dd></div>${field('Token 总量',scheduleExecUsageTotal(e))}${field('输入 Token',u.inputTokens)}${field('输出 Token',u.outputTokens)}${field('缓存读 Token',u.cacheReadTokens)}${field('缓存写 Token',u.cacheWriteTokens)}`;
+  return `<div><dt>${_t('模型','Model')}</dt><dd>${escapeHTML(e.model||_t('未上报','Not reported'))}</dd></div>${field(_t('Token 总量','Total tokens'),scheduleExecUsageTotal(e))}${field(_t('输入 Token','Input tokens'),u.inputTokens)}${field(_t('输出 Token','Output tokens'),u.outputTokens)}${field(_t('缓存读 Token','Cache read tokens'),u.cacheReadTokens)}${field(_t('缓存写 Token','Cache write tokens'),u.cacheWriteTokens)}`;
 }
 function scheduleExecTimeLabel(value){
   const d=knownTime(value);if(!d)return '—';
@@ -123,21 +138,23 @@ async function refreshScheduleExecutions(){
 }
 // A delta is good or bad by metric: fewer failures and shorter runs are good.
 function scheduleExecDeltaHTML(cur,prev,{unit='%',lowerIsBetter=false}={}){
-  if(cur===null||prev===null||cur===undefined||prev===undefined)return '<small class="sched-exec-delta" data-trend="flat">上周无数据</small>';
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(cur===null||prev===null||cur===undefined||prev===undefined)return `<small class="sched-exec-delta" data-trend="flat">${_t('上周无数据','No data last week')}</small>`;
   let diff;
   if(unit==='pp')diff=cur-prev;
-  else{if(!prev)return `<small class="sched-exec-delta" data-trend="flat">${cur?'上周无数据':'与上周持平'}</small>`;diff=Math.round((cur-prev)/prev*100)}
-  if(!diff)return '<small class="sched-exec-delta" data-trend="flat">与上周持平</small>';
+  else{if(!prev)return `<small class="sched-exec-delta" data-trend="flat">${cur?_t('上周无数据','No data last week'):_t('与上周持平','Same as last week')}</small>`;diff=Math.round((cur-prev)/prev*100)}
+  if(!diff)return `<small class="sched-exec-delta" data-trend="flat">${_t('与上周持平','Same as last week')}</small>`;
   const up=diff>0,good=up!==lowerIsBetter;
-  return `<small class="sched-exec-delta" data-trend="${up?'up':'down'}" data-good="${good}">较上周 <b>${up?'+':'−'}${Math.abs(diff)}${unit}</b>${scheduleExecIcon(up?'arrow-up':'arrow-down',12)}</small>`;
+  return `<small class="sched-exec-delta" data-trend="${up?'up':'down'}" data-good="${good}">${_t('较上周','vs last week')} <b>${up?'+':'−'}${Math.abs(diff)}${unit}</b>${scheduleExecIcon(up?'arrow-up':'arrow-down',12)}</small>`;
 }
 function scheduleExecMetricsHTML(overview){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const c=scheduleExecWindow(overview?.current),p=scheduleExecWindow(overview?.previous);
   const cell=(tone,icon,label,value,delta)=>`<div class="sched-exec-metric" data-tone="${tone}"><span class="sched-exec-metric-icon" aria-hidden="true">${scheduleExecIcon(icon,18)}</span><div class="sched-exec-metric-body"><span>${label}</span><b>${value}</b>${delta}</div></div>`;
-  return cell('accent','layers','执行次数',c.total,c.total||p.total?scheduleExecDeltaHTML(c.total,p.total):'<small class="sched-exec-delta" data-trend="flat">最近 7 天无执行</small>')
-    +cell('success','check','成功率',c.rate===null?'—':`${c.rate}%`,`<small class="sched-exec-outcomes"><span>成功 ${c.success} 次</span><span${c.failed>0?' class="has-failures"':''}>失败 ${c.failed} 次</span></small>`)
-    +cell('info','priority-bolt','平均耗时',c.avgMs?scheduleExecDurationLabel(c.avgMs):'—',c.avgMs&&p.avgMs?scheduleExecDeltaHTML(Math.round(c.avgMs),Math.round(p.avgMs),{lowerIsBetter:true}):'<small class="sched-exec-delta" data-trend="flat">已结束的执行</small>')
-    +cell('accent','layers','Token 总消耗',c.metered?scheduleExecTokenLabel(c.tokens):'—',`<small class="sched-exec-delta" data-trend="flat">${c.metered} 次已上报 · 最近 7 天</small>`);
+  return cell('accent','layers',_t('执行次数','Executions'),c.total,c.total||p.total?scheduleExecDeltaHTML(c.total,p.total):`<small class="sched-exec-delta" data-trend="flat">${_t('最近 7 天无执行','No executions in last 7 days')}</small>`)
+    +cell('success','check',_t('成功率','Success rate'),c.rate===null?'—':`${c.rate}%`,`<small class="sched-exec-outcomes"><span>${_t(`成功 ${c.success} 次`,`${c.success} succeeded`)}</span><span${c.failed>0?' class="has-failures"':''}>${_t(`失败 ${c.failed} 次`,`${c.failed} failed`)}</span></small>`)
+    +cell('info','priority-bolt',_t('平均耗时','Avg duration'),c.avgMs?scheduleExecDurationLabel(c.avgMs):'—',c.avgMs&&p.avgMs?scheduleExecDeltaHTML(Math.round(c.avgMs),Math.round(p.avgMs),{lowerIsBetter:true}):`<small class="sched-exec-delta" data-trend="flat">${_t('已结束的执行','Finished executions')}</small>`)
+    +cell('accent','layers',_t('Token 总消耗','Total tokens'),c.metered?scheduleExecTokenLabel(c.tokens):'—',`<small class="sched-exec-delta" data-trend="flat">${_t(`${c.metered} 次已上报 · 最近 7 天`,`${c.metered} metered · Last 7 days`)}</small>`);
 }
 // Same link shape as issueConversationURL: the Studio frame opens chatSession.
 function scheduleExecConversationURL(e){
@@ -148,53 +165,59 @@ function scheduleExecConversationURL(e){
   return url.href;
 }
 function scheduleExecSummaryLine(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const error=String(e.error||'').trim();
   if(error)return `<p class="sched-exec-error${e.status==='waiting'?' is-warn':''}">${escapeHTML(error)}</p>`;
   if(e.jobKind==='assistant')return e.assistantMessage?`<p class="sched-exec-message">${escapeHTML(e.assistantMessage)}</p>`:'';
   const runs=(e.runs||[]).filter(r=>r.runId).map(r=>r.issueTitle||r.issueId||r.runId);
-  return `<p class="sched-exec-message">候选 ${Number(e.pulled)||0} · 启动 ${Number(e.dispatched)||0}${runs.length?` · ${escapeHTML(runs.join('、'))}`:''}</p>`;
+  return `<p class="sched-exec-message">${_t(`候选 ${Number(e.pulled)||0} · 启动 ${Number(e.dispatched)||0}`,`Candidates ${Number(e.pulled)||0} · Started ${Number(e.dispatched)||0}`)}${runs.length?` · ${escapeHTML(runs.join(_t('、',', ')))}`:''}</p>`;
 }
 function scheduleExecRowMenuHTML(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const id=escapeHTML(e.id),job=(state.data.scheduleJobs||[]).find(j=>j.id===e.jobId);
   const item=(attr,value,label,icon)=>`<button type="button" role="menuitem" tabindex="-1" class="schedule-row-menu-item" ${attr}="${escapeHTML(value)}"><svg class="agent-icon harness-icon" data-icon="${icon}" width="16" height="16" aria-hidden="true" focusable="false"></svg><span>${label}</span></button>`;
   const items=[
-    e.traceId?item('data-copy-trace',e.traceId,'复制排障信息','copy'):'',
-    scheduleExecJobFilter===e.jobId?'':item('data-exec-only-job',e.jobId,'只看该任务','filter'),
-    job?item('data-exec-edit-job',e.jobId,'编辑任务','edit'):''
+    e.traceId?item('data-copy-trace',e.traceId,_t('复制排障信息','Copy diagnostics'),'copy'):'',
+    scheduleExecJobFilter===e.jobId?'':item('data-exec-only-job',e.jobId,_t('只看该任务','Filter by this job'),'filter'),
+    job?item('data-exec-edit-job',e.jobId,_t('编辑任务','Edit job'),'edit'):''
   ].join('');
   if(!items)return '';
-  return `<span class="schedule-row-more"><button type="button" class="button ghost small schedule-row-more-btn" data-schedule-menu="${id}" aria-label="更多操作：${escapeHTML(e.jobName||e.jobId)} ${escapeHTML(scheduleExecTimeLabel(e.startedAt))}" aria-haspopup="menu" aria-expanded="false">${scheduleExecIcon('more-horizontal',16)}</button><span class="schedule-row-menu" role="menu" hidden>${items}</span></span>`;
+  return `<span class="schedule-row-more"><button type="button" class="button ghost small schedule-row-more-btn" data-schedule-menu="${id}" aria-label="${_t(`更多操作：${escapeHTML(e.jobName||e.jobId)} ${escapeHTML(scheduleExecTimeLabel(e.startedAt))}`,`More actions: ${escapeHTML(e.jobName||e.jobId)} ${escapeHTML(scheduleExecTimeLabel(e.startedAt))}`)}" aria-haspopup="menu" aria-expanded="false">${scheduleExecIcon('more-horizontal',16)}</button><span class="schedule-row-menu" role="menu" hidden>${items}</span></span>`;
 }
 function scheduleExecDetailHTML(e,detailId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const assistant=e.jobKind==='assistant';
   const field=(label,value)=>value?`<div><dt>${label}</dt><dd>${value}</dd></div>`:'';
   const error=String(e.error||'').trim();
   const runs=(e.runs||[]).filter(r=>r.runId);
-  const runLinks=runs.length?`<div class="sched-exec-runs">${runs.map(r=>`<button type="button" class="sched-exec-run" data-open-exec-run="${escapeHTML(r.runId)}" title="打开运行 ${escapeHTML(r.runId)}">${scheduleExecIcon('workflow',12)}${escapeHTML(r.issueTitle||r.issueId||r.runId)}</button>`).join('')}</div>`:'';
+  const runLinks=runs.length?`<div class="sched-exec-runs">${runs.map(r=>`<button type="button" class="sched-exec-run" data-open-exec-run="${escapeHTML(r.runId)}" title="${_t(`打开运行 ${escapeHTML(r.runId)}`,`Open run ${escapeHTML(r.runId)}`)}">${scheduleExecIcon('workflow',12)}${escapeHTML(r.issueTitle||r.issueId||r.runId)}</button>`).join('')}</div>`:'';
   const finished=knownTime(e.finishedAt);
-  return `<tr class="sched-exec-detail" id="${detailId}" ${scheduleExecExpanded.has(e.id)?'':'hidden'}><td colspan="8"><div class="sched-exec-detail-body"><dl class="sched-exec-fields">${field('触发方式',escapeHTML(scheduleExecTriggerLabel(e.triggerOrigin)))}${field('开始时间',escapeHTML(scheduleExecTimeLabel(e.startedAt)))}${field('结束时间',finished?escapeHTML(scheduleExecTimeLabel(e.finishedAt)):'')}${field('耗时',e.status==='running'?'进行中':escapeHTML(scheduleExecDurationLabel(e.durationMs)))}${field('Trace ID',e.traceId?`<code>${escapeHTML(e.traceId)}</code>`:'')}${assistant?'':field('候选 / 启动',`${Number(e.pulled)||0} / ${Number(e.dispatched)||0}`)}${scheduleExecUsageDetailHTML(e)}</dl>${error?`<div class="sched-exec-detail-text is-error"><b>错误</b><pre>${escapeHTML(error)}</pre></div>`:''}${!error&&assistant&&e.assistantMessage?`<div class="sched-exec-detail-text"><b>AI 回复</b><pre>${escapeHTML(e.assistantMessage)}</pre></div>`:''}${runLinks?`<div class="sched-exec-detail-text"><b>派发运行</b>${runLinks}</div>`:''}</div></td></tr>`;
+  return `<tr class="sched-exec-detail" id="${detailId}" ${scheduleExecExpanded.has(e.id)?'':'hidden'}><td colspan="8"><div class="sched-exec-detail-body"><dl class="sched-exec-fields">${field(_t('触发方式','Trigger'),escapeHTML(scheduleExecTriggerLabel(e.triggerOrigin)))}${field(_t('开始时间','Started'),escapeHTML(scheduleExecTimeLabel(e.startedAt)))}${field(_t('结束时间','Finished'),finished?escapeHTML(scheduleExecTimeLabel(e.finishedAt)):'')}${field(_t('耗时','Duration'),e.status==='running'?_t('进行中','Running'):escapeHTML(scheduleExecDurationLabel(e.durationMs)))}${field('Trace ID',e.traceId?`<code>${escapeHTML(e.traceId)}</code>`:'')}${assistant?'':field(_t('候选 / 启动','Candidates / Started'),`${Number(e.pulled)||0} / ${Number(e.dispatched)||0}`)}${scheduleExecUsageDetailHTML(e)}</dl>${error?`<div class="sched-exec-detail-text is-error"><b>${_t('错误','Error')}</b><pre>${escapeHTML(error)}</pre></div>`:''}${!error&&assistant&&e.assistantMessage?`<div class="sched-exec-detail-text"><b>${_t('AI 回复','AI reply')}</b><pre>${escapeHTML(e.assistantMessage)}</pre></div>`:''}${runLinks?`<div class="sched-exec-detail-text"><b>${_t('派发运行','Dispatched runs')}</b>${runLinks}</div>`:''}</div></td></tr>`;
 }
 // Every row has the same two action slots, so ⋯ lines up down the column:
 // the primary slot says why there is nothing to open instead of vanishing.
 function scheduleExecPrimaryActionHTML(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(e.jobKind==='assistant'){
-    if(e.sessionId&&e.sessionGone)return `<span class="sched-exec-action is-unavailable" title="这次执行的会话已被清理（超出任务的保留会话数或保留期限，或被手动删除），无法再打开；AI 回复仍可在详情里查看">${scheduleExecIcon('preview-expand')}<span>会话已清理</span></span>`;
-    if(e.sessionId)return `<a class="sched-exec-action sched-exec-chat" data-open-exec-chat="${escapeHTML(e.sessionId)}" href="${escapeHTML(scheduleExecConversationURL(e))}" target="_blank" rel="noopener" title="在新标签页打开本次执行的对话">${scheduleExecIcon('preview-expand')}<span>打开会话</span></a>`;
-    const why=e.status==='running'?'会话创建后即可打开':'这次执行在创建会话之前就结束了（例如缺少 Key），没有对话可打开';
-    return `<span class="sched-exec-action is-unavailable" title="${why}">${scheduleExecIcon('preview-expand')}<span>${e.status==='running'?'准备中':'无会话'}</span></span>`;
+    if(e.sessionId&&e.sessionGone)return `<span class="sched-exec-action is-unavailable" title="${_t('这次执行的会话已被清理（超出任务的保留会话数或保留期限，或被手动删除），无法再打开；AI 回复仍可在详情里查看','This execution\'s session has been cleaned up (exceeded retention count/period or manually deleted) and can no longer be opened; the AI reply can still be viewed in details')}">${scheduleExecIcon('preview-expand')}<span>${_t('会话已清理','Session cleaned up')}</span></span>`;
+    if(e.sessionId)return `<a class="sched-exec-action sched-exec-chat" data-open-exec-chat="${escapeHTML(e.sessionId)}" href="${escapeHTML(scheduleExecConversationURL(e))}" target="_blank" rel="noopener" title="${_t('在新标签页打开本次执行的对话','Open this execution\'s conversation in a new tab')}">${scheduleExecIcon('preview-expand')}<span>${_t('打开会话','Open session')}</span></a>`;
+    const why=e.status==='running'?_t('会话创建后即可打开','Session can be opened once created'):_t('这次执行在创建会话之前就结束了（例如缺少 Key），没有对话可打开','This execution ended before creating a session (e.g. missing key); no conversation to open');
+    return `<span class="sched-exec-action is-unavailable" title="${why}">${scheduleExecIcon('preview-expand')}<span>${e.status==='running'?_t('准备中','Preparing'):_t('无会话','No session')}</span></span>`;
   }
   const firstRun=(e.runs||[]).find(r=>r.runId);
-  if(firstRun)return `<button type="button" class="sched-exec-action" data-open-exec-first-run="${escapeHTML(firstRun.runId)}" title="打开运行 ${escapeHTML(firstRun.runId)}">${scheduleExecIcon('workflow')}<span>查看运行</span></button>`;
-  return `<span class="sched-exec-action is-unavailable" title="这次没有派发需求，没有运行可查看">${scheduleExecIcon('workflow')}<span>未派发</span></span>`;
+  if(firstRun)return `<button type="button" class="sched-exec-action" data-open-exec-first-run="${escapeHTML(firstRun.runId)}" title="${_t(`打开运行 ${escapeHTML(firstRun.runId)}`,`Open run ${escapeHTML(firstRun.runId)}`)}">${scheduleExecIcon('workflow')}<span>${_t('查看运行','View run')}</span></button>`;
+  return `<span class="sched-exec-action is-unavailable" title="${_t('这次没有派发需求，没有运行可查看','No issues were dispatched in this execution; no run to view')}">${scheduleExecIcon('workflow')}<span>${_t('未派发','Not dispatched')}</span></span>`;
 }
 function scheduleExecRowHTML(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const assistant=e.jobKind==='assistant',open=scheduleExecExpanded.has(e.id);
   const detailId=`sched-exec-detail-${String(e.id).replace(/[^A-Za-z0-9_-]/g,'')}`;
-  const trace=e.traceId?`<button type="button" class="sched-exec-copy sched-exec-trace" data-copy-trace="${escapeHTML(e.traceId)}" aria-label="复制 Trace ID 与排障信息：${escapeHTML(e.traceId)}" title="复制 Trace ID 与排障信息（${escapeHTML(e.traceId)}），可直接发给 AI 助手排查"><code>${escapeHTML(scheduleExecShortTrace(e.traceId))}</code>${scheduleExecIcon('copy',13)}</button>`:'<span class="muted">—</span>';
-  return `<tr class="sched-exec-row${open?' is-open':''}" data-status="${escapeHTML(e.status||'')}" data-exec-id="${escapeHTML(e.id)}"><td class="sched-exec-toggle-cell"><button type="button" class="sched-exec-toggle" data-exec-toggle="${escapeHTML(e.id)}" aria-expanded="${open}" aria-controls="${detailId}" aria-label="${open?'收起':'展开'}详情">${scheduleExecIcon('chevron-right')}</button></td><td>${scheduleExecBadgeHTML(e)}</td><td class="sched-exec-main"><b><span class="schedule-kind-tag ${assistant?'is-assistant':'is-dispatch'}">${assistant?'AI':'触发'}</span><span class="sched-exec-name" title="${escapeHTML(e.jobName||e.jobId)}">${escapeHTML(e.jobName||e.jobId)}</span></b>${scheduleExecSummaryLine(e)}</td><td class="sched-exec-time" title="${escapeHTML(scheduleExecTriggerLabel(e.triggerOrigin))}">${escapeHTML(scheduleExecTimeLabel(e.startedAt))}</td><td class="sched-exec-duration">${e.status==='running'?'进行中':escapeHTML(scheduleExecDurationLabel(e.durationMs))}</td><td class="sched-exec-tokens">${scheduleExecTokenCellHTML(e)}</td><td class="sched-exec-trace-cell">${trace}</td><td class="sched-exec-actions"><div class="sched-exec-action-slots">${scheduleExecPrimaryActionHTML(e)}${scheduleExecRowMenuHTML(e)||'<span class="sched-exec-more-slot" aria-hidden="true"></span>'}</div></td></tr>${scheduleExecDetailHTML(e,detailId)}`;
+  const trace=e.traceId?`<button type="button" class="sched-exec-copy sched-exec-trace" data-copy-trace="${escapeHTML(e.traceId)}" aria-label="${_t(`复制 Trace ID 与排障信息：${escapeHTML(e.traceId)}`,`Copy Trace ID & diagnostics: ${escapeHTML(e.traceId)}`)}" title="${_t(`复制 Trace ID 与排障信息（${escapeHTML(e.traceId)}），可直接发给 AI 助手排查`,`Copy Trace ID & diagnostics (${escapeHTML(e.traceId)}) to share with AI assistant for troubleshooting`)}"><code>${escapeHTML(scheduleExecShortTrace(e.traceId))}</code>${scheduleExecIcon('copy',13)}</button>`:'<span class="muted">—</span>';
+  return `<tr class="sched-exec-row${open?' is-open':''}" data-status="${escapeHTML(e.status||'')}" data-exec-id="${escapeHTML(e.id)}"><td class="sched-exec-toggle-cell"><button type="button" class="sched-exec-toggle" data-exec-toggle="${escapeHTML(e.id)}" aria-expanded="${open}" aria-controls="${detailId}" aria-label="${open?_t('收起详情','Collapse details'):_t('展开详情','Expand details')}">${scheduleExecIcon('chevron-right')}</button></td><td>${scheduleExecBadgeHTML(e)}</td><td class="sched-exec-main"><b><span class="schedule-kind-tag ${assistant?'is-assistant':'is-dispatch'}">${assistant?'AI':_t('触发','Trigger')}</span><span class="sched-exec-name" title="${escapeHTML(e.jobName||e.jobId)}">${escapeHTML(e.jobName||e.jobId)}</span></b>${scheduleExecSummaryLine(e)}</td><td class="sched-exec-time" title="${escapeHTML(scheduleExecTriggerLabel(e.triggerOrigin))}">${escapeHTML(scheduleExecTimeLabel(e.startedAt))}</td><td class="sched-exec-duration">${e.status==='running'?_t('进行中','Running'):escapeHTML(scheduleExecDurationLabel(e.durationMs))}</td><td class="sched-exec-tokens">${scheduleExecTokenCellHTML(e)}</td><td class="sched-exec-trace-cell">${trace}</td><td class="sched-exec-actions"><div class="sched-exec-action-slots">${scheduleExecPrimaryActionHTML(e)}${scheduleExecRowMenuHTML(e)||'<span class="sched-exec-more-slot" aria-hidden="true"></span>'}</div></td></tr>${scheduleExecDetailHTML(e,detailId)}`;
 }
 function scheduleExecTableHTML(rows){
-  return `<table class="sched-exec-table"><thead><tr><th scope="col" class="sched-exec-toggle-cell" aria-label="展开详情"></th><th scope="col">状态</th><th scope="col">任务名称</th><th scope="col">触发时间</th><th scope="col"><span class="sched-exec-th-hint" title="从开始到结束的时长；进行中的执行不计">耗时${scheduleExecIcon('info',12)}</span></th><th scope="col"><span class="sched-exec-th-hint" title="本次 AI 调用上报的总量，包含重试；不含下游 SOP，缓存明细不重复计入">Token${scheduleExecIcon('info',12)}</span></th><th scope="col">Trace ID</th><th scope="col" class="sched-exec-actions">操作</th></tr></thead><tbody>${rows.map(scheduleExecRowHTML).join('')}</tbody></table>`;
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return `<table class="sched-exec-table"><thead><tr><th scope="col" class="sched-exec-toggle-cell" aria-label="${_t('展开详情','Expand details')}"></th><th scope="col">${_t('状态','Status')}</th><th scope="col">${_t('任务名称','Job')}</th><th scope="col">${_t('触发时间','Triggered')}</th><th scope="col"><span class="sched-exec-th-hint" title="${_t('从开始到结束的时长；进行中的执行不计','Duration from start to finish; running executions excluded')}">${_t('耗时','Duration')}${scheduleExecIcon('info',12)}</span></th><th scope="col"><span class="sched-exec-th-hint" title="${_t('本次 AI 调用上报的总量，包含重试；不含下游 SOP，缓存明细不重复计入','Total reported for this AI call including retries; excludes downstream SOPs; cache details not double-counted')}">Token${scheduleExecIcon('info',12)}</span></th><th scope="col">Trace ID</th><th scope="col" class="sched-exec-actions">${_t('操作','Actions')}</th></tr></thead><tbody>${rows.map(scheduleExecRowHTML).join('')}</tbody></table>`;
 }
 // Page buttons: first, last, and the current page ±1, with gaps as "…".
 function scheduleExecPageList(page,pages){
@@ -204,9 +227,10 @@ function scheduleExecPageList(page,pages){
   return out;
 }
 function scheduleExecPagerHTML(total){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const pages=Math.max(1,Math.ceil(total/scheduleExecPageSize));
   const nav=(page,label,icon,disabled)=>`<button type="button" class="sched-exec-page" data-exec-page="${page}" aria-label="${label}" ${disabled?'disabled':''}>${scheduleExecIcon(icon)}</button>`;
-  return `<label class="sched-exec-page-size">每页<select id="scheduleExecPageSize" class="select" aria-label="每页条数">${SCHEDULE_EXEC_PAGE_SIZES.map(n=>`<option value="${n}" ${n===scheduleExecPageSize?'selected':''}>${n} 条</option>`).join('')}</select></label><nav class="sched-exec-pages" aria-label="执行记录分页">${nav(scheduleExecPage-1,'上一页','chevron-left',scheduleExecPage<=1)}${scheduleExecPageList(scheduleExecPage,pages).map(n=>n==='…'?'<span class="sched-exec-page-gap" aria-hidden="true">…</span>':`<button type="button" class="sched-exec-page${n===scheduleExecPage?' is-current':''}" data-exec-page="${n}" ${n===scheduleExecPage?'aria-current="page"':''} aria-label="第 ${n} 页">${n}</button>`).join('')}<span class="sched-exec-page-total">共 ${pages} 页</span>${nav(scheduleExecPage+1,'下一页','chevron-right',scheduleExecPage>=pages)}</nav>`;
+  return `<label class="sched-exec-page-size">${_t('每页','Per page')}<select id="scheduleExecPageSize" class="select" aria-label="${_t('每页条数','Items per page')}">${SCHEDULE_EXEC_PAGE_SIZES.map(n=>`<option value="${n}" ${n===scheduleExecPageSize?'selected':''}>${_t(`${n} 条`,`${n}`)}</option>`).join('')}</select></label><nav class="sched-exec-pages" aria-label="${_t('执行记录分页','Execution history pagination')}">${nav(scheduleExecPage-1,_t('上一页','Previous page'),'chevron-left',scheduleExecPage<=1)}${scheduleExecPageList(scheduleExecPage,pages).map(n=>n==='…'?'<span class="sched-exec-page-gap" aria-hidden="true">…</span>':`<button type="button" class="sched-exec-page${n===scheduleExecPage?' is-current':''}" data-exec-page="${n}" ${n===scheduleExecPage?'aria-current="page"':''} aria-label="${_t(`第 ${n} 页`,`Page ${n}`)}">${n}</button>`).join('')}<span class="sched-exec-page-total">${_t(`共 ${pages} 页`,`${pages} pages total`)}</span>${nav(scheduleExecPage+1,_t('下一页','Next page'),'chevron-right',scheduleExecPage>=pages)}</nav>`;
 }
 function scheduleExecJobOptions(){
   const jobs=new Map();
@@ -217,6 +241,7 @@ function scheduleExecJobOptions(){
   return [...jobs].sort((a,b)=>a[1].localeCompare(b[1],'zh'));
 }
 function renderScheduleExecutionCount(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const count=$('#aiScheduleExecCount');
   if(!count)return;
   const mine=scheduleExecProject===(state.projectFilter||'');
@@ -224,10 +249,11 @@ function renderScheduleExecutionCount(){
   count.textContent=records?String(records):'';
   count.hidden=!records;
   count.classList.toggle('is-danger',failed>0);
-  count.title=records?`共 ${records} 条执行记录${failed?`，最近 7 天失败 ${failed} 次`:''}`:'';
+  count.title=records?_t(`共 ${records} 条执行记录${failed?`，最近 7 天失败 ${failed} 次`:''}`,`${records} execution records${failed?`, ${failed} failed in last 7 days`:''}`):'';
 }
 function scheduleExecFiltersActive(){return !!(scheduleExecStatusFilter||scheduleExecJobFilter||scheduleExecRangeFilter||scheduleExecQuery.trim())}
 function renderScheduleExecutions(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   renderScheduleExecutionCount();
   const panel=$('#aiScheduleExecPanel');
   if(!panel||panel.hidden)return;
@@ -235,7 +261,7 @@ function renderScheduleExecutions(){
   const jobSelect=$('#scheduleExecJob'),statusSelect=$('#scheduleExecStatus'),rangeSelect=$('#scheduleExecRange'),search=$('#scheduleExecSearch');
   const options=scheduleExecJobOptions();
   if(jobSelect){
-    jobSelect.replaceChildren(new Option('全部任务',''),...options.map(([id,name])=>new Option(name,id)));
+    jobSelect.replaceChildren(new Option(_t('全部任务','All jobs'),''),...options.map(([id,name])=>new Option(name,id)));
     jobSelect.value=scheduleExecJobFilter;
   }
   if(statusSelect)statusSelect.value=scheduleExecStatusFilter;
@@ -244,7 +270,7 @@ function renderScheduleExecutions(){
   const reset=$('#scheduleExecReset');if(reset)reset.disabled=!scheduleExecFiltersActive();
   // The overview follows the job filter only: it always covers the last 7 days.
   const jobName=scheduleExecJobFilter?options.find(([id])=>id===scheduleExecJobFilter)?.[1]:'';
-  const scope=$('#scheduleExecOverviewScope');if(scope)scope.textContent=jobName?`（最近 7 天 · ${jobName}）`:'（最近 7 天）';
+  const scope=$('#scheduleExecOverviewScope');if(scope)scope.textContent=jobName?_t(`（最近 7 天 · ${jobName}）`,`(Last 7 days · ${jobName})`):_t('（最近 7 天）','(Last 7 days)');
   $('#scheduleExecMetrics').innerHTML=scheduleExecMetricsHTML(scheduleExecOverview);
   const list=$('#scheduleExecList');
   const focused=document.activeElement;
@@ -253,13 +279,13 @@ function renderScheduleExecutions(){
   const rows=scheduleExecutions,total=scheduleExecTotal;
   list.setAttribute('aria-busy',String(scheduleExecLoading));
   let empty='';
-  if(!state.projectFilter)empty='请先在顶栏选择项目，再查看执行记录。';
-  else if(scheduleExecError)empty=`读取执行记录失败：${escapeHTML(scheduleExecError)} <button type="button" class="button ghost small" data-retry-exec>重试</button>`;
-  else if(scheduleExecLoading&&!rows.length)empty='正在读取执行记录…';
-  else if(!scheduleExecRecords&&!rows.length)empty='还没有执行记录。任务每次运行后，这里会记录结果、耗时和 Trace ID。';
-  else if(!rows.length)empty='没有符合筛选条件的执行记录。<button type="button" class="button ghost small" data-reset-exec>清除筛选</button>';
+  if(!state.projectFilter)empty=_t('请先在顶栏选择项目，再查看执行记录。','Select a project in the top bar first to view execution history.');
+  else if(scheduleExecError)empty=`${_t(`读取执行记录失败：${escapeHTML(scheduleExecError)}`,`Failed to load execution history: ${escapeHTML(scheduleExecError)}`)} <button type="button" class="button ghost small" data-retry-exec>${_t('重试','Retry')}</button>`;
+  else if(scheduleExecLoading&&!rows.length)empty=_t('正在读取执行记录…','Loading execution history…');
+  else if(!scheduleExecRecords&&!rows.length)empty=_t('还没有执行记录。任务每次运行后，这里会记录结果、耗时和 Trace ID。','No execution records yet. Results, duration, and Trace IDs will appear here after each job run.');
+  else if(!rows.length)empty=`${_t('没有符合筛选条件的执行记录。','No execution records match the current filters.')}<button type="button" class="button ghost small" data-reset-exec>${_t('清除筛选','Clear filters')}</button>`;
   list.innerHTML=empty?`<div class="sync-empty">${empty}</div>`:scheduleExecTableHTML(rows);
-  $('#scheduleExecTotal').textContent=!empty&&total?`（共 ${total} 条）`:'';
+  $('#scheduleExecTotal').textContent=!empty&&total?_t(`（共 ${total} 条）`,`(${total} total)`):'';
   const pager=$('#scheduleExecPager');
   pager.hidden=!!empty||!total;
   pager.innerHTML=pager.hidden?'':scheduleExecPagerHTML(total);
@@ -267,7 +293,7 @@ function renderScheduleExecutions(){
   list.querySelector('[data-reset-exec]')?.addEventListener('click',resetScheduleExecFilters);
   bindScheduleExecList(list);
   bindScheduleExecPager(pager);
-  $('#scheduleExecFootnote').textContent=empty?'':'列表保留每个任务最近 200 次执行；概览按全部执行统计，不受保留条数限制。Token 只计本次 AI 调用（含重试），不含下游 SOP；缓存明细不重复计入总量。';
+  $('#scheduleExecFootnote').textContent=empty?'':_t('列表保留每个任务最近 200 次执行；概览按全部执行统计，不受保留条数限制。Token 只计本次 AI 调用（含重试），不含下游 SOP；缓存明细不重复计入总量。','List keeps the last 200 executions per job; overview counts all executions. Tokens include only this AI call (with retries), excluding downstream SOPs; cache details are not double-counted.');
   window.AgentFlowHarnessIcons?.hydrate(panel);
   if(focusKey){
     const host=focusKey==='execPage'?pager:list;
@@ -275,13 +301,14 @@ function renderScheduleExecutions(){
   }
 }
 function toggleScheduleExecDetail(id){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(scheduleExecExpanded.has(id))scheduleExecExpanded.delete(id);else scheduleExecExpanded.add(id);
   const row=[...$('#scheduleExecList').querySelectorAll('.sched-exec-row')].find(r=>r.dataset.execId===id);
   if(!row)return;
   const open=scheduleExecExpanded.has(id),toggle=row.querySelector('[data-exec-toggle]');
   row.classList.toggle('is-open',open);
   toggle.setAttribute('aria-expanded',String(open));
-  toggle.setAttribute('aria-label',`${open?'收起':'展开'}详情`);
+  toggle.setAttribute('aria-label',open?_t('收起详情','Collapse details'):_t('展开详情','Expand details'));
   const detail=row.nextElementSibling;
   if(detail?.classList.contains('sched-exec-detail'))detail.hidden=!open;
 }
@@ -329,42 +356,46 @@ function scheduleTraceSource(traceId){
   return {traceId,jobId:job.id,jobName:job.name,jobKind:job.skipDispatch?'assistant':'trigger',projectId:job.projectId,status:job.lastStatus,error:job.lastError,assistantMessage:job.lastAssistantMessage,pulled:job.lastPulled,dispatched:job.lastDispatched,startedAt:job.lastRunAt};
 }
 function scheduleTraceDiagnostics(traceId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const e=scheduleTraceSource(traceId);
   const project=(state.data.projects||[]).find(p=>p.id===e.projectId);
   const started=knownTime(e.startedAt);
   const oneLine=v=>String(v??'').replace(/\s+/g,' ').trim();
   const rows=[
     ['Trace ID',traceId],
-    ['任务',e.jobName||e.jobId?`${oneLine(e.jobName||e.jobId)}${e.jobId&&e.jobName?`（${e.jobId}）`:''}`:''],
-    ['类型',e.jobKind==='assistant'?'AI 提示词任务':e.jobKind==='trigger'?'SOP 触发':''],
-    ['项目',e.projectId?`${oneLine(project?.name||e.projectId)}${project?.name&&project.name!==e.projectId?`（${e.projectId}）`:''}`:''],
-    ['触发方式',e.triggerOrigin?scheduleExecTriggerLabel(e.triggerOrigin):''],
-    ['状态',e.status?scheduleExecStatusInfo(e.status).label:''],
-    ['开始时间',started?`${started.toLocaleString()}（${started.toISOString()}）`:''],
-    ['耗时',Number(e.durationMs)>0?scheduleExecDurationLabel(e.durationMs):''],
-    ['候选 / 启动',e.jobKind==='trigger'?`${Number(e.pulled)||0} / ${Number(e.dispatched)||0}`:''],
-    ['错误',oneLine(e.error).slice(0,1000)],
-    ['AI 回复摘要',e.error?'':oneLine(e.assistantMessage).slice(0,300)],
-    ['派发运行',(e.runs||[]).filter(r=>r.runId).map(r=>`${r.runId}${r.issueTitle||r.issueId?`（${oneLine(r.issueTitle||r.issueId)}）`:''}`).join('；')],
-    ['页面',location.href],
-    ['复制时间',new Date().toISOString()]
+    [_t('任务','Job'),e.jobName||e.jobId?`${oneLine(e.jobName||e.jobId)}${e.jobId&&e.jobName?` (${e.jobId})`:''}`:''],
+    [_t('类型','Type'),e.jobKind==='assistant'?_t('AI 提示词任务','AI prompt job'):e.jobKind==='trigger'?_t('SOP 触发','SOP trigger'):''],
+    [_t('项目','Project'),e.projectId?`${oneLine(project?.name||e.projectId)}${project?.name&&project.name!==e.projectId?` (${e.projectId})`:''}`:''],
+    [_t('触发方式','Trigger'),e.triggerOrigin?scheduleExecTriggerLabel(e.triggerOrigin):''],
+    [_t('状态','Status'),e.status?scheduleExecStatusInfo(e.status).label:''],
+    [_t('开始时间','Started'),started?`${started.toLocaleString()} (${started.toISOString()})`:''],
+    [_t('耗时','Duration'),Number(e.durationMs)>0?scheduleExecDurationLabel(e.durationMs):''],
+    [_t('候选 / 启动','Candidates / Started'),e.jobKind==='trigger'?`${Number(e.pulled)||0} / ${Number(e.dispatched)||0}`:''],
+    [_t('错误','Error'),oneLine(e.error).slice(0,1000)],
+    [_t('AI 回复摘要','AI reply summary'),e.error?'':oneLine(e.assistantMessage).slice(0,300)],
+    [_t('派发运行','Dispatched runs'),(e.runs||[]).filter(r=>r.runId).map(r=>`${r.runId}${r.issueTitle||r.issueId?` (${oneLine(r.issueTitle||r.issueId)})`:''}`).join('; ')],
+    [_t('页面','Page'),location.href],
+    [_t('复制时间','Copied at'),new Date().toISOString()]
   ].filter(([,v])=>String(v||'').trim());
-  return ['定时任务执行排障信息',...rows.map(([k,v])=>`${k}: ${v}`)].join('\n');
+  return [_t('定时任务执行排障信息','Scheduled Job Execution Diagnostics'),...rows.map(([k,v])=>`${k}: ${v}`)].join('\n');
 }
 function copyScheduleTrace(traceId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!traceId)return;
-  copyText(scheduleTraceDiagnostics(traceId),'已复制 Trace ID 与排障信息');
+  copyText(scheduleTraceDiagnostics(traceId),_t('已复制 Trace ID 与排障信息','Copied Trace ID and diagnostics'));
 }
 function bindScheduleTraceButtons(host){
   host?.querySelectorAll('[data-copy-trace]').forEach(b=>b.onclick=e=>{e.stopPropagation();copyScheduleTrace(b.dataset.copyTrace)});
 }
 // Job rows: a failed run gets a direct copy button; every row links to its history.
 function scheduleJobTraceCopyHTML(job){
-  return job?.lastStatus==='failed'&&job.lastTraceId?`<button type="button" class="button ghost small sched-exec-copy" data-copy-trace="${escapeHTML(job.lastTraceId)}" aria-label="复制最近一次失败的 Trace ID 与排障信息" title="复制 Trace ID 与排障信息（${escapeHTML(job.lastTraceId)}），可直接发给 AI 助手排查"><svg class="agent-icon harness-icon" data-icon="copy" width="14" height="14" aria-hidden="true" focusable="false"></svg><span>Trace</span></button>`:'';
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return job?.lastStatus==='failed'&&job.lastTraceId?`<button type="button" class="button ghost small sched-exec-copy" data-copy-trace="${escapeHTML(job.lastTraceId)}" aria-label="${_t('复制最近一次失败的 Trace ID 与排障信息','Copy latest failed Trace ID and diagnostics')}" title="${_t(`复制 Trace ID 与排障信息（${escapeHTML(job.lastTraceId)}），可直接发给 AI 助手排查`,`Copy Trace ID & diagnostics (${escapeHTML(job.lastTraceId)}) to share with AI assistant for troubleshooting`)}"><svg class="agent-icon harness-icon" data-icon="copy" width="14" height="14" aria-hidden="true" focusable="false"></svg><span>Trace</span></button>`:'';
 }
 function scheduleJobTraceActionsHTML(job){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const copy=scheduleJobTraceCopyHTML(job);
-  return `${copy}<button type="button" class="button ghost small" data-schedule-history="${escapeHTML(job.id)}">执行记录</button>`;
+  return `${copy}<button type="button" class="button ghost small" data-schedule-history="${escapeHTML(job.id)}">${_t('执行记录','Executions')}</button>`;
 }
 function bindScheduleJobTraceActions(list){
   bindScheduleTraceButtons(list);

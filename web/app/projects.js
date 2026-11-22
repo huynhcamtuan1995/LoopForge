@@ -1,17 +1,19 @@
 function renderProjectSwitcher(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const projects=state.data.projects||[];
   const switcher=$('#projectSwitcher');if(!switcher)return;
-  switcher.innerHTML=projects.map(p=>`<option value="${escapeHTML(p.id)}" ${p.id===state.projectFilter?'selected':''}>${escapeHTML(p.key||'PROJECT')} · ${escapeHTML(p.name)}</option>`).join('')||'<option value="">暂无项目</option>';
+  switcher.innerHTML=projects.map(p=>`<option value="${escapeHTML(p.id)}" ${p.id===state.projectFilter?'selected':''}>${escapeHTML(p.key||'PROJECT')} · ${escapeHTML(p.name)}</option>`).join('')||`<option value="">${_t('暂无项目','No projects')}</option>`;
   window.enhanceSelect?.(switcher);
   if(!projects.some(p=>p.id===state.projectFilter))state.projectFilter=defaultProjectId(projects,state.currentUser?.id);
 }
 function renderProjectContext(projectIssues){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const projects=state.data.projects||[],project=projects.find(p=>p.id===state.projectFilter);renderProjectSwitcher();
   $('#projectContextMark').textContent=(project?.key||project?.name||'P').slice(0,2).toUpperCase();$('#projectContextMark').style.background=safeColor(project?.color);
-  $('#projectContextName').textContent=project?.name||'暂无项目';$('#projectContextDescription').textContent=project?.description||'工作台数据会按项目整体切换';
+  $('#projectContextName').textContent=project?.name||_t('暂无项目','No projects');$('#projectContextDescription').textContent=project?.description||_t('工作台数据会按项目整体切换','Workspace data switches by project');
   const active=projectIssues.filter(i=>issueRunHealth(i)==='active').length,attention=projectIssues.filter(i=>issueRunHealth(i)==='attention').length,pendingMRs=projectIssues.reduce((n,i)=>n+pendingDeliveryMRCount(i),0),repo=(state.data.repositories||[]).find(r=>r.id===project?.defaultRepositoryId);
   const repoCount=(state.data.repositories||[]).filter(r=>r.projectId===project?.id).length;
-  $('#projectContextMetrics').innerHTML=`<button type="button" data-issue-filter="" class="${!state.issueRunFilter?'on':''}"><span>工作项</span><b>${projectIssues.length}</b></button><button type="button" data-issue-filter="active" class="${state.issueRunFilter==='active'?'on':''}"><span>正在推进</span><b>${active}</b></button><button type="button" data-issue-filter="attention" class="${attention?'danger':''} ${state.issueRunFilter==='attention'?'on':''}" title="点此只看待确认澄清结论、门禁失败、运行失败或已中断的工作项"><span>需要介入</span><b>${attention}</b></button><button type="button" data-issue-filter="mr" class="${state.issueRunFilter==='mr'?'on':''}" title="已提 MR 但还没合入的 MR 数（按 MR 计，点击只看涉及的需求）"><span>待处理 MR</span><b>${pendingMRs}</b></button><div class="project-default-sop"><span>代码仓库（${repoCount}）</span><b title="${escapeHTML(repo?.gongfengProjectId||'未绑定')}">默认：${escapeHTML(repo?.name||'未绑定')}</b></div>`;
+  $('#projectContextMetrics').innerHTML=`<button type="button" data-issue-filter="" class="${!state.issueRunFilter?'on':''}"><span>${_t('工作项','Issues')}</span><b>${projectIssues.length}</b></button><button type="button" data-issue-filter="active" class="${state.issueRunFilter==='active'?'on':''}"><span>${_t('正在推进','Active')}</span><b>${active}</b></button><button type="button" data-issue-filter="attention" class="${attention?'danger':''} ${state.issueRunFilter==='attention'?'on':''}" title="${_t('点此只看待确认澄清结论、门禁失败、运行失败或已中断的工作项','Click to filter issues needing clarification confirmation, gate failure, run failure, or interruption')}"><span>${_t('需要介入','Needs attention')}</span><b>${attention}</b></button><button type="button" data-issue-filter="mr" class="${state.issueRunFilter==='mr'?'on':''}" title="${_t('已提 MR 但还没合入的 MR 数（按 MR 计，点击只看涉及的需求）','Unmerged MRs count (click to filter related issues)')}"><span>${_t('待处理 MR','Open MRs')}</span><b>${pendingMRs}</b></button><div class="project-default-sop"><span>${_t(`代码仓库（${repoCount}）`,`Repositories (${repoCount})`)}</span><b title="${escapeHTML(repo?.gongfengProjectId||_t('未绑定','Unbound'))}">${_t('默认：','Default: ')}${escapeHTML(repo?.name||_t('未绑定','Unbound'))}</b></div>`;
   $('#projectContextMetrics').querySelectorAll('[data-issue-filter]').forEach(btn=>btn.onclick=()=>setIssueRunFilter(btn.dataset.issueFilter));
 }
 function clarificationNeedsConfirm(i){
@@ -21,9 +23,11 @@ function clarificationNeedsConfirm(i){
   return (i.source==='tapd'||i.source==='gongfeng')&&!!i.externalRef;
 }
 function userCombobox(name,selected,emptyLabel='请选择用户',attributes=''){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(emptyLabel==='请选择用户')emptyLabel=_t('请选择用户','Select user');
   const current=userById(selected),label=current?userDisplay(current):emptyLabel;
   const options=(state.data.users||[]).map(u=>`<button type="button" class="user-combobox-option${Number(u.id)===Number(selected)?' selected':''}" data-user-option="${u.id}" data-search="${escapeHTML(`${u.loginName||''} ${u.chineseName||''}`.toLowerCase())}"><span>${escapeHTML(userDisplay(u))}</span>${Number(u.id)===Number(selected)?'<i>✓</i>':''}</button>`).join('');
-  return `<div class="user-combobox" data-user-combobox><input type="hidden" name="${escapeHTML(name)}" value="${selected?escapeHTML(String(selected)):''}" ${attributes}><button type="button" class="user-combobox-trigger" data-user-combobox-trigger aria-haspopup="listbox" aria-expanded="false"><span>${escapeHTML(label)}</span><i>⌄</i></button><div class="user-combobox-panel" data-user-combobox-panel hidden><input type="search" data-user-combobox-search placeholder="搜索中文名 / 英文名" autocomplete="off"><div class="user-combobox-options" role="listbox">${options}</div><p class="user-combobox-empty" hidden>没有匹配的用户</p></div></div>`;
+  return `<div class="user-combobox" data-user-combobox><input type="hidden" name="${escapeHTML(name)}" value="${selected?escapeHTML(String(selected)):''}" ${attributes}><button type="button" class="user-combobox-trigger" data-user-combobox-trigger aria-haspopup="listbox" aria-expanded="false"><span>${escapeHTML(label)}</span><i>⌄</i></button><div class="user-combobox-panel" data-user-combobox-panel hidden><input type="search" data-user-combobox-search placeholder="${_t('搜索中文名 / 英文名','Search name or login')}" autocomplete="off"><div class="user-combobox-options" role="listbox">${options}</div><p class="user-combobox-empty" hidden>${_t('没有匹配的用户','No matching users')}</p></div></div>`;
 }
 function bindUserSearches(root=document){
   if(!document.body.dataset.userComboboxBound){document.body.dataset.userComboboxBound='true';document.addEventListener('click',()=>document.querySelectorAll('[data-user-combobox].is-open').forEach(box=>{box.classList.remove('is-open');const panel=box.querySelector('[data-user-combobox-panel]'),trigger=box.querySelector('[data-user-combobox-trigger]');if(panel)panel.hidden=true;if(trigger)trigger.setAttribute('aria-expanded','false')}))}
@@ -39,7 +43,7 @@ function bindUserSearches(root=document){
   });
 }
 // Project admin has two levels: #/projects lists cards, #/projects/<id>[/<tab>] edits one project.
-const PROJECT_ADMIN_TABS=[{id:'basic',label:'基本信息'},{id:'repos',label:'代码仓库'},{id:'members',label:'项目成员'},{id:'tapd',label:'高级设置'}];
+const PROJECT_ADMIN_TABS=[{id:'basic',label:typeof lfT==='function'?lfT('基本信息','Basic Info'):'基本信息'},{id:'repos',label:typeof lfT==='function'?lfT('代码仓库','Repositories'):'代码仓库'},{id:'members',label:typeof lfT==='function'?lfT('项目成员','Members'):'项目成员'},{id:'tapd',label:typeof lfT==='function'?lfT('高级设置','Advanced'):'高级设置'}];
 // TAPD is a legacy tracker: its settings appear only once the platform has a TAPD integration or the project already uses one.
 function tapdIntegrationAvailable(project){
   if(project&&(String(project.tapdWorkspaceId||'').trim()||String(project.tapdIterationId||'').trim()))return true;
@@ -112,26 +116,28 @@ function projectDraftSignature(d){
 }
 function projectDraftDirty(draft,base){return !!draft&&!!base&&projectDraftSignature(draft)!==projectDraftSignature(base)}
 function projectAdminDirty(){return !!state.projectAdminDetailId&&state.projectDraftFor===state.projectAdminDetailId&&projectDraftDirty(state.projectDraft,state.projectDraftBase)}
-function projectWorkflowName(id){const w=(state.data?.workflows||[]).find(x=>x.id===id);return w?`${w.generic?'通用 · ':''}${w.name}`:''}
+function projectWorkflowName(id){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;const w=(state.data?.workflows||[]).find(x=>x.id===id);return w?`${w.generic?_t('通用 · ','Generic · '):''}${w.name}`:''}
 
 function projectCardHTML(p,ctx={}){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const repos=(ctx.repos||[]).filter(r=>r.projectId===p.id),issues=(ctx.issues||[]).filter(i=>i.projectId===p.id);
   const active=issues.filter(i=>issueRunHealth(i)==='active').length,people=projectPeopleIds(p),def=repos.find(r=>r.id===p.defaultRepositoryId);
   const key=String(p.key||p.name||'P');
   const repoFact=repos.length
-    ?`<span class="pa-fact" title="${def?'默认仓库':'已绑定仓库，未设默认'}">${paIcon('repo',12)}<span>${escapeHTML((def||repos[0]).name||'仓库')}${repos.length>1?` +${repos.length-1}`:''}</span></span>`
-    :`<span class="pa-fact warn">${paIcon('alert',12)}<span>未绑定代码仓库</span></span>`;
+    ?`<span class="pa-fact" title="${def?_t('默认仓库','Default repository'):_t('已绑定仓库，未设默认','Bound repository, no default set')}">${paIcon('repo',12)}<span>${escapeHTML((def||repos[0]).name||_t('仓库','Repository'))}${repos.length>1?` +${repos.length-1}`:''}</span></span>`
+    :`<span class="pa-fact warn">${paIcon('alert',12)}<span>${_t('未绑定代码仓库','No repository bound')}</span></span>`;
   const sop=ctx.workflowName?ctx.workflowName(p.workflowId):'';
   const avatars=people.slice(0,3).map(id=>{const u=userById(id);return `<span class="pa-av" title="${escapeHTML(u?userDisplay(u):String(id))}">${userAvatarHTML(u||id,48)}</span>`}).join('')+(people.length>3?`<span class="pa-av more">+${people.length-3}</span>`:'');
-  return `<article class="pa-card" tabindex="0" role="link" data-project-open="${escapeHTML(p.id)}" aria-label="打开项目 ${escapeHTML(p.name||p.id)}">
-    <div class="pa-card-top"><span class="pa-mark" style="background:${safeColor(p.color)}">${escapeHTML(key.slice(0,2).toUpperCase())}</span><div class="pa-card-m"><h3><span title="${escapeHTML(p.name||'')}">${escapeHTML(p.name||p.id)}</span>${p.id===ctx.currentId?'<span class="pa-chip cur">当前</span>':''}</h3><div class="pa-card-sub" title="${escapeHTML(p.id)} · ${escapeHTML(p.key||'')}">${escapeHTML(p.id)} · ${escapeHTML(p.key||'—')}</div></div><span class="pa-go">${paIcon('arrow',16)}</span></div>
-    <p class="pa-card-desc${p.description?'':' none'}">${escapeHTML(p.description||'暂无项目说明')}</p>
-    <div class="pa-facts">${repoFact}${sop?`<span class="pa-fact" title="默认 SOP">${paIcon('flow',12)}<span>${escapeHTML(sop)}</span></span>`:''}${p.tapdWorkspaceId?`<span class="pa-fact" title="TAPD Workspace ${escapeHTML(p.tapdWorkspaceId)}">${paIcon('tapd',12)}<span>TAPD</span></span>`:''}</div>
-    <div class="pa-card-foot"><div class="pa-avs">${avatars}</div><div class="pa-stats"><span><b>${issues.length}</b> 需求</span>${active?`<span class="pa-live"><i></i><b>${active}</b> 推进中</span>`:''}</div></div>
+  return `<article class="pa-card" tabindex="0" role="link" data-project-open="${escapeHTML(p.id)}" aria-label="${_t(`打开项目 ${escapeHTML(p.name||p.id)}`,`Open project ${escapeHTML(p.name||p.id)}`)}">
+    <div class="pa-card-top"><span class="pa-mark" style="background:${safeColor(p.color)}">${escapeHTML(key.slice(0,2).toUpperCase())}</span><div class="pa-card-m"><h3><span title="${escapeHTML(p.name||'')}">${escapeHTML(p.name||p.id)}</span>${p.id===ctx.currentId?`<span class="pa-chip cur">${_t('当前','Current')}</span>`:''}</h3><div class="pa-card-sub" title="${escapeHTML(p.id)} · ${escapeHTML(p.key||'')}">${escapeHTML(p.id)} · ${escapeHTML(p.key||'—')}</div></div><span class="pa-go">${paIcon('arrow',16)}</span></div>
+    <p class="pa-card-desc${p.description?'':' none'}">${escapeHTML(p.description||_t('暂无项目说明','No project description'))}</p>
+    <div class="pa-facts">${repoFact}${sop?`<span class="pa-fact" title="${_t('默认 SOP','Default SOP')}">${paIcon('flow',12)}<span>${escapeHTML(sop)}</span></span>`:''}${p.tapdWorkspaceId?`<span class="pa-fact" title="TAPD Workspace ${escapeHTML(p.tapdWorkspaceId)}">${paIcon('tapd',12)}<span>TAPD</span></span>`:''}</div>
+    <div class="pa-card-foot"><div class="pa-avs">${avatars}</div><div class="pa-stats"><span><b>${issues.length}</b> ${_t('需求','issues')}</span>${active?`<span class="pa-live"><i></i><b>${active}</b> ${_t('推进中','active')}</span>`:''}</div></div>
   </article>`;
 }
 function projectAdminEmptyHTML(icon,title,text,action){return `<div class="pa-empty"><div class="pa-empty-ic">${paIcon(icon,22)}</div><b>${title}</b><p>${text}</p>${action||''}</div>`}
 function renderProjectList(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const host=$('#projectAdminList');if(!host)return;
   const projects=state.data.projects||[],repos=state.data.repositories||[];
   const filter=state.projectAdminFilter||'all',query=state.projectAdminQuery||'';
@@ -139,8 +145,8 @@ function renderProjectList(){
   $$('#projectAdminFilters [data-project-filter]').forEach(b=>{const on=b.dataset.projectFilter===filter;b.classList.toggle('on',on);b.setAttribute('aria-selected',String(on))});
   const search=$('#projectAdminSearch');if(search&&document.activeElement!==search&&search.value!==query)search.value=query;
   const list=filterAdminProjects(projects,repos,query,filter,state.currentUser?.id);
-  if(!projects.length)host.innerHTML=projectAdminEmptyHTML('repo','还没有项目','项目是需求、仓库与团队的统一边界，先创建第一个项目。','<button type="button" class="button primary" data-project-new>＋ 新建项目</button>');
-  else if(!list.length)host.innerHTML=projectAdminEmptyHTML('search','没有匹配的项目','换个关键词试试，或者新建一个项目。','<button type="button" class="button ghost" data-project-clear>清除筛选</button>');
+  if(!projects.length)host.innerHTML=projectAdminEmptyHTML('repo',_t('还没有项目','No projects yet'),_t('项目是需求、仓库与团队的统一边界，先创建第一个项目。','Projects organize issues, repositories, and team members. Create your first project.'),`<button type="button" class="button primary" data-project-new>${_t('＋ 新建项目','+ New Project')}</button>`);
+  else if(!list.length)host.innerHTML=projectAdminEmptyHTML('search',_t('没有匹配的项目','No matching projects'),_t('换个关键词试试，或者新建一个项目。','Try another keyword or create a new project.'),`<button type="button" class="button ghost" data-project-clear>${_t('清除筛选','Clear filter')}</button>`);
   else host.innerHTML=`<div class="pa-grid">${list.map(p=>projectCardHTML(p,{repos,issues:state.data.issues||[],currentId:state.projectFilter,workflowName:projectWorkflowName})).join('')}</div>`;
   host.querySelectorAll('[data-project-open]').forEach(card=>{card.onclick=()=>openProjectAdminDetail(card.dataset.projectOpen);card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openProjectAdminDetail(card.dataset.projectOpen)}}});
   host.querySelectorAll('[data-project-new]').forEach(b=>b.onclick=()=>openProjectWizard());
@@ -149,66 +155,73 @@ function renderProjectList(){
 
 function paRow(label,desc,control,opt={}){return `<div class="pa-row${opt.stack?' stack':''}"${opt.attrs||''}><div class="pa-row-copy"><div class="pa-row-lbl">${label}${opt.required?'<em>*</em>':''}</div>${desc?`<div class="pa-row-desc"${opt.descAttr||''}>${desc}</div>`:''}</div><div class="pa-row-ctl">${control}</div></div>`}
 function paSection(title,desc,body,action=''){return `<div class="pa-sec"><div class="pa-sec-h"><div><h3>${title}</h3>${desc?`<p>${desc}</p>`:''}</div>${action}</div>${body}</div>`}
-function projectIdentDesc(creating,custom){return creating?(custom?'标识用于接口与链接，创建后不可修改；Key 是需求编号前缀与头像文字，最多 6 位。':'根据项目名称自动生成，一般无需修改。'):'标识用于接口与链接，创建后不可修改。'}
+function projectIdentDesc(creating,custom){const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;return creating?(custom?_t('标识用于接口与链接，创建后不可修改；Key 是需求编号前缀与头像文字，最多 6 位。','ID is used in APIs and URLs and cannot be changed after creation; Key is the issue prefix and avatar label (up to 6 chars).'):_t('根据项目名称自动生成，一般无需修改。','Auto-generated from project name; usually no need to change.')):_t('标识用于接口与链接，创建后不可修改。','ID is used in APIs and URLs and cannot be changed after creation.')}
 function projectIdentHTML(d,creating,custom){
-  return `<div class="pa-ident" data-pa-ident-view${custom?' hidden':''}><code data-pa-ident-id class="${d.id?'':'ph'}" title="${escapeHTML(d.id||'')}">${escapeHTML(d.id||'输入名称后生成')}</code><span class="pa-ident-sep">·</span><code data-pa-ident-key class="${d.key?'':'ph'}">${escapeHTML(String(d.key||'—').toUpperCase())}</code><button type="button" class="pa-link" data-pa-ident-edit>${creating?'自定义':'修改 Key'}</button></div>
-    <div class="pa-ident-edit" data-pa-ident-form${custom?'':' hidden'}><label><span>标识</span><input class="pa-input mono" name="id" value="${escapeHTML(d.id||'')}" required ${creating?'':'readonly'} spellcheck="false" placeholder="web-console"></label><label><span>Key</span><input class="pa-input mono" name="key" value="${escapeHTML(d.key||'')}" required maxlength="6" spellcheck="false" placeholder="DC"></label><button type="button" class="pa-link" ${creating?'data-pa-ident-auto>恢复自动':'data-pa-ident-collapse>收起'}</button></div>`;
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return `<div class="pa-ident" data-pa-ident-view${custom?' hidden':''}><code data-pa-ident-id class="${d.id?'':'ph'}" title="${escapeHTML(d.id||'')}">${escapeHTML(d.id||_t('输入名称后生成','Generated after entering name'))}</code><span class="pa-ident-sep">·</span><code data-pa-ident-key class="${d.key?'':'ph'}">${escapeHTML(String(d.key||'—').toUpperCase())}</code><button type="button" class="pa-link" data-pa-ident-edit>${creating?_t('自定义','Customize'):_t('修改 Key','Edit Key')}</button></div>
+    <div class="pa-ident-edit" data-pa-ident-form${custom?'':' hidden'}><label><span>${_t('标识','ID')}</span><input class="pa-input mono" name="id" value="${escapeHTML(d.id||'')}" required ${creating?'':'readonly'} spellcheck="false" placeholder="web-console"></label><label><span>Key</span><input class="pa-input mono" name="key" value="${escapeHTML(d.key||'')}" required maxlength="6" spellcheck="false" placeholder="DC"></label><button type="button" class="pa-link" ${creating?`data-pa-ident-auto>${_t('恢复自动','Auto')}`:`data-pa-ident-collapse>${_t('收起','Collapse')}`}</button></div>`;
 }
 function projectColorHTML(color){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const cur=safeColor(color),preset=PROJECT_SWATCHES.includes(String(cur).toLowerCase());
-  return `<div class="pa-swatches">${PROJECT_SWATCHES.map(c=>`<button type="button" class="pa-sw${c===String(cur).toLowerCase()?' on':''}" data-pa-color="${c}" style="background:${c};color:${c}" aria-label="品牌色 ${c}" aria-pressed="${c===String(cur).toLowerCase()}"></button>`).join('')}<label class="pa-sw pa-sw-custom${preset?'':' on'}" title="自定义颜色" style="color:${cur}${preset?'':`;background:${cur}`}"><input type="color" data-pa-color-custom value="${cur.length===7?cur:'#536dfe'}" aria-label="自定义品牌色"></label><code class="pa-sw-hex" data-pa-color-hex>${escapeHTML(String(cur).toUpperCase())}</code><input type="hidden" name="color" value="${escapeHTML(cur)}"></div>`;
+  return `<div class="pa-swatches">${PROJECT_SWATCHES.map(c=>`<button type="button" class="pa-sw${c===String(cur).toLowerCase()?' on':''}" data-pa-color="${c}" style="background:${c};color:${c}" aria-label="${_t(`品牌色 ${c}`,`Brand color ${c}`)}" aria-pressed="${c===String(cur).toLowerCase()}"></button>`).join('')}<label class="pa-sw pa-sw-custom${preset?'':' on'}" title="${_t('自定义颜色','Custom color')}" style="color:${cur}${preset?'':`;background:${cur}`}"><input type="color" data-pa-color-custom value="${cur.length===7?cur:'#536dfe'}" aria-label="${_t('自定义品牌色','Custom brand color')}"></label><code class="pa-sw-hex" data-pa-color-hex>${escapeHTML(String(cur).toUpperCase())}</code><input type="hidden" name="color" value="${escapeHTML(cur)}"></div>`;
 }
 function repoCardHTML(r,isDefault){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const info=parseGongfengRepoURL(r.provider==='ssh'?r.cloneUrl:r.webUrl||r.cloneUrl||r.gongfengProjectId||''),path=info?.project||r.gongfengProjectId||'',web=r.provider==='ssh'?r.webUrl||'':info?.webUrl||'',name=r.name||info?.name||path||r.id;
   const updated=typeof knownTime==='function'?knownTime(r.updatedAt):null;
   return `<article class="pa-rc" data-repo-card="${escapeHTML(r.id)}">
-    <div class="pa-rc-top"><span class="pa-rc-ic">${paIcon('repo',15)}</span><div class="pa-rc-m"><h4 title="${escapeHTML(name)}">${escapeHTML(name)}</h4><code title="${escapeHTML(repoDisplayPath(info,path))}">${escapeHTML(repoDisplayPath(info,path))}</code></div><div class="pa-rc-acts"><button type="button" class="pa-icon-btn" data-repo-edit="${escapeHTML(r.id)}" title="编辑" aria-label="编辑仓库 ${escapeHTML(name)}">${paIcon('edit')}</button><button type="button" class="pa-icon-btn danger" data-repo-delete="${escapeHTML(r.id)}" title="删除" aria-label="删除仓库 ${escapeHTML(name)}">${paIcon('trash')}</button></div></div>
-    <div class="pa-tags"><span class="pa-tag" title="主分支">${paIcon('branch',11)}${escapeHTML(r.defaultBranch||'main')}</span>${r.integrateBranch?`<span class="pa-tag" title="集成分支">${paIcon('merge',11)}${escapeHTML(r.integrateBranch)}</span>`:'<span class="pa-tag muted">未配置集成分支</span>'}${isDefault?'<span class="pa-tag def">默认</span>':''}</div>
-    <div class="pa-rc-foot"><small>${updated?`更新于 ${relativeTime(updated)}`:'&nbsp;'}</small>${web?`<a class="pa-link outline" href="${escapeHTML(web)}" target="_blank" rel="noopener noreferrer">${repoProviderLabel(info)} ${paIcon('ext',11)}</a>`:''}</div>
+    <div class="pa-rc-top"><span class="pa-rc-ic">${paIcon('repo',15)}</span><div class="pa-rc-m"><h4 title="${escapeHTML(name)}">${escapeHTML(name)}</h4><code title="${escapeHTML(repoDisplayPath(info,path))}">${escapeHTML(repoDisplayPath(info,path))}</code></div><div class="pa-rc-acts"><button type="button" class="pa-icon-btn" data-repo-edit="${escapeHTML(r.id)}" title="${_t('编辑','Edit')}" aria-label="${_t(`编辑仓库 ${escapeHTML(name)}`,`Edit repository ${escapeHTML(name)}`)}">${paIcon('edit')}</button><button type="button" class="pa-icon-btn danger" data-repo-delete="${escapeHTML(r.id)}" title="${_t('删除','Delete')}" aria-label="${_t(`删除仓库 ${escapeHTML(name)}`,`Delete repository ${escapeHTML(name)}`)}">${paIcon('trash')}</button></div></div>
+    <div class="pa-tags"><span class="pa-tag" title="${_t('主分支','Main branch')}">${paIcon('branch',11)}${escapeHTML(r.defaultBranch||'main')}</span>${r.integrateBranch?`<span class="pa-tag" title="${_t('集成分支','Integration branch')}">${paIcon('merge',11)}${escapeHTML(r.integrateBranch)}</span>`:`<span class="pa-tag muted">${_t('未配置集成分支','No integration branch')}</span>`}${isDefault?`<span class="pa-tag def">${_t('默认','Default')}</span>`:''}</div>
+    <div class="pa-rc-foot"><small>${updated?_t(`更新于 ${relativeTime(updated)}`,`Updated ${relativeTime(updated)}`):'&nbsp;'}</small>${web?`<a class="pa-link outline" href="${escapeHTML(web)}" target="_blank" rel="noopener noreferrer">${repoProviderLabel(info)} ${paIcon('ext',11)}</a>`:''}</div>
   </article>`;
 }
 function projectRepoListHTML(repos,defaultId){
-  if(!repos.length)return projectAdminEmptyHTML('repo','还没有绑定代码仓库','绑定后，Agent 执行 SOP 时会自动克隆仓库并在工作分支上提交。第一个仓库会自动设为默认。',`<ol class="pa-steps"><li><span>1</span>粘贴 Git HTTPS 链接或 Git SSH 地址</li><li><span>2</span>确认分支</li><li><span>3</span>保存即生效</li></ol><button type="button" class="button primary" data-repo-add>＋ 添加第一个仓库</button>`);
-  return `<div class="pa-rgrid">${repos.map(r=>repoCardHTML(r,r.id===defaultId)).join('')}<button type="button" class="pa-rc-add" data-repo-add><i>${paIcon('plus',14)}</i><b>添加仓库</b></button></div>`;
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(!repos.length)return projectAdminEmptyHTML('repo',_t('还没有绑定代码仓库','No repositories bound yet'),_t('绑定后，Agent 执行 SOP 时会自动克隆仓库并在工作分支上提交。第一个仓库会自动设为默认。','Once bound, agents automatically clone the repo and commit on a working branch when running an SOP. The first repo becomes the default.'),`<ol class="pa-steps"><li><span>1</span>${_t('粘贴 Git HTTPS 链接或 Git SSH 地址','Paste Git HTTPS URL or SSH address')}</li><li><span>2</span>${_t('确认分支','Confirm branches')}</li><li><span>3</span>${_t('保存即生效','Save to apply')}</li></ol><button type="button" class="button primary" data-repo-add>${_t('＋ 添加第一个仓库','+ Add First Repository')}</button>`);
+  return `<div class="pa-rgrid">${repos.map(r=>repoCardHTML(r,r.id===defaultId)).join('')}<button type="button" class="pa-rc-add" data-repo-add><i>${paIcon('plus',14)}</i><b>${_t('添加仓库','Add Repository')}</b></button></div>`;
 }
 function projectAdminFormHTML(d,ctx){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const {creating,custom,repos,saved}=ctx;
   const defaultRepo=repos.some(r=>r.id===d.defaultRepositoryId)?d.defaultRepositoryId:'';
   const repoOptions=repos.map(r=>`<option value="${escapeHTML(r.id)}" ${r.id===defaultRepo?'selected':''}>${escapeHTML(r.name||r.gongfengProjectId||r.id)}</option>`).join('');
-  const repoDesc=creating?'保存项目后，在「代码仓库」中添加。':repos.length?'只能从「代码仓库」中已绑定的仓库里选。':'还没有仓库，可在「代码仓库」中添加。';
-  const basic=paSection('项目身份','项目在工作台、需求和通知里的显示方式。',`<div class="pa-rows">
-      ${paRow('项目名称','显示在项目列表与工作台顶部。',`<input class="pa-input" name="name" value="${escapeHTML(d.name||'')}" required maxlength="80" placeholder="例如 Web Console">`,{required:true})}
-      ${paRow('标识与 Key',projectIdentDesc(creating,custom),projectIdentHTML(d,creating,custom),{descAttr:' data-pa-ident-desc'})}
-      ${paRow('品牌色','用于项目头像和标签。',projectColorHTML(d.color))}
-      ${paRow('项目说明','可选，简要说明项目范围，Agent 会把它作为上下文。',`<textarea class="pa-input" name="description" rows="3" placeholder="这个项目负责什么？">${escapeHTML(d.description||'')}</textarea>`,{stack:true})}
-    </div>`)+paSection('默认设置','新建需求时自动带上的流程与仓库。',`<div class="pa-rows">
-      ${creating&&!Number(state.currentUser?.id)?paRow('项目 Owner','项目的默认责任人，创建后可在「项目成员」中调整。',userCombobox('ownerId',d.ownerId,'请选择项目 Owner'),{required:true}):''}
-      ${paRow('默认 SOP','用于新需求的默认流程；已关联 SOP 的需求保留原绑定。',projectDefaultSOPField(d),{required:true})}
-      ${paRow('默认代码仓库',repoDesc,`<select name="defaultRepositoryId" class="select" ${repos.length?'':'disabled'}><option value="">暂未绑定</option>${repoOptions}</select>`)}
+  const repoDesc=creating?_t('保存项目后，在「代码仓库」中添加。','Add repositories in the "Repositories" tab after saving the project.'):repos.length?_t('只能从「代码仓库」中已绑定的仓库里选。','Choose from repositories bound in the "Repositories" tab.'):_t('还没有仓库，可在「代码仓库」中添加。','No repositories yet; add one in the "Repositories" tab.');
+  const basic=paSection(_t('项目身份','Project Identity'),_t('项目在工作台、需求和通知里的显示方式。','How the project appears in the workspace, issues, and notifications.'),`<div class="pa-rows">
+      ${paRow(_t('项目名称','Project Name'),_t('显示在项目列表与工作台顶部。','Displayed in the project list and workspace header.'),`<input class="pa-input" name="name" value="${escapeHTML(d.name||'')}" required maxlength="80" placeholder="${_t('例如 Web Console','e.g. Web Console')}">`,{required:true})}
+      ${paRow(_t('标识与 Key','ID & Key'),projectIdentDesc(creating,custom),projectIdentHTML(d,creating,custom),{descAttr:' data-pa-ident-desc'})}
+      ${paRow(_t('品牌色','Brand Color'),_t('用于项目头像和标签。','Used for the project avatar and badges.'),projectColorHTML(d.color))}
+      ${paRow(_t('项目说明','Description'),_t('可选，简要说明项目范围，Agent 会把它作为上下文。','Optional brief scope description; agents use it as context.'),`<textarea class="pa-input" name="description" rows="3" placeholder="${_t('这个项目负责什么？','What is this project responsible for?')}">${escapeHTML(d.description||'')}</textarea>`,{stack:true})}
+    </div>`)+paSection(_t('默认设置','Defaults'),_t('新建需求时自动带上的流程与仓库。','Default workflow and repository for new issues.'),`<div class="pa-rows">
+      ${creating&&!Number(state.currentUser?.id)?paRow(_t('项目 Owner','Project Owner'),_t('项目的默认责任人，创建后可在「项目成员」中调整。','Default project owner; can be changed in "Members" later.'),userCombobox('ownerId',d.ownerId,_t('请选择项目 Owner','Select project owner')),{required:true}):''}
+      ${paRow(_t('默认 SOP','Default SOP'),_t('用于新需求的默认流程；已关联 SOP 的需求保留原绑定。','Default workflow for new issues; existing bindings are preserved.'),projectDefaultSOPField(d),{required:true})}
+      ${paRow(_t('默认代码仓库','Default Repository'),repoDesc,`<select name="defaultRepositoryId" class="select" ${repos.length?'':'disabled'}><option value="">${_t('暂未绑定','Not bound')}</option>${repoOptions}</select>`)}
     </div>`);
   const owner=userById(d.ownerId);
-  const members=(d.members||[]).map((m,i)=>{const u=userById(m.userId);return `<div class="member-row pa-member-row" data-member-row="${i}"><span class="member-avatar">${userAvatarHTML(u,48)}</span><span class="member-kind">成员</span>${userCombobox(`member-${i}`,m.userId,'请选择项目成员','data-m="userId"')}<button type="button" data-remove-member="${i}" title="移除成员" aria-label="移除成员">×</button></div>`}).join('');
-  const memberPanel=paSection('负责人','Owner 是项目的默认责任人，接收需要介入的通知。',`<div class="pa-rows"><div class="member-row owner-row pa-member-row"><span class="member-avatar owner">${userAvatarHTML(owner,48)}</span><span class="member-kind owner">Owner</span>${userCombobox('ownerId',d.ownerId,'请选择项目 Owner')}<span></span></div></div>`)
-    +paSection('成员','其他成员无需设置角色，可查看和推进项目内所有需求。',`<div class="pa-rows" id="memberRows">${members||'<div class="pa-rows-empty">还没有其他成员</div>'}</div>`,'<button id="addMember" type="button" class="button ghost small">＋ 添加成员</button>');
+  const members=(d.members||[]).map((m,i)=>{const u=userById(m.userId);return `<div class="member-row pa-member-row" data-member-row="${i}"><span class="member-avatar">${userAvatarHTML(u,48)}</span><span class="member-kind">${_t('成员','Member')}</span>${userCombobox(`member-${i}`,m.userId,_t('请选择项目成员','Select project member'),'data-m="userId"')}<button type="button" data-remove-member="${i}" title="${_t('移除成员','Remove member')}" aria-label="${_t('移除成员','Remove member')}">×</button></div>`}).join('');
+  const memberPanel=paSection(_t('负责人','Owner'),_t('Owner 是项目的默认责任人，接收需要介入的通知。','The owner is the default assignee and receives attention notifications.'),`<div class="pa-rows"><div class="member-row owner-row pa-member-row"><span class="member-avatar owner">${userAvatarHTML(owner,48)}</span><span class="member-kind owner">Owner</span>${userCombobox('ownerId',d.ownerId,_t('请选择项目 Owner','Select project owner'))}<span></span></div></div>`)
+    +paSection(_t('成员','Members'),_t('其他成员无需设置角色，可查看和推进项目内所有需求。','Other members can view and advance all issues in this project.'),`<div class="pa-rows" id="memberRows">${members||`<div class="pa-rows-empty">${_t('还没有其他成员','No other members yet')}</div>`}</div>`,`<button id="addMember" type="button" class="button ghost small">${_t('＋ 添加成员','+ Add Member')}</button>`);
   const configured=!!(saved?.tapdWorkspaceId||saved?.tapdIterationId);
-  const tapdPanel=(tapdIntegrationAvailable(saved)?paSection('TAPD 需求池','配置后可在需求页从 TAPD 导入需求，澄清结论会回写到 TAPD 单。',`<div class="pa-rows">
-      ${paRow('Workspace ID','TAPD 项目 URL 中 /tapd_fe/ 后的数字。',`<input class="pa-input mono" name="tapdWorkspaceId" value="${escapeHTML(d.tapdWorkspaceId||'')}" placeholder="例如 20375341" spellcheck="false">`)}
-      ${paRow('Iteration ID','可选，只导入该迭代内的需求。',`<input class="pa-input mono" name="tapdIterationId" value="${escapeHTML(d.tapdIterationId||'')}" placeholder="留空导入全部" spellcheck="false">`)}
-    </div>`):'')+paSection('危险操作','',`<div class="pa-rows">${projectDeleteRow(saved)}${configured?paRow(`清除已保存的 TAPD 配置${configured?' <span class="pa-chip">当前已配置</span>':''}`,'保存项目设置时同时清空 Workspace 与 Iteration，已导入的需求不受影响。',`<label class="pa-switch-wrap"><input type="checkbox" name="tapdClear" role="switch" ${d.tapdClear?'checked':''} aria-label="清除已保存的 TAPD 配置"><span class="pa-switch danger"></span></label>`,{attrs:' data-pa-row-inline'}):''}</div>`);
-  const panels={basic,repos:paSection('代码仓库','Agent 执行 SOP 时会克隆这些仓库。仓库保存后立即生效，无需点「保存项目设置」。',`<div data-pa-repo-box>${projectRepoListHTML(repos,saved?.defaultRepositoryId||'')}</div>`,repos.length?'<button type="button" class="button ghost small" data-repo-add>＋ 添加仓库</button>':''),members:memberPanel,tapd:tapdPanel};
+  const tapdPanel=(tapdIntegrationAvailable(saved)?paSection(_t('TAPD 需求池','TAPD Backlog'),_t('配置后可在需求页从 TAPD 导入需求，澄清结论会回写到 TAPD 单。','Once configured, you can import issues from TAPD and write clarification results back.'),`<div class="pa-rows">
+      ${paRow('Workspace ID',_t('TAPD 项目 URL 中 /tapd_fe/ 后的数字。','The number after /tapd_fe/ in the TAPD project URL.'),`<input class="pa-input mono" name="tapdWorkspaceId" value="${escapeHTML(d.tapdWorkspaceId||'')}" placeholder="${_t('例如 20375341','e.g. 20375341')}" spellcheck="false">`)}
+      ${paRow('Iteration ID',_t('可选，只导入该迭代内的需求。','Optional; import issues from this iteration only.'),`<input class="pa-input mono" name="tapdIterationId" value="${escapeHTML(d.tapdIterationId||'')}" placeholder="${_t('留空导入全部','Leave blank to import all')}" spellcheck="false">`)}
+    </div>`):'')+paSection(_t('危险操作','Danger Zone'),'',`<div class="pa-rows">${projectDeleteRow(saved)}${configured?paRow(`${_t('清除已保存的 TAPD 配置','Clear saved TAPD config')}${configured?` <span class="pa-chip">${_t('当前已配置','Configured')}</span>`:''}`,_t('保存项目设置时同时清空 Workspace 与 Iteration，已导入的需求不受影响。','Clears Workspace and Iteration when saving; already imported issues are unaffected.'),`<label class="pa-switch-wrap"><input type="checkbox" name="tapdClear" role="switch" ${d.tapdClear?'checked':''} aria-label="${_t('清除已保存的 TAPD 配置','Clear saved TAPD config')}"><span class="pa-switch danger"></span></label>`,{attrs:' data-pa-row-inline'}):''}</div>`);
+  const panels={basic,repos:paSection(_t('代码仓库','Repositories'),_t('Agent 执行 SOP 时会克隆这些仓库。仓库保存后立即生效，无需点「保存项目设置」。','Agents clone these repositories when running SOPs. Repository changes take effect immediately without saving project settings.'),`<div data-pa-repo-box>${projectRepoListHTML(repos,saved?.defaultRepositoryId||'')}</div>`,repos.length?`<button type="button" class="button ghost small" data-repo-add>${_t('＋ 添加仓库','+ Add Repository')}</button>`:''),members:memberPanel,tapd:tapdPanel};
   const tab=state.projectAdminTab||'basic';
   return PROJECT_ADMIN_TABS.map(t=>`<section class="pa-panel" data-pa-panel="${t.id}" id="paPanel-${t.id}" role="tabpanel" aria-labelledby="paTab-${t.id}"${t.id===tab?'':' hidden'}>${creating&&t.id!=='basic'?'':panels[t.id]}</section>`).join('')
-    +`<div class="pa-savebar-dock"><div class="pa-savebar" data-pa-savebar inert><span class="pa-savebar-tx"><i></i><span data-pa-savebar-text>有未保存的修改</span></span><button type="button" class="button ghost" data-pa-discard>放弃修改</button><button type="submit" class="button primary" data-pa-submit>保存项目设置</button></div></div>`;
+    +`<div class="pa-savebar-dock"><div class="pa-savebar" data-pa-savebar inert><span class="pa-savebar-tx"><i></i><span data-pa-savebar-text>${_t('有未保存的修改','Unsaved changes')}</span></span><button type="button" class="button ghost" data-pa-discard>${_t('放弃修改','Discard')}</button><button type="submit" class="button primary" data-pa-submit>${_t('保存项目设置','Save Project Settings')}</button></div></div>`;
 }
 function renderProjectAdminHead(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const d=state.projectDraft||{},creating=state.projectAdminDetailId==='new',saved=(state.data.projects||[]).find(p=>p.id===state.projectAdminDetailId);
-  const name=String(d.name||'').trim()||(creating?'新项目':saved?.name||''),key=String(d.key||'').trim().toUpperCase();
-  const crumb=$('#projectAdminCrumb');if(crumb){crumb.textContent=creating?'新建项目':name;crumb.title=crumb.textContent}
+  const name=String(d.name||'').trim()||(creating?_t('新项目','New Project'):saved?.name||''),key=String(d.key||'').trim().toUpperCase();
+  const crumb=$('#projectAdminCrumb');if(crumb){crumb.textContent=creating?_t('新建项目','New Project'):name;crumb.title=crumb.textContent}
   const head=$('#projectAdminHead');if(!head)return;
   const issues=(state.data.issues||[]).filter(i=>!creating&&i.projectId===state.projectAdminDetailId),active=issues.filter(i=>issueRunHealth(i)==='active').length,sop=projectWorkflowName(d.workflowId);
-  head.innerHTML=`<span class="pa-mark lg" style="background:${safeColor(d.color)}">${escapeHTML((key||(creating?'NEW':name)||'P').slice(0,2).toUpperCase())}</span><div class="pa-dhd-m"><h1><span title="${escapeHTML(name)}">${escapeHTML(name)}</span>${key?`<span class="pa-chip">${escapeHTML(key)}</span>`:''}${!creating&&saved?.id===state.projectFilter?'<span class="pa-chip cur">当前工作台项目</span>':''}</h1><p>${escapeHTML(creating?'填写项目名称并创建，之后即可绑定代码仓库、邀请成员。':(d.description||''))}</p>${creating?'':`<div class="pa-dmeta"><span>${paIcon('user',12)}<b>${projectPeopleIds(d).length}</b> 位成员</span><span><b>${issues.length}</b> 个需求</span><span><b>${active}</b> 个推进中</span>${sop?`<span>${paIcon('flow',12)}${escapeHTML(sop)}</span>`:''}</div>`}</div>`;
+  head.innerHTML=`<span class="pa-mark lg" style="background:${safeColor(d.color)}">${escapeHTML((key||(creating?'NEW':name)||'P').slice(0,2).toUpperCase())}</span><div class="pa-dhd-m"><h1><span title="${escapeHTML(name)}">${escapeHTML(name)}</span>${key?`<span class="pa-chip">${escapeHTML(key)}</span>`:''}${!creating&&saved?.id===state.projectFilter?`<span class="pa-chip cur">${_t('当前工作台项目','Current Workspace Project')}</span>`:''}</h1><p>${escapeHTML(creating?_t('填写项目名称并创建，之后即可绑定代码仓库、邀请成员。','Enter a project name and create it, then bind repositories and invite members.'):(d.description||''))}</p>${creating?'':`<div class="pa-dmeta"><span>${paIcon('user',12)}<b>${projectPeopleIds(d).length}</b> ${_t('位成员','members')}</span><span><b>${issues.length}</b> ${_t('个需求','issues')}</span><span><b>${active}</b> ${_t('个推进中','active')}</span>${sop?`<span>${paIcon('flow',12)}${escapeHTML(sop)}</span>`:''}</div>`}</div>`;
 }
 function syncProjectAdminTabs(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const bar=$('#projectAdminTabs');if(!bar)return;
   const creating=state.projectAdminDetailId==='new',d=state.projectDraft||{},tab=state.projectAdminTab||'basic',errors=state.projectAdminErrors||{};
   const repoCount=creating?0:(state.data.repositories||[]).filter(r=>r.projectId===state.projectAdminDetailId).length;
@@ -220,7 +233,7 @@ function syncProjectAdminTabs(){
   bar.querySelectorAll('[data-pa-tab]').forEach(b=>{
     const id=b.dataset.paTab,on=id===tab,locked=creating&&id!=='basic',n=b.querySelector('.pa-tab-n'),dot=b.querySelector('.pa-tab-dot');
     b.classList.toggle('on',on);b.classList.toggle('locked',locked);b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;
-    if(locked){b.setAttribute('aria-disabled','true');b.title='保存项目后可用'}else{b.removeAttribute('aria-disabled');b.removeAttribute('title')}
+    if(locked){b.setAttribute('aria-disabled','true');b.title=_t('保存项目后可用','Available after saving the project')}else{b.removeAttribute('aria-disabled');b.removeAttribute('title')}
     const count=id==='repos'?repoCount:id==='members'?projectPeopleIds(d).length:null;
     n.hidden=creating||count==null;n.textContent=count==null?'':String(count);dot.hidden=!errors[id];
   });
@@ -232,8 +245,9 @@ function moveProjectAdminTabIndicator(){
   ind.style.width=Math.max(0,a.offsetWidth-16)+'px';ind.style.transform=`translateX(${a.offsetLeft+8}px)`;
 }
 function setProjectAdminTab(tab,opt={}){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!PROJECT_ADMIN_TABS.some(t=>t.id===tab))tab='basic';
-  if(state.projectAdminDetailId==='new'&&tab!=='basic'){if(!opt.silent)toast('保存项目后可用','warn');return false}
+  if(state.projectAdminDetailId==='new'&&tab!=='basic'){if(!opt.silent)toast(_t('保存项目后可用','Available after saving the project'),'warn');return false}
   state.projectAdminTab=tab;
   $$('#projectAdminForm [data-pa-panel]').forEach(p=>p.hidden=p.dataset.paPanel!==tab);
   syncProjectAdminTabs();
@@ -241,14 +255,16 @@ function setProjectAdminTab(tab,opt={}){
   return true;
 }
 function syncProjectAdminSaveBar(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const bar=$('#projectAdminForm [data-pa-savebar]');if(!bar)return;
   const creating=state.projectAdminDetailId==='new',show=creating||projectAdminDirty();
   bar.classList.toggle('show',show);bar.inert=!show;
-  bar.querySelector('[data-pa-savebar-text]').textContent=creating?'新项目尚未保存':'有未保存的修改';
-  bar.querySelector('[data-pa-discard]').textContent=creating?'取消':'放弃修改';
-  bar.querySelector('[data-pa-submit]').textContent=creating?'创建项目':'保存项目设置';
+  bar.querySelector('[data-pa-savebar-text]').textContent=creating?_t('新项目尚未保存','New project not saved yet'):_t('有未保存的修改','Unsaved changes');
+  bar.querySelector('[data-pa-discard]').textContent=creating?_t('取消','Cancel'):_t('放弃修改','Discard');
+  bar.querySelector('[data-pa-submit]').textContent=creating?_t('创建项目','Create Project'):_t('保存项目设置','Save Project Settings');
 }
 function syncProjectIdentity(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const form=$('#projectAdminForm'),d=state.projectDraft;if(!form||!d)return;
   const creating=state.projectAdminDetailId==='new',custom=!!state.projectIdentCustom;
   if(creating&&!custom){
@@ -258,7 +274,7 @@ function syncProjectIdentity(){
     if(form.elements.key)form.elements.key.value=g.key;
   }
   const idChip=form.querySelector('[data-pa-ident-id]'),keyChip=form.querySelector('[data-pa-ident-key]');
-  if(idChip){idChip.textContent=d.id||'输入名称后生成';idChip.title=d.id||'';idChip.classList.toggle('ph',!d.id)}
+  if(idChip){idChip.textContent=d.id||_t('输入名称后生成','Generated after entering name');idChip.title=d.id||'';idChip.classList.toggle('ph',!d.id)}
   if(keyChip){keyChip.textContent=String(d.key||'—').toUpperCase();keyChip.classList.toggle('ph',!d.key)}
   const view=form.querySelector('[data-pa-ident-view]'),edit=form.querySelector('[data-pa-ident-form]'),desc=form.querySelector('[data-pa-ident-desc]');
   if(view)view.hidden=custom;if(edit)edit.hidden=!custom;if(desc)desc.textContent=projectIdentDesc(creating,custom);
@@ -334,10 +350,11 @@ function bindProjectAdminForm(form){
   });
 }
 function renderProjectDetail(opt={}){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const form=$('#projectAdminForm');if(!form)return;
   const id=state.projectAdminDetailId,creating=id==='new',projects=state.data.projects||[],saved=creating?null:projects.find(p=>p.id===id);
   if(!creating&&!saved){
-    toast('项目不存在或无权访问，已返回项目列表','warn');
+    toast(_t('项目不存在或无权访问，已返回项目列表','Project not found or inaccessible; returned to project list'),'warn');
     resetProjectAdminDetail();
     if(activeViewName()==='projects'&&parseProjectAdminRoute(location.hash)?.id)history.replaceState(null,'',projectAdminHash(''));
     return renderProjectAdmin();
@@ -380,9 +397,10 @@ function syncProjectAdminRouteState(){
   state.projectAdminTab=route.tab;
 }
 async function confirmDiscardProjectDraft(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!projectAdminDirty())return true;
-  const name=String(state.projectDraft?.name||'').trim()||'新项目';
-  return afConfirm({title:'放弃未保存的修改？',message:`「${name}」有未保存的修改，离开后这些修改会丢失。`,danger:true,confirmText:'放弃修改',cancelText:'继续编辑'});
+  const name=String(state.projectDraft?.name||'').trim()||_t('新项目','New Project');
+  return afConfirm({title:_t('放弃未保存的修改？','Discard unsaved changes?'),message:_t(`「${name}」有未保存的修改，离开后这些修改会丢失。`,`"${name}" has unsaved changes that will be lost if you leave.`),danger:true,confirmText:_t('放弃修改','Discard'),cancelText:_t('继续编辑','Keep editing')});
 }
 function openProjectAdminDetail(id,tab='basic'){
   if(id==='new')return openProjectWizard();
@@ -414,9 +432,10 @@ async function applyProjectAdminRoute(){
   renderProjectAdmin({force:true});
 }
 function discardProjectAdminDraft(){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(state.projectAdminDetailId==='new'){resetProjectAdminDetail();if(history.state?.paDetail)history.back();else history.pushState(null,'',projectAdminHash(''));renderProjectAdmin();return}
   state.projectDraft=clone(state.projectDraftBase);state.projectIdentCustom=false;state.projectAdminErrors={};
-  renderProjectDetail({force:true});toast('已放弃未保存的修改');
+  renderProjectDetail({force:true});toast(_t('已放弃未保存的修改','Unsaved changes discarded'));
 }
 // Repository writes are immediate; keep the open draft and its baseline in step so a later project save cannot restore a stale default.
 function syncProjectDraftDefaultRepo(projectId,repoId,onlyIf){
@@ -437,12 +456,14 @@ function canDeleteProject(project){
   return Number(project.ownerId)>0&&Number(project.ownerId)===Number(state.currentUser?.id);
 }
 function projectDeleteRow(project){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   if(!canDeleteProject(project))return '';
-  return paRow('删除项目','项目从列表中移除，需求、运行记录和设置保留，平台管理员可以恢复。有未结束的运行或启用中的定时任务时不能删除。',`<button type="button" class="button danger-outline small" data-project-delete="${escapeHTML(project.id)}">删除项目</button>`,{attrs:' data-pa-row-inline'});
+  return paRow(_t('删除项目','Delete Project'),_t('项目从列表中移除，需求、运行记录和设置保留，平台管理员可以恢复。有未结束的运行或启用中的定时任务时不能删除。','Removes the project from the list while preserving issues, runs, and settings (recoverable by platform admins). Cannot delete while runs are active or schedules are enabled.'),`<button type="button" class="button danger-outline small" data-project-delete="${escapeHTML(project.id)}">${_t('删除项目','Delete Project')}</button>`,{attrs:' data-pa-row-inline'});
 }
 async function deleteProjectAdmin(projectId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const project=(state.data.projects||[]).find(p=>p.id===projectId);if(!project)return;
-  const ok=await afConfirm({title:'删除项目',message:`确定删除项目「${project.name||project.id}」吗？\n\n项目会从列表中移除，需求、运行记录和设置保留，可以恢复；标识 ${project.id} 仍被占用。`,danger:true,confirmText:'确定删除'});
+  const ok=await afConfirm({title:_t('删除项目','Delete Project'),message:_t(`确定删除项目「${project.name||project.id}」吗？\n\n项目会从列表中移除，需求、运行记录和设置保留，可以恢复；标识 ${project.id} 仍被占用。`,`Delete project "${project.name||project.id}"?\n\nIt will be removed from the list while preserving issues, runs, and settings (recoverable); ID "${project.id}" remains reserved.`),danger:true,confirmText:_t('确定删除','Delete')});
   if(!ok)return;
   try{
     await api('/api/projects/'+encodeURIComponent(project.id),{method:'DELETE'});
@@ -454,13 +475,14 @@ async function deleteProjectAdmin(projectId){
     }
     resetProjectAdminDetail();
     history.replaceState(null,'',projectAdminHash(''));
-    renderAll();renderProjectAdmin();toast(`已删除项目「${project.name||project.id}」`,'ok');
+    renderAll();renderProjectAdmin();toast(_t(`已删除项目「${project.name||project.id}」`,`Deleted project "${project.name||project.id}"`),'ok');
   }catch(err){toast(err.message,'err')}
 }
 async function deleteProjectRepository(repoId){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const repo=(state.data.repositories||[]).find(r=>r.id===repoId);if(!repo)return;
   const project=(state.data.projects||[]).find(p=>p.id===repo.projectId),isDefault=project?.defaultRepositoryId===repo.id;
-  const ok=await afConfirm({title:'删除关联仓库',message:`确定删除仓库「${repo.name||repo.gongfengProjectId||repo.id}」吗？已在执行中的 SOP 不受影响，该操作不可恢复。${isDefault?'\n\n这是当前的默认仓库，删除后默认仓库将变为「暂未绑定」。':''}`,danger:true,confirmText:'确定删除'});
+  const ok=await afConfirm({title:_t('删除关联仓库','Delete Repository'),message:_t(`确定删除仓库「${repo.name||repo.gongfengProjectId||repo.id}」吗？已在执行中的 SOP 不受影响，该操作不可恢复。${isDefault?'\n\n这是当前的默认仓库，删除后默认仓库将变为「暂未绑定」。':''}`,`Delete repository "${repo.name||repo.gongfengProjectId||repo.id}"? Running SOPs are unaffected. This action cannot be undone.${isDefault?'\n\nThis is the current default repository; deleting it will unset the default.':''}`),danger:true,confirmText:_t('确定删除','Delete')});
   if(!ok)return;
   try{
     captureProjectAdminForm();
@@ -468,7 +490,7 @@ async function deleteProjectRepository(repoId){
     state.data.repositories=(state.data.repositories||[]).filter(r=>r.id!==repo.id);
     if(isDefault)project.defaultRepositoryId='';
     syncProjectDraftDefaultRepo(repo.projectId,'',repo.id);
-    renderAll();refreshProjectAdminRepos();toast(`已删除仓库「${repo.name||repo.id}」`,'ok');
+    renderAll();refreshProjectAdminRepos();toast(_t(`已删除仓库「${repo.name||repo.id}」`,`Deleted repository "${repo.name||repo.id}"`),'ok');
   }catch(err){toast(err.message,'err')}
 }
 function bindProjectAdmin(){
@@ -486,11 +508,12 @@ function projectAdminAfterSave(projectId,creating){
   if(activeViewName()==='projects')history.replaceState(history.state,'',projectAdminHash(projectId,'repos'));
 }
 function projectDefaultSOPField(project){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   const current=String(project.workflowId||(!project.id?'generic-backend-delivery':'')).trim();
   const choices=(state.data.workflows||[]).filter(w=>w.generic||!w.projectId||w.projectId===project.id||w.shared);
   const missing=current&&!choices.some(w=>w.id===current);
-  const options=choices.map(w=>`<option value="${escapeHTML(w.id)}" ${w.id===current?'selected':''}>${w.generic?'通用 · ':''}${escapeHTML(w.name)}</option>`).join('');
-  return `<select name="workflowId" class="select" required><option value="">请选择默认 SOP</option>${missing?`<option value="${escapeHTML(current)}" selected disabled>已失效：${escapeHTML(current)}（请重新选择）</option>`:''}${options}</select>`;
+  const options=choices.map(w=>`<option value="${escapeHTML(w.id)}" ${w.id===current?'selected':''}>${w.generic?_t('通用 · ','Generic · '):''}${escapeHTML(w.name)}</option>`).join('');
+  return `<select name="workflowId" class="select" required><option value="">${_t('请选择默认 SOP','Select default SOP')}</option>${missing?`<option value="${escapeHTML(current)}" selected disabled>${_t(`已失效：${escapeHTML(current)}（请重新选择）`,`Invalid: ${escapeHTML(current)} (please reselect)`)}</option>`:''}${options}</select>`;
 }
 function applyProjectDefaultSOP(project,workflowId){
   project.workflowId=workflowId;
@@ -515,15 +538,16 @@ function buildProjectPayload(base,fields={}){
 }
 // Returns {field,message} for the first problem, or null. field is '' when no input is to blame.
 function validateProjectPayload(value,{creating,projects=[],workflows=[],saved}={}){
-  if(!value.name)return {field:'name',message:'项目名称不能为空'};
-  if(!value.id)return {field:'id',message:'项目标识不能为空'};
-  if(!value.key)return {field:'key',message:'项目 Key 不能为空'};
-  if(creating&&(value.id.toLowerCase()==='new'||projects.some(p=>String(p.id).toLowerCase()===value.id.toLowerCase())))return {field:'id',message:`项目标识「${value.id}」已被占用，请换一个`};
-  if(!creating&&!saved)return {field:'',message:'项目不存在或无权访问'};
-  if(!value.workflowId||!workflows.some(w=>w.id===value.workflowId))return {field:'workflowId',message:'请选择有效的默认 SOP'};
-  if(!value.ownerId)return {field:'ownerId',message:'请选择项目 Owner'};
-  if(value.members.some(m=>!m.userId))return {field:'members',message:'请选择有效的项目成员'};
-  if(new Set(value.members.map(m=>m.userId)).size!==value.members.length)return {field:'members',message:'项目成员不能重复'};
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  if(!value.name)return {field:'name',message:_t('项目名称不能为空','Project name is required')};
+  if(!value.id)return {field:'id',message:_t('项目标识不能为空','Project ID is required')};
+  if(!value.key)return {field:'key',message:_t('项目 Key 不能为空','Project Key is required')};
+  if(creating&&(value.id.toLowerCase()==='new'||projects.some(p=>String(p.id).toLowerCase()===value.id.toLowerCase())))return {field:'id',message:_t(`项目标识「${value.id}」已被占用，请换一个`,`Project ID "${value.id}" is already taken; please choose another`)};
+  if(!creating&&!saved)return {field:'',message:_t('项目不存在或无权访问','Project not found or inaccessible')};
+  if(!value.workflowId||!workflows.some(w=>w.id===value.workflowId))return {field:'workflowId',message:_t('请选择有效的默认 SOP','Please select a valid default SOP')};
+  if(!value.ownerId)return {field:'ownerId',message:_t('请选择项目 Owner','Please select a project owner')};
+  if(value.members.some(m=>!m.userId))return {field:'members',message:_t('请选择有效的项目成员','Please select valid project members')};
+  if(new Set(value.members.map(m=>m.userId)).size!==value.members.length)return {field:'members',message:_t('项目成员不能重复','Project members must be unique')};
   return null;
 }
 function storeSavedProject(result,value){
@@ -532,6 +556,7 @@ function storeSavedProject(result,value){
   return stored;
 }
 async function saveProjectAdmin(e){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
   e.preventDefault();
   const f=e.currentTarget,el=f.elements,projects=state.data.projects||[],creating=state.projectAdminDetailId==='new';
   const projectId=String(el.id?.value||'').trim(),saved=projects.find(p=>p.id===projectId);
@@ -546,7 +571,7 @@ async function saveProjectAdmin(e){
     if(!state.projectFilter){state.projectFilter=savedProjectId;localStorage.setItem('agentflow.activeProject',savedProjectId)}
     projectAdminAfterSave(savedProjectId,creating);
     renderAll();
-    toast(creating?'项目已创建，下一步绑定代码仓库':'项目设置已保存','ok');
+    toast(creating?_t('项目已创建，下一步绑定代码仓库','Project created; next, bind a repository'):_t('项目设置已保存','Project settings saved'),'ok');
   }catch(err){toast(err.message,'err')}
   finally{if(submit)submit.disabled=false}
 }
