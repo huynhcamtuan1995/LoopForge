@@ -851,8 +851,8 @@ function credentialDefaultsExecutor(catalog){
   const engines=window.AgentFlowAssistantModels?.featureExecutors(catalog)||[];
   return engines.find(engine=>engine.id===catalog.preferences?.executor)||engines.find(engine=>engine.models.length)||engines[0]||null;
 }
-const ASSISTANT_APPROVAL_CHOICES=[['confirm','请求批准'],['assisted','帮我批准'],['auto','完全权限']];
-const DEFAULT_EFFORT_LABELS={none:'关闭',minimal:'极低',low:'低',medium:'中',high:'高',xhigh:'极高',max:'最大',ultra:'Ultra',ultracode:'Ultracode',thinking:'开启'};
+const ASSISTANT_APPROVAL_CHOICES=[['confirm','请求批准'],['assisted','帮我批准'],['auto',(typeof lfT==='function'?lfT:z=>z)('完全权限','Full access')]];
+const DEFAULT_EFFORT_LABELS={none:'关闭',minimal:(typeof lfT==='function'?lfT:z=>z)('极低','Minimal'),low:'低',medium:'中',high:'高',xhigh:(typeof lfT==='function'?lfT:z=>z)('极高','Extra high'),max:(typeof lfT==='function'?lfT:z=>z)('最大','Max'),ultra:'Ultra',ultracode:'Ultracode',thinking:'开启'};
 function credentialDefaultOptions(options,value){
   return options.map(([id,name])=>credentialOptionHTML({id,name},value)).join('');
 }
@@ -900,7 +900,7 @@ function paintCredentialDefaults(host,catalog){
         </div>
         <div class="credential-default-actions" data-default-actions hidden>
           <button type="reset" class="credential-btn secondary">取消</button>
-          <button type="submit" class="credential-btn primary" data-save-ai-defaults>保存设置</button>
+          <button type="submit" class="credential-btn primary" data-save-ai-defaults>${(typeof lfT==='function'?lfT:z=>z)('保存设置','Save settings')}</button>
         </div>
       </fieldset>
       <p class="credential-default-error" role="alert" data-default-error hidden></p>
@@ -918,7 +918,7 @@ function paintCredentialDefaults(host,catalog){
     if(!selected)return;
     const model=models.preferredFeatureModel(catalog,selected.id,selected.models);
     const options=selected.models.map(item=>[item.id,item.name||item.id]);
-    form.elements.model.innerHTML=credentialDefaultOptions(options.length?options:[['','暂无可选模型']],model);
+    form.elements.model.innerHTML=credentialDefaultOptions(options.length?options:[['',(typeof lfT==='function'?lfT:z=>z)('暂无可选模型','No models available')]],model);
     form.elements.model.disabled=!options.length;
     syncEffort();
   };
@@ -960,7 +960,7 @@ async function loadCredentialDefaults(panel){
     ui.catalog=catalog;
     state.data.assistantDefaults=catalog.preferences||{};
     if(!credentialDefaultsExecutor(catalog)){
-      host.querySelector('.credential-default-status').textContent='当前账号暂无可用执行器';
+      host.querySelector('.credential-default-status').textContent=(typeof lfT==='function'?lfT:z=>z)('当前账号暂无可用执行器','No executors are available for this account');
       return;
     }
     paintCredentialDefaults(host,catalog);
@@ -978,7 +978,7 @@ async function saveCredentialDefaults(form,host){
   ui.savingDefaults=true;
   fields.disabled=true;
   error.hidden=true;
-  setCredentialButtonBusy(button,'保存中');
+  setCredentialButtonBusy(button,(typeof lfT==='function'?lfT:z=>z)('保存中','Saving'));
   try{
     await api(`/api/users/${userId}/credentials`,{method:'PUT',body:JSON.stringify({assistantDefaults:defaults})});
     if(credentialUI()!==ui)return;
@@ -1399,31 +1399,31 @@ function credentialWizardStepTwoHTML(kind){
   }).join('');
   const github=kind.key==='gitToken';
   const manual=wizard.githubMethod==='manual';
-  const methods=github?`<div class="github-methods" role="tablist" aria-label="GitHub 连接方式"><button type="button" role="tab" data-github-method="oauth" aria-selected="${!manual}">GitHub 授权</button><button type="button" role="tab" data-github-method="manual" aria-selected="${manual}">访问令牌</button></div>`:'';
-  if(github&&!manual)return `<div class="credential-question">${credentialLogo(kind,'is-mini')}<span>连接 GitHub</span><small class="credential-description">连接后可选择仓库，用于克隆代码、创建分支和推送交付产物。</small></div>${methods}${credentialOAuthHTML('用工蜂授权','')}`;
+  const methods=github?`<div class="github-methods" role="tablist" aria-label="${(typeof lfT==='function'?lfT:z=>z)('GitHub 连接方式','GitHub connection method')}"><button type="button" role="tab" data-github-method="oauth" aria-selected="${!manual}">${(typeof lfT==='function'?lfT:z=>z)('GitHub 授权','GitHub OAuth')}</button><button type="button" role="tab" data-github-method="manual" aria-selected="${manual}">${(typeof lfT==='function'?lfT:z=>z)('访问令牌','Access token')}</button></div>`:'';
+  if(github&&!manual)return `<div class="credential-question">${credentialLogo(kind,'is-mini')}<span>${(typeof lfT==='function'?lfT:z=>z)('连接 GitHub','Connect GitHub')}</span><small class="credential-description">${(typeof lfT==='function'?lfT:z=>z)('连接后可选择仓库，用于克隆代码、创建分支和推送交付产物。','Once connected, choose repositories to clone code, create branches, and push deliverables.')}</small></div>${methods}${credentialOAuthHTML((typeof lfT==='function'?lfT:z=>z)('用工蜂授权','Authorize with Gongfeng'),'')}`;
   const validity=credentialWizardValid();
   const {text:secretHint,tone:secretTone}=credentialWizardSecretHint(kind,wizard,validity);
   const secretField=credentialFieldHTML({label:github?'个人访问令牌（PAT）':kind.short,name:'secret',id:'credentialWizardSecret',placeholder:kind.placeholder,hint:secretHint,hintTone:secretTone});
   const extraField=!kind.extra?''
     :kind.extra.options?credentialSelectFieldHTML(kind,wizard.extra)
-    :credentialFieldHTML({label:kind.extra.label,note:kind.extra.note||(kind.extra.url?'可选 · 留空使用官方地址':''),name:'extra',type:kind.extra.url?'url':'text',value:wizard.extra,placeholder:kind.extra.placeholder,hint:''});
+    :credentialFieldHTML({label:kind.extra.label,note:kind.extra.note||(kind.extra.url?(typeof lfT==='function'?lfT:z=>z)('可选 · 留空使用官方地址','Optional · leave blank to use the official URL'):''),name:'extra',type:kind.extra.url?'url':'text',value:wizard.extra,placeholder:kind.extra.placeholder,hint:''});
   const protocolField=kind.protocol?credentialProtocolHTML(kind,wizard.protocol||credentialProtocol(kind,{})):'';
   // The network environment decides where the key comes from, so it is chosen first.
   const baseField=kind.baseURL?credentialBaseURLFieldHTML(wizard.baseUrl):'';
   const fields=(kind.extra?.options?extraField+secretField:secretField+extraField+protocolField)+baseField;
   if(isDirectExecutorForm(wizard)){
     const error=wizard.error?`<p class="credential-vline is-err" role="alert">${escapeHTML(wizard.error)}</p>`:'';
-    return `<div class="credential-direct-heading">${credentialLogo(kind)}<h3>新增 ${escapeHTML(kind.name)}</h3></div>
+    return `<div class="credential-direct-heading">${credentialLogo(kind)}<h3>${(typeof lfT==='function'?lfT:z=>z)('新增','Add')} ${escapeHTML(kind.name)}</h3></div>
       <fieldset class="credential-fields"${wizard.saving?' disabled':''}>${fields}</fieldset>
-      <details class="credential-direct-help"><summary>如何获取密钥</summary><ol class="credential-guide">${guide}</ol></details>${error}`;
+      <details class="credential-direct-help"><summary>${(typeof lfT==='function'?lfT:z=>z)('如何获取密钥','How to get a key')}</summary><ol class="credential-guide">${guide}</ol></details>${error}`;
   }
-  return `<div class="credential-question">${credentialLogo(kind,'is-mini')}<span>${github?'使用访问令牌':'配置 '+escapeHTML(kind.short)}</span><small class="credential-description">${escapeHTML(kind.description)}</small></div>${methods}<ol class="credential-guide">${guide}</ol><div class="credential-fields">
+  return `<div class="credential-question">${credentialLogo(kind,'is-mini')}<span>${github?(typeof lfT==='function'?lfT:z=>z)('使用访问令牌','Use an access token'):(typeof lfT==='function'?lfT:z=>z)('配置 ','Configure ')+escapeHTML(kind.short)}</span><small class="credential-description">${escapeHTML(kind.description)}</small></div>${methods}<ol class="credential-guide">${guide}</ol><div class="credential-fields">
     ${fields}
   </div>`;
 }
 function credentialWizardStepThreeHTML(kind){
   const wizard=credentialWizard;
-  if(wizard.done)return `<div class="credential-saved"><span class="credential-check-big"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span><h4>${escapeHTML(kind.short)} 已保存</h4><p>下一次运行你负责的任务时生效，可随时在列表中展开编辑。</p></div>`;
+  if(wizard.done)return `<div class="credential-saved"><span class="credential-check-big"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span><h4>${escapeHTML(kind.short)} ${(typeof lfT==='function'?lfT:z=>z)('已保存','saved')}</h4><p>${(typeof lfT==='function'?lfT:z=>z)('下一次运行你负责的任务时生效，可随时在列表中展开编辑。','Takes effect the next time a task you own runs. Expand it in the list to edit anytime.')}</p></div>`;
   const extra=kind.extra?`<dt>${escapeHTML(kind.extra.label)}</dt><dd${kind.extra.url?' class="credential-mono"':''}>${escapeHTML(credentialExtraLabel(kind,wizard.extra))}</dd>`:'';
   const base=kind.baseURL&&wizard.baseUrl?`<dt>Base URL</dt><dd class="credential-mono">${escapeHTML(wizard.baseUrl)}</dd>`:'';
   const warning=credentialSecretWarning(kind,wizard.secret,wizard.baseUrl);
@@ -1471,7 +1471,7 @@ function paintCredentialWizard(direction){
   scrim.querySelector('[data-wizard-step]').textContent=wizard.done?(typeof lfT==='function'?lfT('已完成','Done'):'已完成'):`${wizard.step} / 3`;
   scrim.querySelector('[data-wizard-close]').disabled=wizard.saving;
   const dialog=scrim.querySelector('.credential-dialog');
-  dialog.setAttribute('aria-label',isDirectExecutorForm(wizard)?`新增 ${credentialKind(wizard.kind).name}`:'添加凭证');
+  dialog.setAttribute('aria-label',isDirectExecutorForm(wizard)?`${(typeof lfT==='function'?lfT:z=>z)('新增','Add')} ${credentialKind(wizard.kind).name}`:(typeof lfT==='function'?lfT:z=>z)('添加凭证','Add credential'));
   scrim.querySelector('.credential-dialog-foot').innerHTML=credentialWizardFootHTML();
   hydrateCredentialIcons(scrim);
   if(typeof hydrateGitHubConnections==='function')hydrateGitHubConnections(pane);
@@ -1621,7 +1621,7 @@ async function refreshGongfengGrant(){
   else void loadCredentialGitRows(panel,fresh);
   notifyCredentialsChanged();
   if(!fresh.gitHubCredentialConfigured){
-    if(fresh.gitTokenOAuth)toast('工蜂授权已保存','ok');
+    if(fresh.gitTokenOAuth)toast((typeof lfT==='function'?lfT:z=>z)('工蜂授权已保存','Gongfeng OAuth saved'),'ok');
     return;
   }
   state.gitTokenAnnounceVerify=true;

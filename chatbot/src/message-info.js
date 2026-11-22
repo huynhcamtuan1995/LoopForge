@@ -107,6 +107,6 @@ export function messageInfo(message = {}, sessionExecutor = "") {
     rows,
     tokens,
     total,
-    totalText: total === null ? NOT_REPORTED : formatTokens(total),
+    totalText: total === null ? missingLabel : formatTokens(total),
   };
 }

@@ -424,7 +424,7 @@ async function sendIssueClarification(initialMessage=''){
   if(state.issueDetailData?.issue?.id!==issueId||issueClarifyJobs.get(issueId)?.attached)return;
   if(picker&&!picker.isConnected&&(!initialMessage||!state.drawerOpen||state.issueDetailTab!=='clarify'))return;
   const model=picker?.querySelector('[data-feature-model]')?.value||undefined;
-  if(!model&&!initialMessage)return toast('暂无可选模型，请检查个人配置中的执行器');
+  if(!model&&!initialMessage)return toast((typeof lfT==='function'?lfT:z=>z)('暂无可选模型，请检查个人配置中的执行器','No models available. Check the executors in your personal settings.'));
   const msg=initialMessage||collectIssueClarifyReply();
   if(!msg)return toast(_t('请先选择或填写答案','Select or enter an answer first'));
   const c=issue.clarification||(issue.clarification={});

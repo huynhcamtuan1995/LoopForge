@@ -126,7 +126,7 @@ function syncSchedulePromptEditor(){
     if(!document.getElementById('schedulePromptEditorModule')){
       const script=document.createElement('script');script.id='schedulePromptEditorModule';
       script.type='module';script.src='/chatbot/prompt-editor.js';
-      script.onerror=()=>{script.remove();if($('#scheduleModal').classList.contains('open'))toast('项目资产输入组件加载失败，提示词仍可编辑；请重新打开任务重试','err')};
+      script.onerror=()=>{script.remove();if($('#scheduleModal').classList.contains('open'))toast((typeof lfT==='function'?lfT:z=>z)('项目资产输入组件加载失败，提示词仍可编辑；请重新打开任务重试','The project asset picker failed to load. You can still edit the prompt; reopen the task to retry.'),'err')};
       document.head.append(script);
     }
     return;
@@ -196,7 +196,7 @@ function paintScheduleEngines(selected){
     option.disabled=!usable;
     return option;
   }));
-  if(!list.length)select.add(new Option('暂无可用执行器',''));
+  if(!list.length)select.add(new Option((typeof lfT==='function'?lfT:z=>z)('暂无可用执行器','No executors available'),''));
   select.value=list.some(item=>item.id===current)?current:list[0]?.id||'';
   select.disabled=!list.length;
 }

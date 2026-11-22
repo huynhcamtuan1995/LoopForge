@@ -513,5 +513,10 @@ Object.assign(window.LF_I18N_EN, {
   "交付汇总": "Delivery Summary",
   "生成验收报告": "Generate Acceptance Report",
   "请确认验收报告": "Confirm Acceptance Report",
-  "完成验收": "Complete Acceptance"
+  "完成验收": "Complete Acceptance",
+  "返回快速接入": "Back to quick setup",
+  "仅自己可见": "Only visible to you",
+  "执行器与模型": "Executor & model",
+  "选择执行器": "Select executor",
+  "【工作项标题】\nhttps://www.tapd.cn/tapd_fe/…/story/detail/…": "[Work item title]\nhttps://www.tapd.cn/tapd_fe/…/story/detail/…"
 });

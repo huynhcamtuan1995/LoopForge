@@ -25,14 +25,14 @@ function defaultPreviewModel(executorId, items=previewModelOptions(executorId)){
 }
 function fillPreviewModelSelect(sel, selected, executorId){
   if(!executorId){
-    sel.innerHTML='<option value="">跟随责任人默认模型</option>';
+    sel.innerHTML='<option value="">'+(typeof lfT==='function'?lfT:z=>z)('跟随责任人默认模型','Use the owner\'s default model')+'</option>';
     sel.disabled=true;
     return '';
   }
   const items=previewModelOptions(executorId);
   const model=selected||defaultPreviewModel(executorId,items);
   if(model&&!items.some(m=>m.id===model))items.push({id:model,name:model});
-  sel.innerHTML=items.length?items.map(m=>`<option value="${escapeHTML(m.id)}" ${m.id===model?'selected':''}>${escapeHTML(m.name||m.id)}</option>`).join(''):'<option value="">暂无可选模型</option>';
+  sel.innerHTML=items.length?items.map(m=>`<option value="${escapeHTML(m.id)}" ${m.id===model?'selected':''}>${escapeHTML(m.name||m.id)}</option>`).join(''):'<option value="">'+(typeof lfT==='function'?lfT:z=>z)('暂无可选模型','No models available')+'</option>';
   sel.disabled=flowReadOnly()||!items.length;
   return model;
 }

@@ -27,3 +27,4 @@ test-results/
 !web/vscode-web/**/node_modules/
 !web/vscode-web/**
 _start.sh.backup
+chinese_scan.json

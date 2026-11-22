@@ -162,7 +162,7 @@
     renderOptions(menu, catalog.models || [], selectedId, onPick);
   }
   function featurePickerHTML(modelName = '') {
-    return `<select class="select" data-feature-executor aria-label="选择执行器" disabled><option value="">执行器</option></select>
+    return `<select class="select" data-feature-executor aria-label="${(typeof lfT==='function'?lfT:z=>z)('选择执行器','Select executor')}" disabled><option value="">${(typeof lfT==='function'?lfT:z=>z)('执行器','Executor')}</option></select>
       <select class="select" data-feature-model ${modelName ? 'name="' + modelName + '"' : ''} aria-label="选择模型" disabled><option value="">模型</option></select>`;
   }
   function qualifiedModel(engine, id) {
@@ -219,7 +219,7 @@
         option.disabled = !item.models.length;
         return option;
       }));
-      if (!engine) executor.prepend(new Option('暂无可用执行器', ''));
+      if (!engine) executor.prepend(new Option((typeof lfT==='function'?lfT:z=>z)('暂无可用执行器','No executors available'), ''));
       executor.value = engine?.id || '';
       executor.disabled = readOnly || !engines.some(item => item.models.length);
 
@@ -228,7 +228,7 @@
         const items = current?.models || [];
         const next = value || preferredFeatureModel(source, current?.id, items);
         models.replaceChildren(...items.map(item => new Option(item.name || item.id, item.id)));
-        if (!items.length) models.append(new Option('暂无可选模型', ''));
+        if (!items.length) models.append(new Option((typeof lfT==='function'?lfT:z=>z)('暂无可选模型','No models available'), ''));
         models.value = next;
         models.disabled = readOnly || !items.length;
       };
@@ -242,8 +242,8 @@
       models.onchange = () => onChange?.(models.value);
     }).catch(() => {
       if (!host.isConnected) return;
-      executor.options[0].text = '暂无可用执行器';
-      models.options[0].text = '暂无可选模型';
+      executor.options[0].text = (typeof lfT==='function'?lfT:z=>z)('暂无可用执行器','No executors available');
+      models.options[0].text = (typeof lfT==='function'?lfT:z=>z)('暂无可选模型','No models available');
     });
     return host.modelPickerReady;
   }
