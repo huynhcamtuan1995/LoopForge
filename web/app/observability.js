@@ -1325,12 +1325,13 @@ function obsHeatCard(){
   if(cells==null&&!(view.traces||[]).length)return '';
   const list=cells||obsTraceWeekHour(view.traces);
   const metric=state.obsHeatMetric==='runs'?'runs':'tokens';
+  const weekday=i=>_t(OBS_WEEKDAYS[i],['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]);
   const peak=obsHeatPeak(list,metric);
-  const peakText=peak?_t(`高峰 ${OBS_WEEKDAYS[peak.weekday]} ${String(peak.hour).padStart(2,'0')}:00 · ${metric==='runs'?peak.value+' 次':formatTokens(peak.value)}`,`Peak ${OBS_WEEKDAYS[peak.weekday]} ${String(peak.hour).padStart(2,'0')}:00 · ${metric==='runs'?peak.value+' runs':formatTokens(peak.value)}`):'';
+  const peakText=peak?_t(`高峰 ${OBS_WEEKDAYS[peak.weekday]} ${String(peak.hour).padStart(2,'0')}:00 · ${metric==='runs'?peak.value+' 次':formatTokens(peak.value)}`,`Peak ${weekday(peak.weekday)} ${String(peak.hour).padStart(2,'0')}:00 · ${metric==='runs'?peak.value+' runs':formatTokens(peak.value)}`):'';
   const chart=obsChartSlot('heat',{
     empty:!list.length,emptyText:_t('暂无执行时段数据','No activity heatmap data'),
     option:(theme,reduced)=>obsHeatOption(list,metric,obsChartFormatters(theme,reduced)),
-    fallback:()=>{const grid=obsHeatMatrix(list);const max=Math.max(1,...grid.flat().map(c=>metric==='runs'?c.runs:c.tokens));return `<div class="obs-heat-fallback">${grid.map((row,d)=>`<div><span>${OBS_WEEKDAYS[d]}</span>${row.map((c,h)=>{const v=metric==='runs'?c.runs:c.tokens;return `<i title="${OBS_WEEKDAYS[d]} ${h}:00 · ${metric==='runs'?_t(v+' 次',v+' runs'):formatTokens(v)}" style="opacity:${v?(.15+.85*v/max).toFixed(2):.06}"></i>`}).join('')}</div>`).join('')}</div>`}
+    fallback:()=>{const grid=obsHeatMatrix(list);const max=Math.max(1,...grid.flat().map(c=>metric==='runs'?c.runs:c.tokens));return `<div class="obs-heat-fallback">${grid.map((row,d)=>`<div><span>${escapeHTML(weekday(d))}</span>${row.map((c,h)=>{const v=metric==='runs'?c.runs:c.tokens;return `<i title="${escapeHTML(weekday(d))} ${h}:00 · ${metric==='runs'?_t(v+' 次',v+' runs'):formatTokens(v)}" style="opacity:${v?(.15+.85*v/max).toFixed(2):.06}"></i>`}).join('')}</div>`).join('')}</div>`}
   },220);
   const tz=obsTimeZone();
   return obsCard('heat',_t('执行时段','Activity Heatmap'),`${_t('星期 × 小时','Day × Hour')} (${escapeHTML(tz)})${peakText?' · '+peakText:''}`,obsSeg('data-obs-heat-metric',[['tokens','Token'],['runs',_t('运行','Runs')]],metric,true),chart,{expand:true});
