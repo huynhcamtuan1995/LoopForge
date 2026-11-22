@@ -119,12 +119,14 @@ function fillSharedScheduleForm(job){
   const bound=!!job.sharedTaskId&&f.elements.jobKind.value==='assistant';
   f.elements.sharedTaskId.value=bound?job.sharedTaskId:'';
   f.elements.sharedTaskVersion.value=bound?job.sharedTaskVersion:'';
-  f.querySelector('[data-schedule-prompt]').hidden=bound||f.elements.jobKind.value!=='assistant';
-  f.elements.assistantPrompt.required=!bound&&f.elements.jobKind.value==='assistant';
+  const enhanced=!f.querySelector('[data-schedule-reference-editor]').hidden;
+  f.querySelector('[data-schedule-prompt]').hidden=bound||enhanced||f.elements.jobKind.value!=='assistant';
+  f.elements.assistantPrompt.required=!bound&&!enhanced&&f.elements.jobKind.value==='assistant';
   section.hidden=!bound;
   f.querySelector('[type="submit"]').disabled=false;
-  if(!bound){section.replaceChildren();return}
+  if(!bound){scheduleSharedPrompt='';section.replaceChildren();return}
   const v=sharedScheduleDefinition(job.sharedTaskId,job.sharedTaskVersion);
+  scheduleAssistantReferences=structuredClone(v?.references||[]);
   if(!v){
     section.innerHTML=`<p class="schedule-field-hint" role="status">${_t('正在读取订阅版本…','Loading subscribed version…')}</p>`;
     f.querySelector('[type="submit"]').disabled=true;
@@ -132,7 +134,11 @@ function fillSharedScheduleForm(job){
   }
   const values=Object.fromEntries((v.parameters||[]).map(p=>[p.name,Object.hasOwn(job.parameterValues||{},p.name)?job.parameterValues[p.name]:(p.default||'')]));
   section.innerHTML=`<div class="shared-schedule-section-head"><div><b>${escapeHTML(v.name)}</b><p class="schedule-field-hint">${_t('来源：','Source: ')}${escapeHTML(v.sourceProjectName||v.sourceProjectId)} · ${sharedScheduleEditorContext&&v.version!==sharedScheduleEditorBaseVersion?_t('待保存','Pending save'):_t('固定','Pinned')} v${v.version}</p></div><button type="button" class="button ghost small" data-choose-shared-version aria-expanded="false">${_t('查看 / 切换版本','View / switch version')}</button></div><p class="schedule-field-hint">${escapeHTML(v.description||_t('提示词由共享任务维护；调度、模型、参数和通知保存在当前项目。','Prompt is maintained by the shared task; schedule, model, parameters, and notifications are stored in this project.'))}</p><div class="shared-schedule-values">${(v.parameters||[]).map(p=>`<label>${escapeHTML(p.label)}${p.required?' *':''}<span class="schedule-field-hint">${escapeHTML(p.name)} · ${escapeHTML(p.type)}</span>${p.type==='boolean'?`<select class="select" data-shared-param="${escapeHTML(p.name)}" aria-label="${escapeHTML(p.label)}" ${p.required?'required':''}><option value="">${_t('请选择','Select')}</option><option value="true" ${values[p.name]==='true'?'selected':''}>${_t('是','Yes')}</option><option value="false" ${values[p.name]==='false'?'selected':''}>${_t('否','No')}</option></select>`:`<input class="input" data-shared-param="${escapeHTML(p.name)}" aria-label="${escapeHTML(p.label)}" value="${escapeHTML(values[p.name])}" ${p.required?'required':''} maxlength="2000" ${['integer','number'].includes(p.type)?`type="number" step="${p.type==='integer'?'1':'any'}"`:'type="text"'}>`}</label>`).join('')||`<p class="schedule-field-hint">${_t('此版本没有业务参数。','No parameters in this version.')}</p>`}</div><details class="shared-schedule-preview"><summary>${_t('执行提示词预览','Prompt preview')}</summary><pre></pre></details>`;
-  const preview=()=>{section.querySelector('pre').textContent=sharedSchedulePreview(v,sharedScheduleFormPayload(f).parameterValues)};
+  const preview=()=>{
+    scheduleSharedPrompt=sharedSchedulePreview(v,sharedScheduleFormPayload(f).parameterValues);
+    section.querySelector('pre').textContent=scheduleSharedPrompt;
+    if(typeof syncSchedulePromptEditor==='function')syncSchedulePromptEditor();
+  };
   section.querySelectorAll('[data-shared-param]').forEach(el=>el.addEventListener('input',preview));
   section.querySelector('[data-choose-shared-version]').onclick=()=>openSharedScheduleVersions(v.id,true);
   preview();
@@ -176,6 +182,7 @@ async function openSharedSchedulePublish(jobId){
     f.elements.baseVersion.value=prior?.version||0;
     f.elements.name.value=prior?.name||job.name;f.elements.description.value=prior?.description||'';
     f.elements.prompt.value=prior?.prompt||job.assistantPrompt;f.elements.changeNote.value='';
+    $('#sharedSchedulePublishReferences').textContent=sharedScheduleReferenceSummary(job);
     $('#sharedScheduleParameterRows').replaceChildren(...(prior?.parameters||[]).map(sharedScheduleParameterRow));
     f.querySelector('[type="submit"]').textContent=_t(`发布 v${(prior?.version||0)+1}`,`Publish v${(prior?.version||0)+1}`);
     $('#sharedSchedulePublishError').textContent='';f.inert=false;f.elements.name.focus();
@@ -244,7 +251,7 @@ async function openSharedScheduleVersionEditor(id){
       const parameterValues=Object.fromEntries((v.parameters||[]).filter(p=>Object.hasOwn(retained,p.name)).map(p=>[p.name,retained[p.name]]));
       fillSharedScheduleForm({sharedTaskId:id,sharedTaskVersion:v.version,parameterValues});
       const current=versions.find(v=>v.version===sharedScheduleEditorBaseVersion);
-      host.innerHTML=`<div class="shared-schedule-section-head"><label class="shared-schedule-version-select">${_t('目标版本','Target version')}<select class="select" aria-label="${_t('目标订阅版本','Target subscription version')}">${versions.map(item=>`<option value="${item.version}" ${item.version===v.version?'selected':''}>v${item.version}${item===versions[0]?_t(' · 最新',' · Latest'):''}${item.version===current.version?_t(' · 当前',' · Current'):''}</option>`).join('')}</select></label><span class="shared-schedule-version-current">${_t(`当前 v${current.version}`,`Current v${current.version}`)}${v.version!==current.version?` → v${v.version}`:''}</span></div><p class="schedule-field-hint">${escapeHTML(v.changeNote||_t('暂无版本说明','No release notes'))}</p><details class="shared-schedule-comparison" open><summary>${_t('提示词和参数对比','Prompt & parameters diff')}</summary><div class="shared-schedule-diff"><section><b>${_t(`当前 v${current.version}`,`Current v${current.version}`)}</b><pre>${escapeHTML(current.prompt)}</pre><small>${escapeHTML(sharedScheduleParameterSummary(current))}</small></section><section><b>${_t(`目标 v${v.version}`,`Target v${v.version}`)}</b><pre>${escapeHTML(v.prompt)}</pre><small>${escapeHTML(sharedScheduleParameterSummary(v))}</small></section></div></details>`;
+      host.innerHTML=`<div class="shared-schedule-section-head"><label class="shared-schedule-version-select">${_t('目标版本','Target version')}<select class="select" aria-label="${_t('目标订阅版本','Target subscription version')}">${versions.map(item=>`<option value="${item.version}" ${item.version===v.version?'selected':''}>v${item.version}${item===versions[0]?_t(' · 最新',' · Latest'):''}${item.version===current.version?_t(' · 当前',' · Current'):''}</option>`).join('')}</select></label><span class="shared-schedule-version-current">${_t(`当前 v${current.version}`,`Current v${current.version}`)}${v.version!==current.version?` → v${v.version}`:''}</span></div><p class="schedule-field-hint">${escapeHTML(v.changeNote||_t('暂无版本说明','No release notes'))}</p><details class="shared-schedule-comparison" open><summary>${_t('提示词和参数对比','Prompt & parameters diff')}</summary><div class="shared-schedule-diff"><section><b>${_t(`当前 v${current.version}`,`Current v${current.version}`)}</b><pre>${escapeHTML(current.prompt)}</pre><small>${escapeHTML(sharedScheduleParameterSummary(current))}</small><p class="schedule-field-hint">${escapeHTML(sharedScheduleReferenceSummary(current))}</p></section><section><b>${_t(`目标 v${v.version}`,`Target v${v.version}`)}</b><pre>${escapeHTML(v.prompt)}</pre><small>${escapeHTML(sharedScheduleParameterSummary(v))}</small><p class="schedule-field-hint">${escapeHTML(sharedScheduleReferenceSummary(v))}</p></section></div></details>`;
       host.querySelector('select').onchange=e=>selectVersion(Number(e.target.value));
       paintSharedScheduleSaveLabel();
     };
@@ -269,11 +276,15 @@ async function openSharedScheduleVersions(id,editing){
     rememberSharedScheduleVersions(versions);
     const paint=selected=>{
       const v=versions.find(v=>v.version===selected)||versions[0];
-      host.innerHTML=`<p class="modal-hint">${escapeHTML(v.sourceProjectName||v.sourceProjectId)}</p><label class="shared-schedule-version-select">${_t('发布版本','Published version')}<select class="select" aria-label="${_t('发布版本','Published version')}">${versions.map(item=>`<option value="${item.version}" ${item.version===v.version?'selected':''}>v${item.version}${item===versions[0]?_t(' · 最新',' · Latest'):''}</option>`).join('')}</select></label><p>${escapeHTML(v.changeNote||_t('暂无版本说明','No release notes'))}</p><div class="shared-schedule-diff"><section><b>${escapeHTML(v.name)} · v${v.version}</b><pre>${escapeHTML(v.prompt)}</pre><small>${escapeHTML(sharedScheduleParameterSummary(v))}</small></section></div>`;
+      host.innerHTML=`<p class="modal-hint">${escapeHTML(v.sourceProjectName||v.sourceProjectId)}</p><label class="shared-schedule-version-select">${_t('发布版本','Published version')}<select class="select" aria-label="${_t('发布版本','Published version')}">${versions.map(item=>`<option value="${item.version}" ${item.version===v.version?'selected':''}>v${item.version}${item===versions[0]?_t(' · 最新',' · Latest'):''}</option>`).join('')}</select></label><p>${escapeHTML(v.changeNote||_t('暂无版本说明','No release notes'))}</p><div class="shared-schedule-diff"><section><b>${escapeHTML(v.name)} · v${v.version}</b><pre>${escapeHTML(v.prompt)}</pre><small>${escapeHTML(sharedScheduleParameterSummary(v))}</small><p class="schedule-field-hint">${escapeHTML(sharedScheduleReferenceSummary(v))}</p></section></div>`;
       host.querySelector('select').onchange=e=>paint(Number(e.target.value));
     };
     paint(versions[0].version);
   }catch(err){if(request===sharedScheduleVersionRequest)host.textContent=_t(`读取失败：${err.message}`,`Load failed: ${err.message}`)}
+}
+function sharedScheduleReferenceSummary(v){
+  const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;
+  return (v.references||[]).length?_t('随版本共享的引用资产：','Referenced assets shared with this version: ')+v.references.map(ref=>`${ref.name||ref.id} (${ref.type})`).join(_t('、',', ')):_t('此版本没有引用资产','This version has no referenced assets');
 }
 function sharedScheduleParameterSummary(v){
   const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;

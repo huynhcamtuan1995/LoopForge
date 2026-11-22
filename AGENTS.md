@@ -1,3 +1,54 @@
+# Fork policy (read first)
+
+This repository is a fork of upstream LoopForge (`origin/main`). **Upstream is the
+source of truth**: on every sync, take upstream logic and features as-is. The fork
+carries exactly two sanctioned overrides; anything else is out of scope and should
+be dropped in favour of upstream.
+
+## Override 1: `start.sh` builds locally and never pulls the platform image
+
+- `./start.sh` runs `docker compose -f compose.yaml -f compose.dev.yaml --profile platform`,
+  building the platform image from this checkout (`loopforge-platform:local`).
+  It never pulls `ghcr.io` images and never uses sudo, mirrors, or cloud metadata.
+  Only `mysql:8.4` comes from Docker Hub.
+- The original upstream script is kept locally as `_start.sh.backup` (gitignored).
+- When upstream changes `start.sh` or `scripts/docker-access.sh`, keep this
+  build-from-source behaviour and port any new upstream steps (env keys, SQL loading,
+  subcommands) into it. Update other features from upstream normally.
+
+## Override 2: hardcoded Chinese UI text goes through i18n
+
+Goal: an English-speaking operator can use the UI. Translate **user-visible UI
+strings only**; never change behaviour while translating.
+
+- `chatbot/` (React): `t("area.key", { vars })` from `chatbot/src/i18n.js`. Add every
+  key to **both** `chatbot/src/locales/zh.json` (original Chinese) and `en.json`.
+  Edit the JSON as text: keep the blank lines that group keys, and don't re-dump
+  the file. `chatbot/tests/i18n.test.jsx` checks key/placeholder parity and flags
+  hardcoded Chinese in `chatbot/src`. Module-level labels use getters
+  (`get title() { return t(...) }`), and hooks such as `useI18n()` must run before any
+  early `return`. Use `listSeparator()` instead of a literal `、`.
+- `web/` (vanilla JS): `_t('中文','English')`, declared per function as
+  `const _t=(z,e)=>typeof lfT==='function'?lfT(z,e):z;`. Escape apostrophes in
+  single-quoted English (`\'`). CSS pseudo-content uses `html[data-lang="en"]` overrides.
+- Not translated (yet): LLM prompts and agent/skill definitions (`local/`, `skills/`,
+  role prompts), Go error messages (`internal/**`), docs, tests, and
+  database seed/migration data (`migrations/**`). If DB seed text needs English,
+  add a **new** numbered migration; never edit existing migrations (see the
+  migration rules below).
+- Don't commit scan or tooling output (for example `chinese_scan.json`).
+
+## Syncing with upstream
+
+1. `git merge origin/main`, then `git checkout --conflict=diff3 <files>` to see the base.
+2. Per hunk: take **theirs** (upstream) logic, then re-apply the translation. Also
+   translate new Chinese strings that upstream added inside the hunks you touched.
+3. Verify:
+   - `for f in web/app/*.js; do node --check "$f"; done`
+   - `cd chatbot && NODE_OPTIONS=--no-experimental-webstorage npx vitest run`
+     (Node ≥ 25 ships a `localStorage` global that hides jsdom's)
+   - `cd chatbot && npx vite build`
+
 # LoopForge platform
 
 Preserve the platform architecture; keep deployment-specific adapters isolated. Detailed source synchronization records are maintained locally and are not required for community changes. The original local workflow runtime lives in `local/`; follow `local/AGENTS.md` there. Never copy private deployment files, credentials, staff data, or internal infrastructure into this repository.

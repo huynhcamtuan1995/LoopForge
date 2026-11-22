@@ -14,15 +14,8 @@ import { listSeparator, t, useI18n } from "./i18n.js";
 import SlidingTabs from "./SlidingTabs";
 import { api, canChatInProject, canManageProjectRepos, write } from "./api";
 import { usePanelPresence } from "./usePanelPresence";
-import {
-  CODEBUDDY_ENVIRONMENTS,
-  codeBuddyEnvironment,
-  codeBuddyEnvironmentIntent,
-  codeBuddyEnvironmentLegacy,
-  codeBuddyKeyURL,
-  codeBuddyKeyWarning,
-  openCredentialSettings,
-} from "./credentials";
+import { EXECUTORS, personalEngineConfigured } from "./engines.js";
+import { openCredentialSettings } from "./credentials";
 import "./quick-access-wizard.css";
 
 const DEFAULT_SOP_ID = "generic-backend-delivery";
@@ -33,16 +26,6 @@ export function sharedModelNames(models, fallback = "") {
   return list
     .map((id) => (id === "deepseek-v4.1-flash" ? "Deepseek-V4.1-Flash" : id))
     .join(listSeparator());
-}
-
-// The users API omits an empty (国际站) environment, so a full user response
-// must clear one that was switched to 国际站 elsewhere instead of keeping it.
-export function mergeFreshUser(prev, fresh) {
-  return {
-    ...prev,
-    ...fresh,
-    codeBuddyInternetEnvironment: fresh?.codeBuddyInternetEnvironment || "",
-  };
 }
 
 const STEPS = [
@@ -586,84 +569,12 @@ function parseGitHubRepo(raw) {
   };
 }
 
-// SSH preview first (it leaves github.com to the GitHub parser, matching the
-// server); self-hosted legacy repositories keep the git.example.com form.
-export function parseGongfengRepo(raw) {
-  const httpsInfo = globalThis.LoopForgeGitHTTPS(raw);
-  if (httpsInfo) return httpsInfo;
-  const sshInfo = globalThis.LoopForgeGitSSH(raw);
-  if (sshInfo) return sshInfo;
-  const github = parseGitHubRepo(raw);
-  if (github) return github;
-  const original = String(raw || "")
-    .trim()
-    .replace(/^['"]+|['"]+$/g, "");
-  if (!original) return null;
-  const strippedClone = /^git\s+clone\s+/i.test(original);
-  let value = original
-    .replace(/^git\s+clone\s+/i, "")
-    .trim()
-    .replace(/^['"]+|['"]+$/g, "");
-  if (strippedClone && /\s/.test(value)) value = value.split(/\s+/)[0];
-  if (!value || /[\s"'<>()\\]/.test(value)) return null;
-  const ssh = /^(git@|ssh:\/\/)/i.test(value);
-  value = value.replace(/\/+$/, "");
-  const hadScheme = value.includes("://");
-  const hadAt = value.includes("@");
-  let rest = value;
-  if (hadScheme) rest = rest.slice(rest.indexOf("://") + 3);
-  if (rest.includes("@")) rest = rest.slice(rest.lastIndexOf("@") + 1);
-  let path = "";
-  if (!hadScheme && !hadAt && !rest.includes(":")) {
-    path = rest;
-  } else if (rest.includes("/")) {
-    const cut = rest.search(/[:/]/);
-    const host = rest.slice(0, cut);
-    if (host.toLowerCase() !== "git.example.com") return null;
-    path = rest.slice(cut + 1);
-    if (rest[cut] === ":") {
-      const slash = path.indexOf("/");
-      if (slash >= 0 && /^\d+$/.test(path.slice(0, slash)))
-        path = path.slice(slash + 1);
-    }
-  } else {
-    return null;
-  }
-  path = path.replace(/^git\.example\.com\//i, "").replace(/\.git$/i, "");
-  for (const marker of [
-    "/-/",
-    "/tree/",
-    "/blob/",
-    "/commit/",
-    "/commits/",
-    "/merge_requests/",
-    "/issues/",
-    "/snippets/",
-    "/wikis/",
-    "/releases/",
-    "/tags/",
-  ]) {
-    const index = path.indexOf(marker);
-    if (index >= 0) path = path.slice(0, index);
-  }
-  path = path.replace(/^\/+|\/+$/g, "");
-  const parts = path.split("/");
-  if (
-    parts.length < 2 ||
-    path.includes("..") ||
-    parts.some((seg) => !seg || /[\s\\?#]/.test(seg))
-  )
-    return null;
-  const name = parts[parts.length - 1];
-  return {
-    project: path,
-    provider: "gongfeng",
-    name,
-    webUrl: `https://git.example.com/${path}`,
-    cloneUrl: ssh
-      ? `git@git.example.com:${path}.git`
-      : `https://git.example.com/${path}.git`,
-  };
+// Explicit SSH keeps its transport. Managed HTTPS links use the configured host.
+export function parseGongfengRepo(raw, host = "") {
+  return globalThis.LoopForgeGitSSH(raw) ||
+    globalThis.LoopForgeGongfengRepository(raw, host) ||
+    globalThis.LoopForgeGitHTTPS(raw) ||
+    parseGitHubRepo(raw);
 }
 
 function slugifyProjectId(value) {
@@ -790,7 +701,12 @@ export default function QuickAccessWizard({
   useI18n();
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState("wizard");
-  const [storedUser, setStoredUser] = useState(user);
+  const [credentialUser, setCredentialUser] = useState(null);
+  const storedUser = credentialUser?.id === user?.id ? credentialUser || user : user;
+  const { id: userId, loginName, chineseName, isPlatformAdmin, platformRole, isGuest } = user || {};
+  const [credentialsPending, setCredentialsPending] = useState(false);
+  const [gitHttpHosts, setGitHttpHosts] = useState([]);
+  const [gongfengHost, setGongfengHost] = useState("");
   const [sshCredentials, setSSHCredentials] = useState({ userId: null, keys: null, error: false });
   const [catalogProjects, setCatalogProjects] = useState(projects);
   const [repositories, setRepositories] = useState([]);
@@ -801,9 +717,6 @@ export default function QuickAccessWizard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [gitToken, setGitToken] = useState("");
-  const [codeBuddyApiKey, setCodeBuddyApiKey] = useState("");
-  // null follows the saved setting until the user picks an environment here.
-  const [codeBuddyEnvChoice, setCodeBuddyEnvChoice] = useState(null);
   const [verifyingGit, setVerifyingGit] = useState(false);
   const [gitVerify, setGitVerify] = useState(null);
   const [projectMode, setProjectMode] = useState("existing");
@@ -943,7 +856,15 @@ export default function QuickAccessWizard({
     [availableWorkflows, selectedWorkflowId],
   );
 
-  const parsedRepo = useMemo(() => parseGongfengRepo(repoUrl), [repoUrl]);
+  const parsedRepo = useMemo(() => parseGongfengRepo(repoUrl, gongfengHost), [repoUrl, gongfengHost]);
+  useEffect(() => {
+    if (!open) return;
+    let current = true;
+    api("/api/auth/gongfeng").then(status => {
+      if (current) setGongfengHost(status?.host || "");
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [open]);
 
   // Reopening during the exit transition reverses it onto the same content.
   useEffect(() => {
@@ -954,9 +875,10 @@ export default function QuickAccessWizard({
     setPhase("wizard");
     setError("");
     setGitToken("");
-    setCodeBuddyApiKey("");
-    setCodeBuddyEnvChoice(null);
     setGitVerify(null);
+    setCredentialUser(null);
+    setCredentialsPending(false);
+    setGitHttpHosts([]);
     setCompletedSummary(null);
     setBindRepoNow(true);
     setPreviewTab("stages");
@@ -964,50 +886,20 @@ export default function QuickAccessWizard({
     setKeyTouched(false);
   }, [open]);
 
-  const verifyStoredGitToken = useCallback(
-    async (uid = user?.id) => {
-      if (!uid) return null;
-      setVerifyingGit(true);
-      try {
-        const result = await api(
-          `/api/users/${encodeURIComponent(uid)}/git-token/verify`,
-        );
-        setGitVerify(result);
-        return result;
-      } catch (err) {
-        const fallback = { valid: false, error: err.message };
-        setGitVerify(fallback);
-        return fallback;
-      } finally {
-        setVerifyingGit(false);
-      }
-    },
-    [user?.id],
-  );
-
   useEffect(() => {
     if (!open) return undefined;
     let active = true;
     async function load() {
       setLoading(true);
       try {
-        const [usersRes, projectsRes, reposRes, workflowsRes, agentsRes] =
+        const [projectsRes, reposRes, workflowsRes, agentsRes] =
           await Promise.all([
-            api("/api/users").catch(() => []),
             api("/api/projects").catch(() => projects),
             api("/api/repositories").catch(() => []),
             api("/api/workflows").catch(() => []),
             api("/api/agents").catch(() => []),
           ]);
         if (!active) return;
-        const freshUser =
-          (usersRes || []).find(
-            (item) => Number(item.id) === Number(user?.id),
-          ) || user;
-        setStoredUser(mergeFreshUser(user, freshUser));
-        if (freshUser?.gitHubCredentialConfigured && freshUser?.id) {
-          void verifyStoredGitToken(freshUser.id);
-        }
         const nextProjects = Array.isArray(projectsRes)
           ? projectsRes
           : projects;
@@ -1016,9 +908,8 @@ export default function QuickAccessWizard({
         const nextWorkflows = Array.isArray(workflowsRes) ? workflowsRes : [];
         setWorkflows(nextWorkflows);
         setProjectAgents(Array.isArray(agentsRes) ? agentsRes : []);
-        const mine = nextProjects.filter((project) =>
-          canChatInProject(project, freshUser),
-        );
+        const actor = userId == null ? null : { id: userId, isPlatformAdmin, platformRole };
+        const mine = nextProjects.filter((project) => canChatInProject(project, actor));
         const preferred =
           mine.find((project) => project.id === projectId) || mine[0] || null;
         if (preferred) {
@@ -1035,10 +926,8 @@ export default function QuickAccessWizard({
             setSelectedWorkflowId(preferred.workflowId);
         } else {
           setProjectMode("create");
-          const login = freshUser?.loginName || "team";
-          const suggestedName = t("wizard.suggestedProjectName", {
-            name: freshUser?.chineseName || login,
-          });
+          const login = loginName || "team";
+          const suggestedName = t("wizard.suggestedProjectName", { name: chineseName || login });
           setNewProjectName(suggestedName);
           setNewProjectId(slugifyProjectId(`${login}-project`) || "my-project");
           setNewProjectKey(deriveProjectKey(login));
@@ -1051,24 +940,46 @@ export default function QuickAccessWizard({
     return () => {
       active = false;
     };
-  }, [open, projectId, projects, user]);
+  }, [open, projectId, projects, userId, loginName, chineseName, isPlatformAdmin, platformRole]);
 
   useEffect(() => {
-    if (!open || !user?.id || user.isGuest) return undefined;
+    if (!open || !userId || isGuest) return undefined;
     let active = true;
     let generation = 0;
     const refresh = () => {
       const version = ++generation;
-      api(`/api/users/${encodeURIComponent(user.id)}/git-ssh-keys`)
+      const current = () => active && version === generation;
+      api("/api/users")
+        .then(async rows => {
+          const fresh = rows?.find(item => Number(item.id) === Number(userId));
+          if (!current() || !fresh) return;
+          setCredentialUser(fresh);
+          const http = fresh.gitHttpCredentialsConfigured
+            ? await api(`/api/users/${encodeURIComponent(userId)}/git-http-credentials`).catch(() => [])
+            : [];
+          if (current()) setGitHttpHosts(http.map(item => item.host));
+        })
+        .catch(() => {})
+        .finally(() => { if (current()) setCredentialsPending(false); });
+      api(`/api/users/${encodeURIComponent(userId)}/git-ssh-keys`)
         .then((keys) => {
-          if (active && version === generation) setSSHCredentials({ userId: user.id, keys: Array.isArray(keys) ? keys : [], error: false });
+          if (current()) setSSHCredentials({ userId, keys: Array.isArray(keys) ? keys : [], error: false });
         })
         .catch(() => {
-          if (active && version === generation) setSSHCredentials({ userId: user.id, keys: [], error: true });
+          if (current()) setSSHCredentials({ userId, keys: [], error: true });
         });
     };
     const credentialsChanged = (event) => {
-      if (event.origin === location.origin && event.source === window.parent && event.data?.type === "agentflow-credentials-changed") refresh();
+      if (event.source !== window.parent || event.origin !== location.origin) return;
+      if (event.data?.type === "agentflow-chat-resume-quick-access") {
+        headingRef.current?.focus({ preventScroll: true });
+        refresh();
+        return;
+      }
+      if (event.data?.type !== "agentflow-credentials-changed") return;
+      setCredentialsPending(true);
+      setError(previous => previous === t("wizard.errMissingCreds") ? "" : previous);
+      refresh();
     };
     refresh();
     window.addEventListener("focus", refresh);
@@ -1078,7 +989,7 @@ export default function QuickAccessWizard({
       window.removeEventListener("focus", refresh);
       window.removeEventListener("message", credentialsChanged);
     };
-  }, [open, user?.id, user?.isGuest]);
+  }, [open, userId, isGuest]);
 
   useEffect(() => {
     if (!open || !selectedWorkflowId) return undefined;
@@ -1110,40 +1021,12 @@ export default function QuickAccessWizard({
 
   useEffect(() => {
     if (!open) return undefined;
-    const refreshUser = () => {
-      api("/api/users")
-        .then((usersRes) => {
-          const fresh = (usersRes || []).find(
-            (item) => Number(item.id) === Number(user?.id),
-          );
-          if (fresh) {
-            setStoredUser((prev) => mergeFreshUser(prev, fresh));
-            if (fresh.gitHubCredentialConfigured) {
-              void verifyStoredGitToken(fresh.id);
-            }
-          }
-        })
-        .catch(() => {});
-    };
-    window.addEventListener("focus", refreshUser);
-    const credentialsChanged = (event) => {
-      if (event.origin === location.origin && event.source === window.parent && event.data?.type === "agentflow-credentials-changed") refreshUser();
-    };
-    window.addEventListener("message", credentialsChanged);
-    return () => {
-      window.removeEventListener("focus", refreshUser);
-      window.removeEventListener("message", credentialsChanged);
-    };
-  }, [open, user?.id, verifyStoredGitToken]);
-
-  useEffect(() => {
-    if (!open) return undefined;
     const onKeyDown = (event) => {
-      if (event.key === "Escape" && !saving && !closeActiveSelect) onClose?.();
+      if (event.key === "Escape" && !saving && !verifyingGit && !closeActiveSelect) onClose?.();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, saving, onClose]);
+  }, [open, saving, verifyingGit, onClose]);
 
   useEffect(() => {
     if (projectMode !== "create" || !parsedRepo) return;
@@ -1194,30 +1077,24 @@ export default function QuickAccessWizard({
   const activeStepIndex = phase === "success" ? STEPS.length - 1 : step;
   const activeStep = STEPS[activeStepIndex] || STEPS[0];
   const wizardStepCount = STEPS.length - 1;
-  const gitReady = Boolean(storedUser?.gitHubCredentialConfigured || gitToken.trim());
-  const hasSSHKeys = Boolean(storedUser?.gitSshKeyConfigured);
-  const selectedSSHRepo = parsedRepo || parseGongfengRepo(defaultRepo?.cloneUrl);
+  const gitHubReady = Boolean(storedUser?.gitHubCredentialConfigured);
+  const gongfengReady = Boolean(storedUser?.gitTokenOAuth);
+  const hasGit = gitHubReady || gongfengReady || Boolean(storedUser?.gitSshKeyConfigured || storedUser?.gitHttpCredentialsConfigured);
   const sshKeysLoaded = sshCredentials.userId === user?.id && sshCredentials.keys !== null;
   const hasSSHKey = (remote) => sshKeysLoaded && !sshCredentials.error && sshCredentials.keys.some(
     (key) => globalThis.LoopForgeGitSSHHost(key.host) === remote?.host,
   );
-  const sshReady = hasSSHKey(selectedSSHRepo);
-  const sshRepository = (parsedRepo || defaultRepo)?.provider === "ssh";
-  const codeBuddyReady = Boolean(
-    storedUser?.codeBuddyApiKeyConfigured || codeBuddyApiKey.trim(),
-  );
-  // The CLI gets the stored text as-is: an old value such as china preselects
-  // what it meant, and still differs from it, so 下一步 rewrites it.
-  const storedCodeBuddyEnvRaw = String(
-    storedUser?.codeBuddyInternetEnvironment || "",
-  ).trim();
-  const storedCodeBuddyEnv =
-    codeBuddyEnvironmentIntent(storedCodeBuddyEnvRaw)?.value ?? "";
-  const codeBuddyEnvLegacy = codeBuddyEnvironmentLegacy(storedCodeBuddyEnvRaw);
-  const codeBuddyEnv = codeBuddyEnvChoice ?? storedCodeBuddyEnv;
-  const codeBuddyEnvInfo =
-    codeBuddyEnvironment(codeBuddyEnv) || CODEBUDDY_ENVIRONMENTS[0];
-  const codeBuddyWarning = codeBuddyKeyWarning(codeBuddyApiKey);
+  const gitAccess = (repo) => {
+    if (repo?.provider === "ssh") return { label: "Git SSH", ready: hasSSHKey(repo) };
+    if (repo?.provider === "https") return { label: "Git HTTPS", ready: gitHttpHosts.includes(repo.host) };
+    if (repo?.provider === "github") return { label: "GitHub", ready: gitHubReady };
+    if (repo?.provider === "gongfeng") return { label: t("wizard.gongfeng"), ready: gongfengReady };
+    return { label: "Git", ready: hasGit };
+  };
+  const selectedRepo = (bindRepoNow && parsedRepo) || parseGongfengRepo(defaultRepo?.cloneUrl, gongfengHost);
+  const repoAccess = gitAccess(selectedRepo);
+  const readyCLIs = EXECUTORS.filter(cli => personalEngineConfigured(storedUser, cli.id));
+  const cliReady = readyCLIs.length > 0 || Boolean(sponsoredModel);
   const nodes =
     activeWorkflow?.nodes?.filter((node) => node.type === "agent") ||
     FALLBACK_NODES;
@@ -1228,87 +1105,56 @@ export default function QuickAccessWizard({
     setStep(next);
   }
 
-  async function saveTypedCredentials() {
-    if (!user?.id) return storedUser;
-    const payload = {};
-    let savedGit = false;
-    if (gitToken.trim()) {
-      const endpoint = `/api/users/${encodeURIComponent(user.id)}/git-http-credentials`;
-      const credentials = await api(endpoint);
-      const existing = credentials.find(credential => credential.host === "github.com");
-      await write(endpoint, { ...(existing ? {id:existing.id} : {}), host:"github.com", platform:"github", name:"GitHub", username:"x-access-token", token:gitToken.trim() }, "PUT");
-      savedGit = true;
-    }
-    if (codeBuddyApiKey.trim())
-      payload.codeBuddyApiKey = codeBuddyApiKey.trim();
-    // A key is always saved with the environment it was issued for.
-    if (codeBuddyApiKey.trim() || codeBuddyEnv !== storedCodeBuddyEnvRaw)
-      payload.codeBuddyInternetEnvironment = codeBuddyEnv;
-    if (!Object.keys(payload).length && !savedGit) return storedUser;
-    const saved = await write(
-      `/api/users/${encodeURIComponent(user.id)}/credentials`,
-      payload,
-      "PUT",
-    );
-    const merged = { ...storedUser, ...saved };
-    // The server omits an empty environment, so 国际站 must overwrite the old value here.
-    if ("codeBuddyInternetEnvironment" in payload)
-      merged.codeBuddyInternetEnvironment =
-        saved?.codeBuddyInternetEnvironment || "";
-    setStoredUser(merged);
-    setGitToken("");
-    setCodeBuddyApiKey("");
-    setCodeBuddyEnvChoice(null);
-    void onCredentialsSaved?.();
-    window.parent !== window &&
-      window.parent.postMessage(
-        { type: "agentflow-credentials-changed" },
-        location.origin,
-      );
-    return merged;
-  }
-
   async function verifyGit() {
-    if (!user?.id || verifyingGit) return;
+    if (!userId || verifyingGit) return false;
+    const secret = gitToken.trim();
+    const userPath = `/api/users/${encodeURIComponent(userId)}`;
     setVerifyingGit(true);
     setGitVerify(null);
     setError("");
     try {
-      const typed = gitToken.trim();
-      const result = typed
-        ? await write(
-            `/api/users/${encodeURIComponent(user.id)}/git-token/verify`,
-            { token: typed },
-          )
-        : await api(
-            `/api/users/${encodeURIComponent(user.id)}/git-token/verify`,
-          );
+      const result = secret
+        ? await write(`${userPath}/git-token/verify`, { token: secret })
+        : await api(`${userPath}/git-token/verify`);
+      if (result.valid && secret) {
+        const endpoint = `${userPath}/git-http-credentials`;
+        const credentials = await api(endpoint);
+        const existing = credentials.find(credential => credential.host === "github.com");
+        await write(endpoint, {
+          ...(existing ? { id: existing.id } : {}),
+          host: "github.com", platform: "github", name: "GitHub", username: "x-access-token", token: secret,
+        }, "PUT");
+        setCredentialUser({ ...storedUser, id: userId, gitHubCredentialConfigured: true, gitHttpCredentialsConfigured: true });
+        setGitToken("");
+        onCredentialsSaved?.();
+        if (window.parent !== window) {
+          window.parent.postMessage({ type: "agentflow-credentials-changed" }, location.origin);
+        }
+      }
       setGitVerify(result);
-      if (result?.valid && typed) await saveTypedCredentials();
-    } catch (err) {
-      setGitVerify({ valid: false, error: err.message });
+      return result.valid;
+    } catch (failure) {
+      setGitVerify({ valid: false, error: failure.message });
+      return false;
     } finally {
       setVerifyingGit(false);
     }
   }
 
   async function nextStep() {
-    if (saving) return;
+    if (saving || verifyingGit) return;
     setError("");
     if (activeStep.id === "auth") {
-      if (!gitReady && !hasSSHKeys && !codeBuddyReady && !sponsoredModel) {
+      if (gitToken.trim()) {
+        if (!(await verifyGit())) {
+          setError(t("wizard.gitTokenNotSaved"));
+          return;
+        }
+      } else if (!hasGit && !cliReady) {
         setError(t("wizard.errMissingCreds"));
         return;
       }
-      setSaving(true);
-      try {
-        await saveTypedCredentials();
-        goToStep(1);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setSaving(false);
-      }
+      goToStep(1);
       return;
     }
     if (activeStep.id === "project") {
@@ -1352,7 +1198,6 @@ export default function QuickAccessWizard({
     setSaving(true);
     setError("");
     try {
-      const latestUser = await saveTypedCredentials();
       let targetProject = currentProject;
       // Save the SOP the page shows; a stale id hidden by the current
       // filter must never be bound to the project.
@@ -1523,11 +1368,8 @@ export default function QuickAccessWizard({
         repository: boundRepo,
         workflow: provisionedWorkflow || activeWorkflow,
         rolesCount: roles.length,
-        gitReady: Boolean(boundRepo?.provider === "ssh" ? hasSSHKey(parseGongfengRepo(boundRepo.cloneUrl)) : latestUser?.gitHubCredentialConfigured),
-        codeBuddyReady: Boolean(
-          latestUser?.codeBuddyApiKeyConfigured ||
-            storedUser?.codeBuddyApiKeyConfigured,
-        ),
+        gitAccess: gitAccess(parseGongfengRepo(boundRepo?.cloneUrl, gongfengHost)),
+        cliNames: EXECUTORS.filter(cli => personalEngineConfigured(storedUser, cli.id)).map(cli => cli.label),
       });
       setPhase("success");
       await onCompleted?.(targetProject?.id || "");
@@ -1546,7 +1388,7 @@ export default function QuickAccessWizard({
       inert={closing}
       aria-hidden={closing || undefined}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !saving && !closing)
+        if (event.target === event.currentTarget && !saving && !verifyingGit && !closing)
           onClose?.();
       }}
     >
@@ -1611,7 +1453,7 @@ export default function QuickAccessWizard({
             type="button"
             className="qa-close"
             aria-label={t("wizard.closeAria")}
-            disabled={saving}
+            disabled={saving || verifyingGit}
             onClick={onClose}
           >
             <HarnessIcon name="close" size={16} />
@@ -1690,44 +1532,27 @@ export default function QuickAccessWizard({
                       <ul className="qa-status-list">
                         <li
                           className={
-                            completedSummary?.gitReady ? "is-ok" : "is-warn"
+                            completedSummary?.gitAccess.ready ? "is-ok" : "is-warn"
                           }
                         >
                           <HarnessIcon
-                            name={completedSummary?.gitReady ? "check" : "info"}
+                            name={completedSummary?.gitAccess.ready ? "check" : "info"}
                             size={14}
                           />
                           <span>
-                            {completedSummary?.repository?.provider === "ssh" ? t("wizard.gitSshPrefix") : t("wizard.githubPrefix")}
-                            {completedSummary?.gitReady
+                            {t("wizard.accessPrefix", { label: completedSummary?.gitAccess.label || "Git" })}
+                            {completedSummary?.gitAccess.ready
                               ? t("wizard.statusReady")
                               : t("wizard.gitNotConfigured")}
                           </span>
                         </li>
-                        <li
-                          className={
-                            completedSummary?.codeBuddyReady || sponsoredModel
-                              ? "is-ok"
-                              : "is-warn"
-                          }
-                        >
-                          <HarnessIcon
-                            name={
-                              completedSummary?.codeBuddyReady
-                                ? "check"
-                                : "info"
-                            }
-                            size={14}
-                          />
+                        <li className={completedSummary?.cliNames?.length || sponsoredModel ? "is-ok" : "is-warn"}>
+                          <HarnessIcon name={completedSummary?.cliNames?.length ? "check" : "info"} size={14} />
                           <span>
-                            CodeBuddy API Key：
-                            {completedSummary?.codeBuddyReady
-                              ? t("wizard.configured")
-                              : sponsoredModel
-                                ? t("wizard.codeBuddySponsored", {
-                                    models: sharedModelNames(sponsoredModels, sponsoredModel),
-                                  })
-                                : t("wizard.codeBuddyMissing")}
+                            {t("wizard.cliModelPrefix")}{completedSummary?.cliNames?.join(listSeparator()) ||
+                              (sponsoredModel
+                                ? t("wizard.sharedModelWithNames", { models: sharedModelNames(sponsoredModels, sponsoredModel) })
+                                : t("wizard.cliPrepareHint"))}
                           </span>
                         </li>
                         <li className="is-ok">
@@ -1810,12 +1635,24 @@ export default function QuickAccessWizard({
                   className={`qa-stage ${stepAnimated ? "is-entering" : ""}`}
                   data-direction={direction}
                 >
-                  <div className="qa-kicker">
-                    {t("wizard.stepProgress", { current: activeStepIndex + 1, total: wizardStepCount })}
-                  </div>
-                  <h3 ref={headingRef} tabIndex={-1} className="qa-title">
-                    {activeStep.title}
-                  </h3>
+                  <header className="qa-stage-heading">
+                    <div className="qa-kicker">
+                      <span className="qa-kicker-name" aria-hidden="true">{t("wizard.title")}</span>
+                      {t("wizard.stepProgress", { current: activeStepIndex + 1, total: wizardStepCount })}
+                    </div>
+                    <h3 ref={headingRef} tabIndex={-1} className="qa-title">
+                      {activeStep.title}
+                    </h3>
+                    {activeStep.id === "auth" ? (
+                      <p className="qa-lede">
+                        {hasGit || readyCLIs.length
+                          ? t("wizard.ledeReady")
+                          : sponsoredModel
+                            ? t("wizard.ledeSponsored")
+                            : t("wizard.ledeEmpty")}
+                      </p>
+                    ) : null}
+                  </header>
 
                   {error ? (
                     <p key={error} className="qa-note is-err" role="alert">
@@ -1826,141 +1663,54 @@ export default function QuickAccessWizard({
 
                   {activeStep.id === "auth" ? (
                     <div className="qa-pane">
-                      <section className="qa-cred-card">
+                      <section className="qa-cred-card" aria-labelledby="qa-github-title">
                         <header className="qa-cred-head">
                           <div>
-                            <strong>{t("wizard.githubAuthTitle")}</strong>
+                            <strong id="qa-github-title">{t("wizard.githubAuthTitle")}</strong>
                             <span>{t("wizard.githubAuthDesc")}</span>
                           </div>
-                          <StatusPill ok={gitReady} />
+                          <StatusPill ok={gitHubReady} />
                         </header>
                         <div className="qa-cred-body">
-                          <button type="button" className="qa-btn qa-btn-primary qa-btn-sm" onClick={() => openCredentialSettings("gitToken")}>
-                            {storedUser?.gitHubCredentialConfigured ? t("wizard.manageGithub") : t("wizard.connectGithub")}
+                          <button type="button" className="qa-btn qa-btn-primary qa-btn-sm" disabled={verifyingGit} onClick={() => openCredentialSettings("gitToken")}>
+                            {gitHubReady ? t("wizard.manageGithub") : t("wizard.connectGithub")}
                           </button>
                           <p className="qa-hint">{t("wizard.oauthHint")}</p>
-                          <p className="qa-hint">{t("wizard.sshHintPrefix")}<button type="button" className="qa-link-btn" onClick={() => openCredentialSettings("gitSshKey")}>{hasSSHKeys ? t("wizard.manageSsh") : t("wizard.configureSsh")}</button></p>
-                          <p className="qa-hint">{t("wizard.httpHintPrefix")}<button type="button" className="qa-link-btn" onClick={() => openCredentialSettings("gitHttpCredentials")}>{storedUser?.gitHttpCredentialsConfigured ? t("wizard.manageHttp") : t("wizard.configureHttp")}</button></p>
+                          <p className="qa-hint">{t("wizard.sshHintPrefix")}<button type="button" className="qa-link-btn" disabled={verifyingGit} onClick={() => openCredentialSettings("gitSshKey")}>{storedUser?.gitSshKeyConfigured ? t("wizard.manageSsh") : t("wizard.configureSsh")}</button></p>
+                          <p className="qa-hint">{t("wizard.httpHintPrefix")}<button type="button" className="qa-link-btn" disabled={verifyingGit} onClick={() => openCredentialSettings("gitHttpCredentials")}>{storedUser?.gitHttpCredentialsConfigured ? t("wizard.manageHttp") : t("wizard.configureHttp")}</button></p>
                           <details>
                             <summary>{t("wizard.usePatSummary")}</summary>
-                          <div className="qa-input-row">
-                            <input
-                              type="password"
-                              className="qa-input"
-                              value={gitToken}
-                              onChange={(e) => setGitToken(e.target.value)}
-                              placeholder={
-                                storedUser?.gitHubCredentialConfigured
-                                  ? t("wizard.patKeepPlaceholder")
-                                  : t("wizard.patPlaceholder")
-                              }
-                              autoComplete="new-password"
-                            />
-                            <button
-                              type="button"
-                              className="qa-btn qa-btn-outline qa-btn-sm qa-btn-field"
-                              data-hover-ink-control=""
-                              aria-busy={verifyingGit || undefined}
-                              disabled={
-                                !verifyingGit &&
-                                !gitToken.trim() &&
-                                !storedUser?.gitHubCredentialConfigured
-                              }
-                              onClick={verifyGit}
-                            >
-                              <BusyLabel
-                                busy={verifyingGit}
-                                busyLabel={t("wizard.verifying")}
-                              >
-                                {t("wizard.verify")}
-                              </BusyLabel>
-                            </button>
-                            <a
-                              className="qa-link"
-                              data-hover-ink-control=""
-                              href="https://github.com/settings/tokens"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {t("wizard.createToken")}
-                            </a>
-                          </div>
-                          {gitVerify ? (
-                            <VerifyMessage
-                              result={gitVerify}
-                              okText={gitVerify.login ? t("wizard.tokenValidLogin", { login: gitVerify.login }) : t("wizard.tokenValid")}
-                            />
-                          ) : null}
+                            <div className="qa-input-row">
+                              <input
+                                type="password"
+                                className="qa-input"
+                                value={gitToken}
+                                onChange={(event) => { setGitToken(event.target.value); setGitVerify(null); }}
+                                placeholder={gitHubReady ? t("wizard.patKeepPlaceholder") : t("wizard.patPlaceholder")}
+                                aria-label={t("wizard.patAria")}
+                                autoComplete="new-password"
+                                disabled={verifyingGit}
+                              />
+                              <button type="button" className="qa-btn qa-btn-outline qa-btn-sm qa-btn-field" data-hover-ink-control="" disabled={!userId || verifyingGit || (!gitToken.trim() && !gitHubReady)} aria-busy={verifyingGit || undefined} onClick={verifyGit}>
+                                <BusyLabel busy={verifyingGit} busyLabel={t("wizard.verifying")}>{t("wizard.verify")}</BusyLabel>
+                              </button>
+                              <a className="qa-link" data-hover-ink-control="" href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">{t("wizard.createToken")}</a>
+                            </div>
+                            {gitVerify ? <VerifyMessage result={gitVerify} okText={gitVerify.login ? t("wizard.tokenValidLogin", { login: gitVerify.login }) : t("wizard.tokenValid")} /> : null}
                           </details>
                         </div>
                       </section>
-
-                      <section className="qa-cred-card">
+                      <section className="qa-cred-card" aria-labelledby="qa-executors-title">
                         <header className="qa-cred-head">
                           <div>
-                            <strong>CodeBuddy API Key</strong>
-                            <span>
-                              {sponsoredModel
-                                ? t("wizard.codeBuddySponsoredHint")
-                                : t("wizard.codeBuddyHint")}
-                            </span>
+                            <strong id="qa-executors-title">{t("wizard.executorsTitle")}</strong>
+                            <span>{readyCLIs.length ? readyCLIs.map(cli => cli.label).join(listSeparator()) : sponsoredModel ? t("wizard.sharedModelAvailable") : t("wizard.noExecutors")}</span>
                           </div>
-                          <StatusPill ok={codeBuddyReady} />
+                          <StatusPill ok={cliReady} />
                         </header>
                         <div className="qa-cred-body">
-                          <div className="qa-field">
-                            <span className="qa-label">{t("wizard.networkEnv")}</span>
-                            <HarnessSelect
-                              value={codeBuddyEnv}
-                              options={CODEBUDDY_ENVIRONMENTS.map((env) => ({
-                                value: env.value,
-                                label: env.label,
-                                hint: env.site,
-                              }))}
-                              onChange={setCodeBuddyEnvChoice}
-                              ariaLabel={t("wizard.codeBuddyEnvAria")}
-                            />
-                          </div>
-                          <div className="qa-input-row">
-                            <input
-                              type="password"
-                              className="qa-input"
-                              value={codeBuddyApiKey}
-                              onChange={(e) =>
-                                setCodeBuddyApiKey(e.target.value)
-                              }
-                              placeholder={
-                                storedUser?.codeBuddyApiKeyConfigured
-                                  ? t("wizard.patKeepPlaceholder")
-                                  : t("wizard.codeBuddyPlaceholder")
-                              }
-                              aria-label="CodeBuddy API Key"
-                              autoComplete="new-password"
-                            />
-                            <a
-                              className="qa-link"
-                              data-hover-ink-control=""
-                              href={codeBuddyKeyURL(codeBuddyEnv)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {t("wizard.getApiKey")}
-                            </a>
-                          </div>
-                          <p
-                            className={`qa-hint${codeBuddyWarning ? " is-warn" : ""}`}
-                            role="status"
-                          >
-                            {codeBuddyWarning ||
-                              t("wizard.envSiteHint", {
-                                legacy:
-                                  codeBuddyEnvLegacy && codeBuddyEnvChoice === null
-                                    ? t("wizard.legacyEnvPrefix", { raw: storedCodeBuddyEnvRaw })
-                                    : "",
-                                label: codeBuddyEnvInfo.label,
-                                site: codeBuddyEnvInfo.site,
-                              })}
-                          </p>
+                          <button type="button" className="qa-btn qa-btn-secondary" disabled={verifyingGit} onClick={() => openCredentialSettings("executors", undefined, { returnToQuickAccess: true })}>{t("wizard.executorSettings")}</button>
+                          <p className="qa-hint">{t("wizard.executorReturnHint")}</p>
                         </div>
                       </section>
                     </div>
@@ -2227,9 +1977,9 @@ export default function QuickAccessWizard({
                                   {t("wizard.repoUrlHelpPrefix")}<code>git@gitlab.com:group/repo.git</code>.
                                 </p>
                               )}
-                              {selectedSSHRepo?.provider === "ssh" && sshKeysLoaded && !sshReady ? (
+                              {selectedRepo?.provider === "ssh" && sshKeysLoaded && !repoAccess.ready ? (
                                 <p className="qa-hint is-error" role="alert">
-                                  {sshCredentials.error ? t("wizard.sshKeysReadError") : t("wizard.sshKeyMissingHost", { host: selectedSSHRepo.host })}
+                                  {sshCredentials.error ? t("wizard.sshKeysReadError") : t("wizard.sshKeyMissingHost", { host: selectedRepo.host })}
                                 </p>
                               ) : null}
                             </div>
@@ -2356,16 +2106,12 @@ export default function QuickAccessWizard({
                             <dt>{t("wizard.summaryCreds")}</dt>
                             <dd>
                               <span
-                                className={`qa-dot ${(sshRepository ? sshReady : gitReady) && (codeBuddyReady || sponsoredModel) ? "is-ok" : ""}`}
+                                className={`qa-dot ${repoAccess.ready && cliReady ? "is-ok" : ""}`}
                               />
                               <span>
-                                {sshRepository ? "Git SSH" : "GitHub"} {(sshRepository ? sshReady : gitReady) ? t("wizard.configured") : t("wizard.notConfigured")} ·
-                                CodeBuddy{" "}
-                                {codeBuddyReady
-                                  ? t("wizard.configured")
-                                  : sponsoredModel
-                                    ? t("wizard.usingSharedModel")
-                                    : t("wizard.notConfigured")}
+                                {repoAccess.label} {repoAccess.ready ? t("wizard.configured") : t("wizard.notConfigured")} ·
+                                CLI · {readyCLIs.length ? readyCLIs.map(cli => cli.label).join(listSeparator()) :
+                                  sponsoredModel ? t("wizard.usingSharedModel") : t("wizard.notConfigured")}
                               </span>
                             </dd>
                           </div>
@@ -2431,7 +2177,7 @@ export default function QuickAccessWizard({
                   type="button"
                   className="qa-btn qa-btn-primary"
                   aria-busy={saving || undefined}
-                  disabled={loading && !saving}
+                  disabled={verifyingGit || ((loading || (activeStep.id === "auth" && credentialsPending)) && !saving)}
                   onClick={nextStep}
                 >
                   <BusyLabel busy={saving} busyLabel={t("wizard.saving")}>
